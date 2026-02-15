@@ -1,0 +1,9 @@
+# We use std::flat_map. Skia requires at least C++20
+common --cxxopt='-std=c++23'
+# Treat sources as UTF-8, Widen chars to UTF-8 encoding.
+common --cxxopt='-finput-charset=UTF-8' --cxxopt='-fexec-charset=UTF-8'
+common --macos_minimum_os=13.3
+
+build --cxxopt='-std=c++23' --xcode_version=25
+test --test_output=all
+

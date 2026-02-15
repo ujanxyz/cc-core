@@ -1,0 +1,27 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "graph",
+    srcs = [
+        "NodeProcessor.cpp",
+    ],
+    hdrs = [
+        "NodeProcessor.h",
+    ],
+    deps = [
+        "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "NodeProcessor_Test",
+    srcs = ["NodeProcessor_Test.cpp"],
+    deps = [
+        ":graph",
+        "@googletest//:gtest_main",
+    ],
+)
