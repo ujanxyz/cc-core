@@ -15,6 +15,7 @@ cc_binary(
          #":graph_backend",
          #"@cppschema//:js_api_bridge",
          #"@cppschema//:js_converter",
+         "//ujcore/base:build_info",
     ],
     features = ["emcc_debug_link"],
     linkopts = [

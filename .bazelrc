@@ -7,3 +7,6 @@ common --macos_minimum_os=13.3
 build --cxxopt='-std=c++23' --xcode_version=25
 test --test_output=all
 
+# Include build status info.
+common --stamp --workspace_status_command=./scripts/bazel-build-info.sh
+# build:release -c opt --stamp

@@ -98,7 +98,7 @@ function verifyAndGetFilesInfo(pathParams) {
  * Validates the WASM module by attempting to load it via the glue JS.
  * @param {Object} srcFilesInfo - { wasmBin: string, glueJs: string }
  */
-async function loadGraphWasmModule(srcFilesInfo) {
+async function validateGraphWasmModule(srcFilesInfo) {
     const { wasmBin, glueJs } = srcFilesInfo;
     const binaryStream = createReadStream(wasmBin);
     const { default: WasmModule } = await import(glueJs);
@@ -106,6 +106,8 @@ async function loadGraphWasmModule(srcFilesInfo) {
     if (!module) {
         throw new Error("Failed to load WASM module");
     }
+    const buildInfo = module.getBuildInfo()
+    console.log(buildInfo);
 }
 
 /**
@@ -166,7 +168,7 @@ async function exportWasmFiles(srcFilesInfo, destDir) {
     const srcFilesInfo = verifyAndGetFilesInfo(PATH_PARAMS);
     
     // Verify source files are valid before proceeding
-    await loadGraphWasmModule(srcFilesInfo);
+    await validateGraphWasmModule(srcFilesInfo);
     
     const destDir = await prepareDestinationDir(PATH_PARAMS.buildWorkDir);
     await exportWasmFiles(srcFilesInfo, destDir);
