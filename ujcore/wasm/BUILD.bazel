@@ -1,0 +1,44 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load("@aspect_rules_js//js:defs.bzl", "js_binary")
+load("@emsdk//emscripten_toolchain:wasm_rules.bzl", "wasm_cc_binary")
+
+# This is a binary with no `main` function, which is ok as this will never be build into a
+# standalone system binary, always converted into a wasm binary before using.
+# The `--no-entry` flag in the linkopts below tells the linker to allow this.
+cc_binary(
+    name = "entrypoint",
+    srcs = [
+        "entrypoint.cpp",
+    ],
+    deps = [
+         #":graph_api",
+         #":graph_backend",
+         #"@cppschema//:js_api_bridge",
+         #"@cppschema//:js_converter",
+    ],
+    features = ["emcc_debug_link"],
+    linkopts = [
+        "--bind",  # Enable embind
+        "-sMODULARIZE",
+        "--closure=0",  # Do not use closure
+        "-sSTANDALONE_WASM",
+        "--no-entry",
+    ],
+    # This target won't build successfully on its own using system headers, because of missing
+    # emscripten headers etc. Therefore, we hide it from wildcards.
+    tags = ["manual"],
+)
+
+wasm_cc_binary(
+    name = "entrypoint_wa",
+    cc_target = ":entrypoint",
+)
+
+js_binary(
+    name = "wa_exporter",
+    entry_point = "wa_exporter.mjs",
+    data = [
+        ":entrypoint_wa",
+        "wa_exporter.mjs",
+    ],
+)
