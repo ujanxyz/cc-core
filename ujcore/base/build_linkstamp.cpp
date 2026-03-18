@@ -8,7 +8,6 @@ namespace {
 
 // These variables are automatically defined by Bazel when 
 // using the linkstamp attribute.
-
 const int32_t build_timestamp = BUILD_TIMESTAMP;
 const char build_host[] = BUILD_HOST;
 const char build_user[] = BUILD_USER;

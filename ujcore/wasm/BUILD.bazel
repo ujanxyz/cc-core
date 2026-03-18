@@ -11,19 +11,17 @@ cc_binary(
         "entrypoint.cpp",
     ],
     deps = [
-         #":graph_api",
-         #":graph_backend",
-         #"@cppschema//:js_api_bridge",
-         #"@cppschema//:js_converter",
          "//ujcore/base:build_info",
     ],
     features = ["emcc_debug_link"],
     linkopts = [
         "--bind",  # Enable embind
-        "-sMODULARIZE",
         "--closure=0",  # Do not use closure
-        "-sSTANDALONE_WASM",
         "--no-entry",
+        "-sMODULARIZE=1",
+        "-sSTANDALONE_WASM",
+        # Export the module creation function with a specific name, replacing the default 'Module'.
+        "-sEXPORT_NAME=CreateUjWasmModule"
     ],
     # This target won't build successfully on its own using system headers, because of missing
     # emscripten headers etc. Therefore, we hide it from wildcards.

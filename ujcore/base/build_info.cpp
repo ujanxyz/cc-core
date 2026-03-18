@@ -3,10 +3,15 @@
 namespace buildinfo {
 namespace {
 
+static const char kNotSet[] = "(not set)";
+
 // Default initialized field values.
 void MakeDefaultInfo(BuildInfo& info) {
   info.timestamp = 0;
-  info.hostname = "not set";
+  info.hostname = kNotSet;
+  info.user = kNotSet;
+  info.revision = kNotSet;
+  info.status = kNotSet;
 }
 
 }  // namespace
