@@ -1,0 +1,47 @@
+// Copyright 2026 (c) UjanXYZ
+
+#pragma once
+
+#include "ujcore/functions/FunctionSpec.hpp"
+
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
+namespace ujcore {
+
+// In-memory repository of function specs.
+//
+// This is intentionally a simple, non-thread-safe container. It can be used
+// to load specs from an external source (JSON, etc.) and query by function id.
+class FunctionStore {
+ public:
+  FunctionStore() = default;
+  FunctionStore(const FunctionStore&) = default;
+  FunctionStore(FunctionStore&&) = default;
+  FunctionStore& operator=(const FunctionStore&) = default;
+  FunctionStore& operator=(FunctionStore&&) = default;
+  ~FunctionStore() = default;
+
+  // Adds a new function spec to the store.
+  //
+  // If a spec with the same id already exists, it is overwritten.
+  //
+  // Returns false if the spec is invalid (e.g. missing id or duplicate param names).
+  // If `out_error` is non-null, it is populated with a human readable reason.
+  bool AddFunction(FunctionSpec spec, std::string* out_error = nullptr);
+
+  // Returns true if the store contains a function spec with the given id.
+  bool HasFunction(std::string_view func_id) const;
+
+  // Lookup a function spec by id.
+  //
+  // Returns a pointer to the spec if present, otherwise nullptr.
+  const FunctionSpec* Lookup(std::string_view func_id) const;
+
+ private:
+  std::unordered_map<std::string, FunctionSpec> specs_;
+};
+
+}  // namespace ujcore

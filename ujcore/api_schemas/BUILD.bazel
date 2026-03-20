@@ -1,0 +1,21 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+cc_library(
+    name = "GraphEngineApi",
+    hdrs = ["GraphEngineApi.hpp"],
+    deps = [
+        "@cppschema//:apispec",
+    ],
+)
+
+cc_library(
+    name = "PipelineApi",
+    hdrs = ["PipelineApi.hpp"],
+    deps = [
+        "@cppschema//:apispec",
+    ],
+)

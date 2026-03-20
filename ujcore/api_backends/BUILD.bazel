@@ -1,0 +1,46 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+cc_library(
+    name = "GraphEngineApiBackend",
+    srcs = ["GraphEngineApiBackend.cpp"],
+    deps = [
+        "//ujcore/api_schemas:GraphEngineApi",
+        "//ujcore/graph:GraphEngine",
+        "@cppschema//:backend_bridge",
+        "@nlohmann_json//:json",
+    ],
+    alwayslink = 1,  # Forced linking, even if not directly referenced
+)
+
+cc_test(
+    name = "GraphEngineApiBackend_Test",
+    srcs = ["GraphEngineApiBackend_Test.cpp"],
+    deps = [
+        ":GraphEngineApiBackend",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "PipelineApiBackend",
+    srcs = ["PipelineApiBackend.cpp"],
+    deps = [
+        ":IdGenerator",
+        "@cppschema//:backend_bridge",
+        "//ujcore/api_schemas:PipelineApi",
+    ],
+    alwayslink = 1,  # Forced linking, even if not directly referenced
+)
+
+cc_test(
+    name = "PipelineApiBackend_Test",
+    srcs = ["PipelineApiBackend_Test.cpp"],
+    deps = [
+        ":PipelineApiBackend",
+        "@googletest//:gtest_main",
+    ],
+)

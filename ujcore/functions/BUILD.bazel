@@ -1,0 +1,13 @@
+# Node function related code.
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "NodeFunctionSpec",
+    hdrs = [
+        "NodeFuncExtentions.hpp",
+        "NodeFunctionSpec.hpp",
+    ],
+)

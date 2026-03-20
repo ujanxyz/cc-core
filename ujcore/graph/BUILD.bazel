@@ -5,23 +5,40 @@ package(
 )
 
 cc_library(
-    name = "graph",
-    srcs = [
-        "NodeProcessor.cpp",
+    name = "GraphEngine",
+    srcs = ["GraphEngine.cpp"],
+    hdrs = ["GraphEngine.hpp"],
+    deps =[
+        ":GraphState",
+        ":IdGenerator",
     ],
+)
+
+cc_library(
+    name = "GraphState",
     hdrs = [
-        "NodeProcessor.h",
+        "GraphState.hpp",
     ],
+    deps = [
+        "//ujcore/functions:NodeFunctionSpec",
+        "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "IdGenerator",
+    srcs = ["IdGenerator.cpp"],
+    hdrs = ["IdGenerator.hpp"],
     deps = [
         "@abseil-cpp//absl/strings",
     ],
 )
 
 cc_test(
-    name = "NodeProcessor_Test",
-    srcs = ["NodeProcessor_Test.cpp"],
+    name = "IdGenerator_Test",
+    srcs = ["IdGenerator_Test.cpp"],
     deps = [
-        ":graph",
+        ":IdGenerator",
         "@googletest//:gtest_main",
     ],
 )

@@ -11,7 +11,9 @@ cc_binary(
         "entrypoint.cpp",
     ],
     deps = [
+         "//ujcore/api_schemas:GraphEngineApi",
          "//ujcore/base:build_info",
+         "@cppschema//:js_api_bridge",
     ],
     features = ["emcc_debug_link"],
     linkopts = [

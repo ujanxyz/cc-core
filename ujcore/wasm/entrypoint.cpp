@@ -4,6 +4,8 @@
 #include <emscripten/bind.h>
 #include <emscripten/em_js.h>
 
+#include "cppschema/wasm/js_api_bridge.h"
+#include "ujcore/api_schemas/GraphEngineApi.hpp"
 #include "ujcore/base/build_info.hpp"
 
 emscripten::val get_build_info() {
@@ -30,10 +32,5 @@ private:
 
 EMSCRIPTEN_BINDINGS(EntrypointModule) {
     emscripten::function("getBuildInfo", &get_build_info);
-
-    emscripten::class_<HelloClass>("HelloClass")
-        .constructor<std::string>()
-        .function("sayHello", &HelloClass::sayHello);
-
-    // cppschema::jsbridge::CreateJsApiMethods<graph::GraphApi>("GraphApi");
+    cppschema::jsbridge::CreateJsApiMethods<ujcore::GraphEngineApi>("GraphEngineApi");
 }
