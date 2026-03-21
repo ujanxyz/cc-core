@@ -1,24 +1,17 @@
 #pragma once
 
-#include "ujcore/graph/GraphState.hpp"
+#include "ujcore/graph/ops/GraphOperatorBase.hpp"
 
 #include <cstdint>
-#include <string>
+#include <memory>
 
 namespace ujcore {
 
-class GraphOperatorBase {
- public:
-  virtual ~GraphOperatorBase() = default;
-
-  virtual void apply(GraphState& state) = 0;
+struct GraphOps {
+    std::unique_ptr<GraphOperatorBase> insert_op;
+    std::unique_ptr<GraphOperatorBase> delete_elems_op;
 };
 
-
-class InsertNodeOperator : public GraphOperatorBase {
-    struct Request {};
-
-    void apply(GraphState& state) override;
-}
+void InitializeGraphOps(GraphOps& ops);
 
 }  // namespace ujcore

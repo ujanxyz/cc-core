@@ -1,10 +1,10 @@
 #pragma once
 
 #include <string>
+#include <memory>
 #include <tuple>
 
 #include "ujcore/graph/GraphState.hpp"
-#include "ujcore/graph/IdGenerator.hpp"
 
 namespace ujcore {
 
@@ -12,14 +12,15 @@ class GraphEngine {
  public:
   GraphEngine();
 
-  std::string InsertNewNode(const std::string& fn_spec);
+  GraphState* mutable_state() {
+    return &state_;
+  }
 
   std::tuple<int32_t, int32_t, int32_t>
   GetElementCounts() const;
 
  private:
   GraphState state_;
-  IdGenerator id_gen_;
 };
 
 }  // namespace ujcore

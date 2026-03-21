@@ -5,6 +5,27 @@ package(
 )
 
 cc_library(
+    name = "FunctionIoUtils",
+    srcs = ["FunctionIoUtils.cpp"],
+    hdrs = ["FunctionIoUtils.hpp"],
+    deps = [
+        "NodeFunctionSpec",
+        "@abseil-cpp//absl/log",
+        "@nlohmann_json//:json",
+    ],
+)
+
+cc_test(
+    name = "FunctionIoUtils_Test",
+    srcs = ["FunctionIoUtils_Test.cpp"],
+    deps = [
+        ":FunctionIoUtils",
+        "@googletest//:gtest_main",
+        "@nlohmann_json//:json",
+    ],
+)
+
+cc_library(
     name = "NodeFunctionSpec",
     hdrs = [
         "NodeFuncExtentions.hpp",

@@ -12,6 +12,7 @@ cc_binary(
     ],
     deps = [
          "//ujcore/api_schemas:GraphEngineApi",
+         "//ujcore/api_backends:GraphEngineApiBackend",
          "//ujcore/base:build_info",
          "@cppschema//:js_api_bridge",
     ],

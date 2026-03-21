@@ -10,7 +10,20 @@ cc_library(
     hdrs = ["GraphEngine.hpp"],
     deps =[
         ":GraphState",
+    ],
+)
+
+cc_library(
+    name = "GraphOps",
+    srcs = ["GraphOps.cpp"],
+    hdrs = ["GraphOps.hpp"],
+    deps =[
+        ":GraphState",
         ":IdGenerator",
+        "//ujcore/functions:FunctionIoUtils",
+        "//ujcore/functions:NodeFunctionSpec",
+        "//ujcore/graph/ops:all_ops",
+        "@nlohmann_json//:json",
     ],
 )
 

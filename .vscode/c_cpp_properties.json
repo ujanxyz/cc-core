@@ -8,8 +8,9 @@
             "defines": [],
             "compilerPath": "/usr/local/opt/llvm/bin/clang",
             "cStandard": "c17",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "macos-clang-x64"
+            "cppStandard": "c++20",
+            "intelliSenseMode": "macos-clang-x64",
+            "documentationStyle": "Doxygen"
         }
     ],
     "version": 4
