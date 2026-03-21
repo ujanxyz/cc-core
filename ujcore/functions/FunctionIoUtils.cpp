@@ -141,11 +141,9 @@ std::string NodeFuncSpecToJsonStr(const NodeFunctionSpec& spec) {
 }
 
 bool ParseNodeFuncSpecFromJsonStr(std::string_view content, NodeFunctionSpec& spec) {
-    json j;
-    try {
-      j = json::parse(content);
-    } catch (...) {
-        LOG(FATAL) << "Json parsing exception";
+    json j = json::parse(content, nullptr, /* allow_exceptions */ false);
+    if (j.is_discarded()) {
+      LOG(FATAL) << "Json parsing exception";
     }
     return ParseNodeFuncSpecFromJsonObj(j, spec);
 }
