@@ -1,8 +1,11 @@
 #pragma once
 
+#include <set>
 #include <string>
+#include <vector>
 
-#include "ujcore/graph/ops/GraphOperatorBase.hpp"
+#include "ujcore/graph/GraphOpsContext.h"
+#include "ujcore/functions/NodeFunctionSpec.hpp"
 
 namespace ujcore {
 
@@ -36,9 +39,11 @@ void CreateNodeSlots(
     std::string_view node_id,
     std::vector<SlotData>& output);
 
-class InsertNodeOp : public GraphOperatorBase {
- public:
-  std::string apply(std::string payload_str, GraphState& state) override;
+struct AddElemsResult {
+  std::set<std::string> nodes_added;
+  std::set<std::string> edges_added;
 };
+
+void DoAddElemsOp(GraphOpsContext& ctx, const std::vector<NodeFunctionSpec>& func_specs, AddElemsResult& result);
 
 }  // namespace ujcore

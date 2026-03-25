@@ -19,15 +19,5 @@ struct NodeFacade {
 
 // File: Ops
 
-struct InsertNodeOp {
-    struct Request {};
-    struct Response {
-        NodeFacade node_facade;
-    };
-    operator Response ()(const Request& req);
-}
-
-
-
 
 }  // namespace ujcore

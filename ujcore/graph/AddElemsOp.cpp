@@ -1,18 +1,14 @@
-#include "ujcore/graph/ops/InsertNodeOp.hpp"
+#include "ujcore/graph/AddElemsOp.h"
 
 #include <vector>
 #include <any>
 #include <optional>
 
 #include "absl/log/log.h"
-#include "nlohmann/json.hpp"
-#include "ujcore/functions/FunctionIoUtils.hpp"
 #include "ujcore/graph/IdGenerator.hpp"
 
 namespace ujcore {
 namespace {
-
-using json = ::nlohmann::json;
 
 static SlotData MakeSlot(std::string_view id, std::string node_id, std::string dtype, bool is_output) {
     SlotData s;
@@ -107,47 +103,32 @@ void CreateNodeSlots(const NodeFunctionSpec& func_spec, std::string_view node_id
     }
 }
 
-std::string InsertNodeOp::apply(std::string payload_str, GraphState& state) {
-    json j = json::parse(payload_str);
-    if (!j.contains("spec") || !j["spec"].is_object()) {
-        j = {};
-        j["status"] = "JSON_ERROR";
-        return j.dump();
+void DoAddElemsOp(GraphOpsContext& ctx, const std::vector<NodeFunctionSpec>& func_specs, AddElemsResult& result) {
+    const GraphConfig& config = ctx.config;
+    GraphState& state = ctx.state;
+    for (const NodeFunctionSpec& func_spec : func_specs) {
+        const int64_t raw_id = (state.idgen_state.next_node_id)++;
+        const std::string new_nodeid = GenSplitMix64OfLength(raw_id + config.nodeid_splitmix_offset, 10);
+
+        std::vector<SlotData> new_slots;
+        CreateNodeSlots(func_spec, new_nodeid, new_slots);
+
+        std::vector<std::string> slot_ids;
+        slot_ids.reserve(new_slots.size());
+        for (const auto& slot : new_slots) {
+            slot_ids.push_back(slot.id);
+            state.slots[slot.id] = std::move(slot);
+        }
+
+        NodeData node_data = {
+            .func_uri = "/fn/points-on-curve",
+            .label = u8"Point on Curve (2)",
+            .spec = std::move(func_spec),
+            .slot_ids = slot_ids,
+        };
+        state.nodes[new_nodeid] = node_data;
+        result.nodes_added.insert(new_nodeid);
     }
-
-    NodeFunctionSpec spec;
-    if (!ParseNodeFuncSpecFromJsonObj(j["spec"], spec)) {
-        j = {};
-        j["status"] = "PARSE_ERROR";
-        return j.dump();
-    }
-
-    // TODO: Add logic to insert a graph node.
-    // It should just mutate the graph state.
-    const std::string new_nodeid = GenSplitMix64AndAdvance(state.idgen_state.next_node_id, 10);
-
-    std::vector<SlotData> new_slots;
-    CreateNodeSlots(spec, new_nodeid, new_slots);
-
-    std::vector<std::string> slot_ids;
-    slot_ids.reserve(new_slots.size());
-    for (const auto& slot : new_slots) {
-        slot_ids.push_back(slot.id);
-        state.slots[slot.id] = std::move(slot);
-    }
-
-    LOG(INFO) << "InsertNodeOperator @ apply ... " << new_nodeid << "; spec: " << NodeFuncSpecToJsonStr(spec);
-    NodeData node_data = {
-        .func_uri = "/fn/points-on-curve",
-        .label = u8"Point on Curve (2)",
-        .spec = std::move(spec),
-        .slot_ids = slot_ids,
-    };
-    state.nodes[new_nodeid] = node_data;
-
-    j = {};
-    j["nodeid"] = new_nodeid;
-    return j.dump();
 }
 
 }  // namespace ujcore

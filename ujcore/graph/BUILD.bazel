@@ -5,25 +5,47 @@ package(
 )
 
 cc_library(
-    name = "GraphEngine",
-    srcs = ["GraphEngine.cpp"],
-    hdrs = ["GraphEngine.hpp"],
+    name = "AddElemsOp",
+    srcs = ["AddElemsOp.cpp"],
+    hdrs = ["AddElemsOp.h"],
     deps =[
-        ":GraphState",
+        "//ujcore/functions:NodeFunctionSpec",
+        "//ujcore/graph:GraphOpsContext",
+        "//ujcore/graph:IdGenerator",
+        "@abseil-cpp//absl/log",
     ],
 )
 
 cc_library(
-    name = "GraphOps",
-    srcs = ["GraphOps.cpp"],
-    hdrs = ["GraphOps.hpp"],
+    name = "DeleteElementsOp",
+    srcs = ["DeleteElementsOp.cpp"],
+    hdrs = ["DeleteElementsOp.h"],
+    deps =[
+        "//ujcore/graph:GraphOpsContext",
+        "@abseil-cpp//absl/log",
+    ],
+)
+
+cc_library(
+    name = "GraphEngine",
+    srcs = ["GraphEngine.cpp"],
+    hdrs = ["GraphEngine.hpp"],
+    deps =[
+        ":AddElemsOp",
+        ":DeleteElementsOp",
+        ":GraphOpsContext",
+        ":GraphState",
+        "//ujcore/functions:NodeFunctionSpec",
+    ],
+)
+
+cc_library(
+    name = "GraphOpsContext",
+    srcs = ["GraphOpsContext.cpp"],
+    hdrs = ["GraphOpsContext.h"],
     deps =[
         ":GraphState",
         ":IdGenerator",
-        "//ujcore/functions:FunctionIoUtils",
-        "//ujcore/functions:NodeFunctionSpec",
-        "//ujcore/graph/ops:all_ops",
-        "@nlohmann_json//:json",
     ],
 )
 

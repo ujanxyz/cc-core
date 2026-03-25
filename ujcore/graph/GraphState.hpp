@@ -34,6 +34,9 @@ struct SlotData {
 
 // Node fields except the id, which is available from the map key where the nodes are stores.
 struct NodeData {
+    // Base-62 alphanumeric id, e.g. "ZBqg1rBrgq". This is directly translated from the int64 id.
+    std::string legible_id;
+
     // Identifies the node function used, e.g. "/fn/points-on-curve"
     std::string func_uri;
 
@@ -56,11 +59,16 @@ struct EdgeData {
 };
 
 struct IdGeneratorState {
-    uint64_t next_node_id {0ULL};
-    uint64_t next_edge_id {412234ULL};
-    uint64_t next_slot_id {987123ULL};
+    uint64_t next_node_id {0};
+    uint64_t next_edge_id {0};
+    uint64_t next_slot_id {0};
 };
 
+struct GraphConfig {
+    int64_t nodeid_splitmix_offset {0};
+    int64_t edgeid_splitmix_offset {0};
+    int64_t slotid_splitmix_offset {0};
+};
 
 struct GraphState {
     std::map<std::string /* slot id */, SlotData> slots;

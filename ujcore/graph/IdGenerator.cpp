@@ -49,9 +49,8 @@ std::string IdGenerator::GetNextId() {
     return to_base62(mix, id_length_);
 }
 
-std::string GenSplitMix64AndAdvance(uint64_t& counter, const size_t id_length) {
+std::string GenSplitMix64OfLength(uint64_t counter, size_t id_length) {
     const uint64_t mix = splitmix64(counter);
-    ++counter;
     return to_base62(mix, id_length);
 }
 

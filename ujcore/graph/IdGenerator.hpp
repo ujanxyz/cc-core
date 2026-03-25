@@ -22,6 +22,6 @@ class IdGenerator {
   uint64_t internal_counter_{0ULL};
 };
 
-std::string GenSplitMix64AndAdvance(uint64_t& counter, size_t id_length);
+std::string GenSplitMix64OfLength(uint64_t counter, size_t id_length);
 
 }  // namespace ujcore

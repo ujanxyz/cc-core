@@ -5,7 +5,7 @@ common --cxxopt='-finput-charset=UTF-8' --cxxopt='-fexec-charset=UTF-8'
 common --macos_minimum_os=13.3
 
 build --cxxopt='-std=c++23' --xcode_version=25
-test --test_output=all
+test --test_output=errors
 
 # Include build status info.
 common --stamp --workspace_status_command=./scripts/bazel-build-info.sh

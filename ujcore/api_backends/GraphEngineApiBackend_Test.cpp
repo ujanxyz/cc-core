@@ -1,3 +1,4 @@
+// bazel test //ujcore/api_backends:GraphEngineApiBackend_Test
 
 #include "cppschema/apispec/api_registry.h"
 
@@ -14,7 +15,7 @@ using ::cppschema::ApiRegistry;
 TEST(GraphEngineApiBackendTest, Basic) {
     VoidType kVoid;
 
-    const std::string payload = R"({
+    std::string payload = R"({
         "spec": {
             "kind": "lam",
             "label": "Noise",
@@ -30,16 +31,23 @@ TEST(GraphEngineApiBackendTest, Basic) {
     auto stats = ApiRegistry<GraphEngineApi>::Get().template Call<VoidType, GraphEngineApi::ElementStats>("getElemStats", kVoid);
     EXPECT_EQ(stats.num_nodes, 0);
 
-    std::string node_id = ApiRegistry<GraphEngineApi>::Get().template Call<std::string, std::string>("addNode", payload);
-    EXPECT_EQ(node_id, "{\"nodeid\":\"pFE8FGqNWL\"}");
-    node_id = ApiRegistry<GraphEngineApi>::Get().template Call<std::string, std::string>("addNode", payload);
-    EXPECT_EQ(node_id, "{\"nodeid\":\"s2GhcWpBLP\"}");
-    node_id = ApiRegistry<GraphEngineApi>::Get().template Call<std::string, std::string>("addNode", payload);
-    EXPECT_EQ(node_id, "{\"nodeid\":\"ZBqg1rBrgq\"}");
+    std::string node_id = ApiRegistry<GraphEngineApi>::Get().template Call<std::string, std::string>("addElems", payload);
+    EXPECT_EQ(node_id, "{\"nodesAdded\":[\"pFE8FGqNWL\"]}");
+    node_id = ApiRegistry<GraphEngineApi>::Get().template Call<std::string, std::string>("addElems", payload);
+    EXPECT_EQ(node_id, "{\"nodesAdded\":[\"s2GhcWpBLP\"]}");
+    node_id = ApiRegistry<GraphEngineApi>::Get().template Call<std::string, std::string>("addElems", payload);
+    EXPECT_EQ(node_id, "{\"nodesAdded\":[\"ZBqg1rBrgq\"]}");
 
     stats = ApiRegistry<GraphEngineApi>::Get().template Call<VoidType, GraphEngineApi::ElementStats>("getElemStats", kVoid);
     EXPECT_EQ(stats.num_nodes, 3);
     EXPECT_EQ(stats.num_slots, 6);
+
+    payload = R"({
+        "nodes": ["ZBqg1rBrgq"],
+        "edges": []
+    })";
+    std::string deleteRes = ApiRegistry<GraphEngineApi>::Get().template Call<std::string, std::string>("deleteElems", payload);
+    EXPECT_EQ(deleteRes, "{\"nodesDeleted\":[\"ZBqg1rBrgq\"]}");
 }
 
 }  // namespace

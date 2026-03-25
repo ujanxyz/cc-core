@@ -15,13 +15,16 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(num_nodes, num_edges, num_slots);
     };
 
-    cppschema::ApiStub<std::string, std::string> addNode;
+    cppschema::ApiStub<std::string, std::string> addElems;
+    cppschema::ApiStub<std::string, std::string> deleteElems;
+
     cppschema::ApiStub<VoidType, ElementStats> getElemStats;
 
     cppschema::ApiStub<VoidType, VoidType> clearGraph;
 
     DEFINE_API_VISITOR_FUNCTION(
-        addNode,
+        addElems,
+        deleteElems,
         getElemStats,
         clearGraph);
 };

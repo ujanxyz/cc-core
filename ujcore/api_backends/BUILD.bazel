@@ -9,9 +9,10 @@ cc_library(
     srcs = ["GraphEngineApiBackend.cpp"],
     deps = [
         "//ujcore/api_schemas:GraphEngineApi",
+        "//ujcore/functions:FunctionIoUtils",
         "//ujcore/graph:GraphEngine",
-        "//ujcore/graph:GraphOps",
         "@cppschema//:backend_bridge",
+        "@nlohmann_json//:json",
     ],
     alwayslink = 1,  # Forced linking, even if not directly referenced
 )
