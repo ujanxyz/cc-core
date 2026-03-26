@@ -34,11 +34,20 @@ std::set<std::string> DeleteEdges(const std::set<std::string>& edge_ids, GraphSt
 }  // namespace
 
 void DoDeleteElemsOp(GraphOpsContext& ctx, DeleteElementsOpMutableIds& elem_ids) {
+    auto* const toposort_order = ctx.toposort_order;
     std::set<std::string> unique_edge_ids(elem_ids.edge_ids.begin(), elem_ids.edge_ids.end());
     if (!elem_ids.node_ids.empty()) {
         elem_ids.node_ids = DeleteNodesGetOrphanEdges(elem_ids.node_ids, ctx.state, unique_edge_ids);
     }
     elem_ids.edge_ids = DeleteEdges(unique_edge_ids, ctx.state);
+    // Update topo sort.
+    for (const auto& node_id : elem_ids.node_ids) {
+        toposort_order->RemoveNode(node_id);
+    }
+    for (const auto& edge_id : elem_ids.edge_ids) {
+        // toposort_order->RemoveEdge(node_id); ????????
+    }
+
 }
 
 }  // namespace ujcore

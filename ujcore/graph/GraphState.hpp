@@ -35,7 +35,7 @@ struct SlotData {
 // Node fields except the id, which is available from the map key where the nodes are stores.
 struct NodeData {
     // Base-62 alphanumeric id, e.g. "ZBqg1rBrgq". This is directly translated from the int64 id.
-    std::string legible_id;
+    std::string alnum_id;
 
     // Identifies the node function used, e.g. "/fn/points-on-curve"
     std::string func_uri;

@@ -1,4 +1,4 @@
-#include "ujcore/graph/IdGenerator.hpp"
+#include "ujcore/graph/IdGenerator.h"
 
 #include <algorithm>
 #include <cstdint>

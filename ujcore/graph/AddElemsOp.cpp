@@ -5,7 +5,7 @@
 #include <optional>
 
 #include "absl/log/log.h"
-#include "ujcore/graph/IdGenerator.hpp"
+#include "ujcore/graph/IdGenerator.h"
 
 namespace ujcore {
 namespace {
@@ -24,9 +24,8 @@ static SlotData MakeSlot(std::string_view id, std::string node_id, std::string d
 
 }  // namespace
 
-void CreateNodeSlots(const NodeFunctionSpec& func_spec, std::string_view node_id,
-        std::vector<SlotData>& output) {
-    output.clear();
+std::vector<SlotData> CreateNodeSlots(const NodeFunctionSpec& func_spec, std::string_view node_id, uint64_t& next_slotid) {
+    std::vector<SlotData> output;
     const std::string nid(node_id);
 
     // Helper lambdas for naming
@@ -101,17 +100,18 @@ void CreateNodeSlots(const NodeFunctionSpec& func_spec, std::string_view node_id
     else {
         LOG(FATAL) << "Invalid function kind: " << func_spec.kind;
     }
+    return output;
 }
 
 void DoAddElemsOp(GraphOpsContext& ctx, const std::vector<NodeFunctionSpec>& func_specs, AddElemsResult& result) {
     const GraphConfig& config = ctx.config;
     GraphState& state = ctx.state;
+    auto* const toposort_order = ctx.toposort_order;
     for (const NodeFunctionSpec& func_spec : func_specs) {
         const int64_t raw_id = (state.idgen_state.next_node_id)++;
-        const std::string new_nodeid = GenSplitMix64OfLength(raw_id + config.nodeid_splitmix_offset, 10);
+        const std::string alphanum_nodeid = GenSplitMix64OfLength(raw_id + config.nodeid_splitmix_offset, 10);
 
-        std::vector<SlotData> new_slots;
-        CreateNodeSlots(func_spec, new_nodeid, new_slots);
+        std::vector<SlotData> new_slots = CreateNodeSlots(func_spec, alphanum_nodeid, state.idgen_state.next_slot_id);
 
         std::vector<std::string> slot_ids;
         slot_ids.reserve(new_slots.size());
@@ -121,13 +121,15 @@ void DoAddElemsOp(GraphOpsContext& ctx, const std::vector<NodeFunctionSpec>& fun
         }
 
         NodeData node_data = {
+            .alnum_id = alphanum_nodeid,
             .func_uri = "/fn/points-on-curve",
             .label = u8"Point on Curve (2)",
             .spec = std::move(func_spec),
             .slot_ids = slot_ids,
         };
-        state.nodes[new_nodeid] = node_data;
-        result.nodes_added.insert(new_nodeid);
+        state.nodes[alphanum_nodeid] = node_data;
+        toposort_order->AddNode(alphanum_nodeid);
+        result.nodes_added.insert(alphanum_nodeid);
     }
 }
 

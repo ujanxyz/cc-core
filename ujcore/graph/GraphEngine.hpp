@@ -1,11 +1,14 @@
 #pragma once
 
+#include <optional>
 #include <set>
 #include <string>
 #include <tuple>
+#include <vector>
 
-#include "ujcore/graph/GraphState.hpp"
 #include "ujcore/functions/NodeFunctionSpec.hpp"
+#include "ujcore/graph/GraphState.hpp"
+#include "ujcore/graph/TopoSortOrder.h"
 
 namespace ujcore {
 
@@ -14,6 +17,7 @@ struct EngineOpResult {
   std::set<std::string> edges_added;
   std::set<std::string> nodes_deleted;
   std::set<std::string> edges_deleted;
+  std::optional<std::vector<std::string>> topo_order;
 };
 
 class GraphEngine {
@@ -36,8 +40,11 @@ class GraphEngine {
   void DeleteElements(const std::set<std::string>& node_ids, const std::set<std::string>& edge_ids, EngineOpResult& result);
 
  private:
+  void AddAndResetTopoOrder(EngineOpResult& result);
+
   GraphConfig config_;
   GraphState state_;
+  TopoSortOrder topo_sort_order_;
 };
 
 }  // namespace ujcore

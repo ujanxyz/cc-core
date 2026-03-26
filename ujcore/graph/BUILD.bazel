@@ -46,6 +46,7 @@ cc_library(
     deps =[
         ":GraphState",
         ":IdGenerator",
+        ":TopoSortOrder",
     ],
 )
 
@@ -63,7 +64,7 @@ cc_library(
 cc_library(
     name = "IdGenerator",
     srcs = ["IdGenerator.cpp"],
-    hdrs = ["IdGenerator.hpp"],
+    hdrs = ["IdGenerator.h"],
     deps = [
         "@abseil-cpp//absl/strings",
     ],
@@ -75,5 +76,14 @@ cc_test(
     deps = [
         ":IdGenerator",
         "@googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "TopoSortOrder",
+    srcs = ["TopoSortOrder.cpp"],
+    hdrs = ["TopoSortOrder.h"],
+    deps = [
+        "@abseil-cpp//absl/log",
     ],
 )
