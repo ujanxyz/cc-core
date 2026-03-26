@@ -14,14 +14,20 @@ class TopoSortOrderTest : public ::testing::Test {
  protected:
     bool IsValidTopo(const TopoSortOrder& ts) {
         const std::vector<std::string>& order = ts.topo_order;
-        const std::map<std::string, std::set<std::string>>& adj = ts.adj;
+        const std::map<std::string, std::set<std::string>>& in_adj = ts.in_adj;
+        const std::map<std::string, std::set<std::string>>& out_adj = ts.out_adj;
         std::map<std::string, int> pos;
         for (int i = 0; i < order.size(); ++i) {
             pos[order[i]] = i;
             LOG(INFO) << order[i];
-        }        
-        for (auto const& [u, neighbors] : adj) {
-            for (const auto& v : neighbors) {
+        }
+        for (auto const& [v, upstream_nodes] : in_adj) {
+            for (const auto& u : upstream_nodes) {
+                if (pos[u] >= pos[v]) return false;
+            }
+        }
+        for (auto const& [u, downstream_nodes] : out_adj) {
+            for (const auto& v : downstream_nodes) {
                 if (pos[u] >= pos[v]) return false;
             }
         }

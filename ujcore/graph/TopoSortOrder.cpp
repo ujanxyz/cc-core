@@ -2,24 +2,17 @@
 
 #include <algorithm>
 
+#include "absl/log/check.h"
 #include "absl/log/log.h"
 
 namespace ujcore {
-
-void TopoSortOrder::GetSortedNodeIds(std::vector<NodeId>& result) const {
-    // pos[u] < pos[v]
-    std::vector<NodeId> node_ids(topo_order.cbegin(), topo_order.cend());
-    std::sort(node_ids.begin(), node_ids.end(), [this](const NodeId& u, const NodeId& v) -> bool {
-        return pos.at(u) > pos.at(v);
-    });
-    result = std::move(node_ids);
-}
 
 void TopoSortOrder::AddNode(const NodeId& u) {
     if (pos.find(u) == pos.end()) {
         pos[u] = topo_order.size();
         topo_order.push_back(u);
-        adj[u] = {};
+        in_adj[u] = {};
+        out_adj[u] = {};
         dirty_bit_ = true;
     }
 }
@@ -28,10 +21,14 @@ void TopoSortOrder::RemoveNode(const NodeId& u) {
     if (pos.find(u) == pos.end()) return;
 
     // Remove from adjacency lists of others
-    for (auto& pair : adj) {
+    for (auto& pair : in_adj) {
         pair.second.erase(u);
     }
-    adj.erase(u);
+    for (auto& pair : out_adj) {
+        pair.second.erase(u);
+    }
+    in_adj.erase(u);
+    out_adj.erase(u);
 
     // Remove from topo_order and update positions
     int idx = pos[u];
@@ -44,18 +41,19 @@ void TopoSortOrder::RemoveNode(const NodeId& u) {
 }
 
 void TopoSortOrder::RemoveEdge(const NodeId& u, const NodeId& v) {
-    if (adj.count(u)) adj[u].erase(v);
+    if (in_adj.count(v)) in_adj[v].erase(u);
+    if (out_adj.count(u)) out_adj[u].erase(v);
 }
 
 bool TopoSortOrder::AddEdge(const NodeId& u, const NodeId& v) {
     AddNode(u);
     AddNode(v);
     
-    if (adj[u].count(v)) return true; // Already exists
-    adj[u].insert(v);
+    if (out_adj[u].count(v)) return true; // Already exists
+    in_adj[v].insert(u);
+    out_adj[u].insert(v);
 
     if (pos[u] < pos[v]) return true; // Order still valid
-
     // Order violated: Reorder affected region
     return reorder(u, v);
 }
@@ -67,64 +65,89 @@ void TopoSortOrder::PrintTopoOrder() {
     }
 }
 
-bool TopoSortOrder::reorder(NodeId u, NodeId v) {
-    std::vector<NodeId> delta_f, delta_b;
-    int lower = pos[v];
-    int upper = pos[u];
+bool TopoSortOrder::reorder(const NodeId& u, const NodeId& v) {
+    std::vector<int> delta_f_indices;
+    std::vector<int> delta_b_indices;
 
-    // 1. Find affected nodes forward from v and backward from u
-    if (!visited_forward(v, upper, delta_f)) {
+    if (!forward_dfs(v, pos[u], delta_f_indices)) {
+        out_adj[u].erase(v);
+        in_adj[v].erase(u);
         LOG(ERROR) << "Cycle detected! Edge " << u << "->" << v << " rejected";
-        adj[u].erase(v);
-        return false;
+        return false; // Cycle
+    }    
+    backward_dfs(u, pos[v], delta_b_indices);
+
+    // Collect all affected indices in order
+    std::vector<int> all_indices;
+    for (int idx : delta_f_indices) all_indices.push_back(idx);
+    for (int idx : delta_b_indices) all_indices.push_back(idx);
+    std::sort(all_indices.begin(), all_indices.end());
+
+    // Use the original topo_order to get nodes in their relative previous order
+    std::vector<NodeId> reordered_nodes;    
+    std::sort(delta_f_indices.begin(), delta_f_indices.end());
+    std::sort(delta_b_indices.begin(), delta_b_indices.end());
+    for (const int idx : delta_b_indices) reordered_nodes.push_back(topo_order[idx]);
+    for (const int idx : delta_f_indices) reordered_nodes.push_back(topo_order[idx]);
+    CHECK_EQ(reordered_nodes.size(), all_indices.size());
+
+    // Update the actual topo_order and pos map.
+    for (size_t i = 0; i < all_indices.size(); ++i) {
+        int target_idx = all_indices[i];
+        LOG(INFO) << "target_idx = " << target_idx;
+        NodeId node = reordered_nodes[i];
+        topo_order[target_idx] = node;
+        pos[node] = target_idx;
     }
-    visited_backward(u, lower, delta_b);
 
-    // 2. Sort affected nodes by their current topological positions
-    auto sort_by_pos = [&](const NodeId& a, const NodeId& b) { return pos[a] < pos[b]; };
-    std::sort(delta_b.begin(), delta_b.end(), sort_by_pos);
-    std::sort(delta_f.begin(), delta_f.end(), sort_by_pos);
-
-    // 3. Shift nodes: Backward nodes move after Forward nodes
-    std::vector<NodeId> merged;
-    merged.insert(merged.end(), delta_f.begin(), delta_f.end());
-    merged.insert(merged.end(), delta_b.begin(), delta_b.end());
-
-    std::vector<int> affected_indices;
-    for (const auto& node : delta_b) affected_indices.push_back(pos[node]);
-    for (const auto& node : delta_f) affected_indices.push_back(pos[node]);
-    std::sort(affected_indices.begin(), affected_indices.end());
-
-    for (int i = 0; i < merged.size(); ++i) {
-        topo_order[affected_indices[i]] = merged[i];
-        pos[merged[i]] = affected_indices[i];
-    }
     dirty_bit_ = true;
-
     LOG(INFO) << "Order updated due to edge " << u << "->" << v;
     return true;
 }
 
-bool TopoSortOrder::visited_forward(const NodeId& curr, int upper_bound, std::vector<NodeId>& delta_f) {
-    delta_f.push_back(curr);
-    for (const auto& next : adj[curr]) {
-        if (pos[next] == upper_bound) return false; // Cycle found
-        if (pos[next] < upper_bound) {
-            if (!visited_forward(next, upper_bound, delta_f)) return false;
+bool TopoSortOrder::forward_dfs(const NodeId& curr, int upper_bound, 
+                         std::vector<int>& delta_f_indices) {
+  std::vector<NodeId> stack;  // Emulates recursion stack for depth-first search
+  std::unordered_set<NodeId> visited;
+  stack.push_back(curr);
+  while (!stack.empty()) {
+    NodeId n = stack.back();
+    stack.pop_back();
+
+    if (visited.contains(n)) continue;
+    visited.insert(n);
+    delta_f_indices.push_back(pos[n]);
+    for (const NodeId& nn : out_adj[n]) {
+        if (pos[nn] == upper_bound) {
+            return false;  // Cycle.
+        }
+        if (!visited.contains(nn) && pos[nn] < upper_bound) {
+            stack.push_back(nn);
         }
     }
-    return true;
+  }
+  return true;
 }
 
-void TopoSortOrder::visited_backward(const NodeId& curr, int lower_bound, std::vector<NodeId>& delta_b) {
-    delta_b.push_back(curr);
-    // This requires an inverse adjacency list for efficiency, 
-    // simplified here for demonstration using a search.
-    for (auto const& [prev, neighbors] : adj) {
-        if (neighbors.count(curr) && pos[prev] > lower_bound) {
-            visited_backward(prev, lower_bound, delta_b);
+bool TopoSortOrder::backward_dfs(const NodeId& curr, int lower_bound, 
+                         std::vector<int>& delta_b_indices) {
+  std::vector<NodeId> stack;  // Emulates recursion stack for depth-first search
+  std::unordered_set<NodeId> visited;
+  stack.push_back(curr);
+  while (!stack.empty()) {
+    NodeId n = stack.back();
+    stack.pop_back();
+
+    if (visited.contains(n)) continue;
+    visited.insert(n);
+    delta_b_indices.push_back(pos[n]);
+    for (const NodeId& nn : in_adj[n]) {
+        if (!visited.contains(nn) && lower_bound < pos[nn]) {
+            stack.push_back(nn);
         }
     }
+  }
+  return true;
 }
 
 }  // namespace ujcore

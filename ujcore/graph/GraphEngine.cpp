@@ -66,9 +66,7 @@ void GraphEngine::DeleteElements(const std::set<std::string>& node_ids, const st
 
 void GraphEngine::AddAndResetTopoOrder(EngineOpResult& result) {
   if (topo_sort_order_.HasDirtyBitSet()) {
-    std::vector<std::string> sorted_node_ids;
-    topo_sort_order_.GetSortedNodeIds(sorted_node_ids);
-    result.topo_order = sorted_node_ids;
+    result.topo_order = topo_sort_order_.CurrentOrder();
     topo_sort_order_.ClearDirtyBit();
   }
 }
