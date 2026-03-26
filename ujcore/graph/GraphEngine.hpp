@@ -37,6 +37,7 @@ class GraphEngine {
   GetElementCounts() const;
 
   void AddElements(const std::vector<NodeFunctionSpec>& func_specs, EngineOpResult& result);
+  void AddEdgeConnections(const std::vector<EdgeData>& edges, EngineOpResult& result);
   void DeleteElements(const std::set<std::string>& node_ids, const std::set<std::string>& edge_ids, EngineOpResult& result);
 
  private:

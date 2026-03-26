@@ -28,9 +28,21 @@ void GraphEngine::AddElements(const std::vector<NodeFunctionSpec>& func_specs, E
     .state = state_,
     .toposort_order = &topo_sort_order_,
   };
-  ctx.state.nodes.size();
   AddElemsResult add_result;
-  DoAddElemsOp(ctx, func_specs, add_result);
+  AddElemsOp_Nodes(ctx, func_specs, add_result);
+  result.nodes_added = std::move(add_result.nodes_added);
+  result.edges_added = std::move(add_result.edges_added);
+  AddAndResetTopoOrder(result);
+}
+
+void GraphEngine::AddEdgeConnections(const std::vector<EdgeData>& edges, EngineOpResult& result) {
+  GraphOpsContext ctx = {
+    .config = config_,
+    .state = state_,
+    .toposort_order = &topo_sort_order_,
+  };
+  AddElemsResult add_result;
+  AddElemsOp_Edges(ctx, edges, add_result);
   result.nodes_added = std::move(add_result.nodes_added);
   result.edges_added = std::move(add_result.edges_added);
   AddAndResetTopoOrder(result);
@@ -54,7 +66,9 @@ void GraphEngine::DeleteElements(const std::set<std::string>& node_ids, const st
 
 void GraphEngine::AddAndResetTopoOrder(EngineOpResult& result) {
   if (topo_sort_order_.HasDirtyBitSet()) {
-    result.topo_order = topo_sort_order_.CurrentOrder();
+    std::vector<std::string> sorted_node_ids;
+    topo_sort_order_.GetSortedNodeIds(sorted_node_ids);
+    result.topo_order = sorted_node_ids;
     topo_sort_order_.ClearDirtyBit();
   }
 }

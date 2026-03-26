@@ -5,6 +5,7 @@
 #include <optional>
 
 #include "absl/log/log.h"
+#include "absl/strings/str_cat.h"
 #include "ujcore/graph/IdGenerator.h"
 
 namespace ujcore {
@@ -103,7 +104,7 @@ std::vector<SlotData> CreateNodeSlots(const NodeFunctionSpec& func_spec, std::st
     return output;
 }
 
-void DoAddElemsOp(GraphOpsContext& ctx, const std::vector<NodeFunctionSpec>& func_specs, AddElemsResult& result) {
+void AddElemsOp_Nodes(GraphOpsContext& ctx, const std::vector<NodeFunctionSpec>& func_specs, AddElemsResult& result) {
     const GraphConfig& config = ctx.config;
     GraphState& state = ctx.state;
     auto* const toposort_order = ctx.toposort_order;
@@ -130,6 +131,17 @@ void DoAddElemsOp(GraphOpsContext& ctx, const std::vector<NodeFunctionSpec>& fun
         state.nodes[alphanum_nodeid] = node_data;
         toposort_order->AddNode(alphanum_nodeid);
         result.nodes_added.insert(alphanum_nodeid);
+    }
+}
+
+void AddElemsOp_Edges(GraphOpsContext& ctx, const std::vector<EdgeData>& edges, AddElemsResult& result) {
+    GraphState& state = ctx.state;
+    auto* const toposort_order = ctx.toposort_order;
+    for (const EdgeData& edge_data : edges) {
+      std::string edge_id = absl::StrCat(edge_data.srcNode, "--", edge_data.destNode);
+      state.edges[edge_id] = edge_data;
+      toposort_order->AddEdge(edge_data.srcNode, edge_data.destNode);
+      result.edges_added.insert(edge_id);
     }
 }
 

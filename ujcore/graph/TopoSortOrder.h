@@ -11,6 +11,8 @@ class TopoSortOrder {
  public:
     using NodeId = std::string;
 
+    void GetSortedNodeIds(std::vector<NodeId>& result) const;
+
     void AddNode(const NodeId& u);
     void RemoveNode(const NodeId& u);
     void RemoveEdge(const NodeId& u, const NodeId& v);
@@ -30,6 +32,7 @@ class TopoSortOrder {
         return topo_order;
     }
 
+
  private:
     bool reorder(NodeId u, NodeId v);
     bool visited_forward(const NodeId& curr, int upper_bound, std::vector<NodeId>& delta_f);
@@ -41,6 +44,8 @@ class TopoSortOrder {
 
     std::map<NodeId, std::set<NodeId>> adj;
     std::map<NodeId, int> pos; // node -> index in topo_order
+
+    friend class TopoSortOrderTest;
 };
 
 }  // namespace ujcore

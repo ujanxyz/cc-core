@@ -13,6 +13,7 @@ cc_library(
         "//ujcore/graph:GraphOpsContext",
         "//ujcore/graph:IdGenerator",
         "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -85,5 +86,14 @@ cc_library(
     hdrs = ["TopoSortOrder.h"],
     deps = [
         "@abseil-cpp//absl/log",
+    ],
+)
+
+cc_test(
+    name = "TopoSortOrder_Test",
+    srcs = ["TopoSortOrder_Test.cpp"],
+    deps = [
+        ":TopoSortOrder",
+        "@googletest//:gtest_main",
     ],
 )

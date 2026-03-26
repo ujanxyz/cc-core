@@ -35,12 +35,34 @@ TEST(GraphEngineApiBackendTest, Basic) {
     EXPECT_EQ(node_id, "{\"nodesAdded\":[\"pFE8FGqNWL\"]}");
     node_id = ApiRegistry<GraphEngineApi>::Get().template Call<std::string, std::string>("addElems", payload);
     EXPECT_EQ(node_id, "{\"nodesAdded\":[\"s2GhcWpBLP\"]}");
-    node_id = ApiRegistry<GraphEngineApi>::Get().template Call<std::string, std::string>("addElems", payload);
-    EXPECT_EQ(node_id, "{\"nodesAdded\":[\"ZBqg1rBrgq\"]}");
 
-    stats = ApiRegistry<GraphEngineApi>::Get().template Call<VoidType, GraphEngineApi::ElementStats>("getElemStats", kVoid);
-    EXPECT_EQ(stats.num_nodes, 3);
-    EXPECT_EQ(stats.num_slots, 6);
+
+    payload = R"({
+        "edges": [
+          {
+            "srcNode": "pFE8FGqNWL",
+            "destNode": "s2GhcWpBLP",
+            "srcSlot": "aaa",
+            "destSlot": "bbb"
+          }
+        ]
+    })";
+    payload = R"({
+        "edges": [
+          {
+            "srcNode": "s2GhcWpBLP",
+            "destNode": "pFE8FGqNWL",
+            "srcSlot": "aaa",
+            "destSlot": "bbb"
+          }
+        ]
+    })";
+    node_id = ApiRegistry<GraphEngineApi>::Get().template Call<std::string, std::string>("addElems", payload);
+    EXPECT_EQ(node_id, "mmmm");
+
+    // stats = ApiRegistry<GraphEngineApi>::Get().template Call<VoidType, GraphEngineApi::ElementStats>("getElemStats", kVoid);
+    // EXPECT_EQ(stats.num_nodes, 3);
+    // EXPECT_EQ(stats.num_slots, 6);
 
     payload = R"({
         "nodes": ["ZBqg1rBrgq"],

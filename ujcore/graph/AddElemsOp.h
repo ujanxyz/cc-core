@@ -44,6 +44,9 @@ struct AddElemsResult {
   std::set<std::string> edges_added;
 };
 
-void DoAddElemsOp(GraphOpsContext& ctx, const std::vector<NodeFunctionSpec>& func_specs, AddElemsResult& result);
+void AddElemsOp_Nodes(GraphOpsContext& ctx, const std::vector<NodeFunctionSpec>& func_specs, AddElemsResult& result);
+
+void AddElemsOp_Edges(GraphOpsContext& ctx, const std::vector<EdgeData>& edges, AddElemsResult& result);
+
 
 }  // namespace ujcore

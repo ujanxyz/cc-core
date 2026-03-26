@@ -1,8 +1,19 @@
 #include "ujcore/graph/TopoSortOrder.h"
 
+#include <algorithm>
+
 #include "absl/log/log.h"
 
 namespace ujcore {
+
+void TopoSortOrder::GetSortedNodeIds(std::vector<NodeId>& result) const {
+    // pos[u] < pos[v]
+    std::vector<NodeId> node_ids(topo_order.cbegin(), topo_order.cend());
+    std::sort(node_ids.begin(), node_ids.end(), [this](const NodeId& u, const NodeId& v) -> bool {
+        return pos.at(u) > pos.at(v);
+    });
+    result = std::move(node_ids);
+}
 
 void TopoSortOrder::AddNode(const NodeId& u) {
     if (pos.find(u) == pos.end()) {
