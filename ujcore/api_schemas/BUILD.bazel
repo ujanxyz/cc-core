@@ -8,6 +8,8 @@ cc_library(
     name = "GraphEngineApi",
     hdrs = ["GraphEngineApi.hpp"],
     deps = [
+        "//ujcore/data/graph",
+        "//ujcore/data/graph:client",
         "@cppschema//:apispec",
     ],
 )
@@ -19,3 +21,4 @@ cc_library(
         "@cppschema//:apispec",
     ],
 )
+

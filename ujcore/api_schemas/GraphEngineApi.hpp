@@ -1,11 +1,19 @@
 #pragma once
 
+#include <optional>
 #include <string>
+#include <vector>
 
 #include "cppschema/apispec/api_framework.h"
 #include "cppschema/common/types.h"
+#include "ujcore/data/graph/ClientMessages.h"
+#include "ujcore/data/graph/GraphEdge.h"
+#include "ujcore/data/graph/GraphNode.h"
+#include "ujcore/data/graph/GraphSlot.h"
 
 namespace ujcore {
+
+struct CreateNodeRequest {};
 
 struct GraphEngineApi {
     struct ElementStats {
@@ -15,17 +23,44 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(num_nodes, num_edges, num_slots);
     };
 
-    cppschema::ApiStub<std::string, std::string> addElems;
-    cppschema::ApiStub<std::string, std::string> deleteElems;
+    struct GraphDataResponse {
+        std::vector<data::GraphNode> nodes;
+        std::vector<data::GraphEdge> edges;
+        std::vector<data::GraphSlot> slots;
+        DEFINE_STRUCT_VISITOR_FUNCTION(slots, nodes, edges);
+    };
 
-    cppschema::ApiStub<VoidType, ElementStats> getElemStats;
+    struct CreateNodeResponse {
+        std::optional<data::GraphNode> node;
+        std::vector<data::GraphEdge> edges;
+        DEFINE_STRUCT_VISITOR_FUNCTION(node, edges);
+    };
 
-    cppschema::ApiStub<VoidType, VoidType> clearGraph;
+    struct AddEdgesRequest {
+        std::vector<data::AddEdgeEntry> entries;
+        DEFINE_STRUCT_VISITOR_FUNCTION(entries);
+    };
+
+    struct AddEdgesResponse {
+        std::vector<data::GraphEdge> edges;
+        DEFINE_STRUCT_VISITOR_FUNCTION(edges);
+    };
+
+    cppschema::ApiStub<VoidType, GraphDataResponse> getGraph;
+
+    cppschema::ApiStub<std::string /* spec json */, CreateNodeResponse> createNode;
+
+    cppschema::ApiStub<AddEdgesRequest, AddEdgesResponse> addEdges;
+
+    cppschema::ApiStub<data::NodeAndEdgeIds, data::NodeAndEdgeIds> deleteElements;
+
+    cppschema::ApiStub<VoidType, data::NodeAndEdgeIds> clearGraph;
 
     DEFINE_API_VISITOR_FUNCTION(
-        addElems,
-        deleteElems,
-        getElemStats,
+        getGraph,
+        createNode,
+        addEdges,
+        deleteElements,
         clearGraph);
 };
 

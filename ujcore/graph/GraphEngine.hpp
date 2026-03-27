@@ -3,9 +3,13 @@
 #include <optional>
 #include <set>
 #include <string>
-#include <tuple>
 #include <vector>
 
+#include "absl/status/statusor.h"
+#include "ujcore/data/graph/ClientMessages.h"
+#include "ujcore/data/graph/GraphEdge.h"
+#include "ujcore/data/graph/GraphNode.h"
+#include "ujcore/data/graph/GraphSlot.h"
 #include "ujcore/functions/NodeFunctionSpec.hpp"
 #include "ujcore/graph/GraphState.hpp"
 #include "ujcore/graph/TopoSortOrder.h"
@@ -33,12 +37,17 @@ class GraphEngine {
     return &state_;
   }
 
-  std::tuple<int32_t, int32_t, int32_t>
-  GetElementCounts() const;
+  std::vector<data::GraphNode> GetNodes() const;
+  std::vector<data::GraphEdge> GetEdges() const;
+  std::vector<data::GraphSlot> GetSlots() const;
 
-  void AddElements(const std::vector<NodeFunctionSpec>& func_specs, EngineOpResult& result);
-  void AddEdgeConnections(const std::vector<EdgeData>& edges, EngineOpResult& result);
-  void DeleteElements(const std::set<std::string>& node_ids, const std::set<std::string>& edge_ids, EngineOpResult& result);
+  absl::StatusOr<data::GraphNode> InsertNode(const NodeFunctionSpec& spec);
+
+  absl::StatusOr<std::vector<data::GraphEdge>> AddEdges(const std::vector<data::AddEdgeEntry>& entries);
+
+  absl::StatusOr<data::NodeAndEdgeIds> DeleteElements(const data::NodeAndEdgeIds& input);
+
+  absl::StatusOr<data::NodeAndEdgeIds> ClearGraph();
 
  private:
   void AddAndResetTopoOrder(EngineOpResult& result);

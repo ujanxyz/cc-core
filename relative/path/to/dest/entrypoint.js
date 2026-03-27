@@ -3632,7 +3632,7 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('fetchSettings');
 }
 var ASM_CONSTS = {
-  108308: () => { return (typeof wasmOffsetConverter !== 'undefined'); }
+  112260: () => { return (typeof wasmOffsetConverter !== 'undefined'); }
 };
 function HaveOffsetConverter() { return typeof wasmOffsetConverter !== 'undefined'; }
 

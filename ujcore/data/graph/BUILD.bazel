@@ -1,0 +1,39 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+cc_library(
+    name = "absl-stringifies",
+    hdrs = [
+        "AbslStringifies.h",
+    ],
+    deps = [
+        ":graph",
+        # Although there is no header dependency on absl::strings, this is a must
+        # have peer dependency, as the caller primarility uses this lib to enable
+        # absl friendly string conversion (e.g. for use in `absl::StrCat`)
+        "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "client",
+    hdrs = ["ClientMessages.h"],
+    deps = [
+        "@cppschema//:visitor_macros",
+    ],
+)
+
+cc_library(
+    name = "graph",
+    hdrs = [
+        "GraphEdge.h",
+        "GraphNode.h",
+        "GraphSlot.h",
+    ],
+    deps = [
+        "@cppschema//:visitor_macros",
+    ],
+)

@@ -4,6 +4,7 @@
 #include <memory>
 #include <set>
 
+#include "absl/log/log.h"
 #include "cppschema/apispec/api_registry.h"
 #include "cppschema/backend/api_backend_bridge.h"
 #include "nlohmann/json.hpp"
@@ -54,89 +55,69 @@ std::string EngineResultTojson(const EngineOpResult& result) {
     return j.dump();
 }
 
-static bool ParseString(const json& j, const char* key, std::string& out) {
-    if (!j.contains(key) || !j[key].is_string()) return false;
-    out = j[key].get<std::string>();
-    return true;
+static NodeFunctionSpec ParseNodeFunction(const std::string& payload_str) {
+    json j = json::parse(payload_str);
+    if (!(j.contains("spec") && j["spec"].is_object())) {
+        LOG(FATAL) << "Object 'spec' not found in json: " << payload_str;
+    }
+    NodeFunctionSpec spec;
+    if (!ParseNodeFuncSpecFromJsonObj(j["spec"], spec)) {
+        LOG(FATAL) << "Failed t parse NodeFunctionSpec from json";
+    }
+    return spec;
 }
 
 
 class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
  public:
+    using AddEdgesRequest = GraphEngineApi::AddEdgesRequest;
+    using AddEdgesResponse = GraphEngineApi::AddEdgesResponse;
+
+    using GraphDataResponse = GraphEngineApi::GraphDataResponse;
+    using CreateNodeResponse = GraphEngineApi::CreateNodeResponse;
+
     GraphEngineApiBackend() {}
 
-    std::string addElemsImpl(const std::string& payload_str) {
-        json j = json::parse(payload_str);
-        EngineOpResult result;
-        if (j.contains("spec") && j["spec"].is_object()) {
-            // Insert nodes.
-            NodeFunctionSpec spec;
-            if (!ParseNodeFuncSpecFromJsonObj(j["spec"], spec)) {
-                j = {};
-                j["status"] = "PARSE_ERROR";
-                return j.dump();
-            }
-            engine_.AddElements({spec}, result);
-        } else if (j.contains("edges") && j["edges"].is_array()) {
-            std::vector<EdgeData> edges;
-            for (const auto& je : j["edges"]) {
-                if (!je.is_object()) {
-                    j = {};
-                    j["status"] = "PARSE_ERROR";
-                    return j.dump();
-                }
-                EdgeData edge;
-                const bool parse_ok =
-                    ParseString(je, "srcNode", edge.srcNode) &&
-                    ParseString(je, "destNode", edge.destNode) &&
-                    ParseString(je, "srcSlot", edge.srcSlot) &&
-                    ParseString(je, "destSlot", edge.destSlot);
-                if (!parse_ok) {
-                    j = {};
-                    j["status"] = "PARSE_ERROR: Edge";
-                    return j.dump();
-                }
-                edges.push_back(std::move(edge));
-            }
-            engine_.AddEdgeConnections(edges, result);
-        } else {
-            j = {};
-            j["status"] = "JSON_ERROR";
-            return j.dump();
-        }
-
-        return EngineResultTojson(result);
-    }
-
-    std::string deleteElemsImpl(const std::string& payload_str) {
-        json j = json::parse(payload_str);
-
-        std::set<std::string> node_ids;
-        std::set<std::string> edge_ids;
-        if (j.contains("nodes")) {
-            j["nodes"].get_to(node_ids);
-        }
-        if (j.contains("edges")) {
-            j["edges"].get_to(edge_ids);
-        }
-
-        EngineOpResult result;
-        engine_.DeleteElements(node_ids, edge_ids, result);
-        return EngineResultTojson(result);
-    }
-
-    GraphEngineApi::ElementStats getElemStatsImpl(const VoidType&) {
-        const auto [num_nodes, num_edges, num_slots] = engine_.GetElementCounts();
-        GraphEngineApi::ElementStats stats = {
-            .num_nodes = num_nodes,
-            .num_edges = num_edges,
-            .num_slots = num_slots,
+    GraphDataResponse getGraphImpl(const VoidType& kvoid) {
+        return GraphDataResponse {
+            .nodes = engine_.GetNodes(),
+            .edges = engine_.GetEdges(),
+            .slots = engine_.GetSlots(),
         };
-        return stats;
     }
 
-    VoidType clearGraphImpl(const VoidType&) {
-        return VoidType{};
+    CreateNodeResponse createNodeImpl(const std::string& spec_json) {
+        NodeFunctionSpec fnspec = ParseNodeFunction(spec_json);
+        absl::StatusOr<data::GraphNode> node_or = engine_.InsertNode(fnspec);
+        if (!node_or.ok()) {
+            LOG(FATAL) << "Insert node error: " << node_or.status();
+        }
+        return CreateNodeResponse {
+            .node = std::move(node_or).value(),
+            .edges = {},
+        };
+    }
+
+    AddEdgesResponse addEdgesImpl(const AddEdgesRequest& request) {
+        auto edges_or = engine_.AddEdges(request.entries);
+        if (!edges_or.ok()) {
+            LOG(FATAL) << "Add edges error: " << edges_or.status();
+        }
+        return AddEdgesResponse {
+            .edges = std::move(edges_or).value(),
+        };
+    }
+
+    data::NodeAndEdgeIds deleteElementsImpl(const data::NodeAndEdgeIds& input) {
+        auto deleted_ids_or = engine_.DeleteElements(input);
+        if (!deleted_ids_or.ok()) {
+            LOG(FATAL) << "Delete elements error: " << deleted_ids_or.status();
+        }
+        return std::move(deleted_ids_or).value();
+    }
+
+    data::NodeAndEdgeIds clearGraphImpl(const VoidType&) {
+        return {};
     }
 
  private:
@@ -146,9 +127,10 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
 static __attribute__((constructor)) void RegisterPipelineApiBackend() {
     auto* impl = new GraphEngineApiBackend();
     GraphEngineApi::ImplPtrs<GraphEngineApiBackend> ptrs = {
-        .addElems = &GraphEngineApiBackend::addElemsImpl,
-        .deleteElems = &GraphEngineApiBackend::deleteElemsImpl,
-        .getElemStats = &GraphEngineApiBackend::getElemStatsImpl,
+        .getGraph = &GraphEngineApiBackend::getGraphImpl,
+        .createNode = &GraphEngineApiBackend::createNodeImpl,
+        .addEdges = &GraphEngineApiBackend::addEdgesImpl,
+        .deleteElements = &GraphEngineApiBackend::deleteElementsImpl,
         .clearGraph = &GraphEngineApiBackend::clearGraphImpl,
     };
     cppschema::RegisterBackend<GraphEngineApi, GraphEngineApiBackend>(impl, ptrs);

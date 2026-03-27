@@ -9,21 +9,15 @@ cc_library(
     srcs = ["AddElemsOp.cpp"],
     hdrs = ["AddElemsOp.h"],
     deps =[
+        "//ujcore/data/graph",
+        "//ujcore/data/graph:absl-stringifies",
+        "//ujcore/data/graph:client",
         "//ujcore/functions:NodeFunctionSpec",
         "//ujcore/graph:GraphOpsContext",
         "//ujcore/graph:IdGenerator",
         "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
-    ],
-)
-
-cc_library(
-    name = "DeleteElementsOp",
-    srcs = ["DeleteElementsOp.cpp"],
-    hdrs = ["DeleteElementsOp.h"],
-    deps =[
-        "//ujcore/graph:GraphOpsContext",
-        "@abseil-cpp//absl/log",
     ],
 )
 
@@ -33,10 +27,13 @@ cc_library(
     hdrs = ["GraphEngine.hpp"],
     deps =[
         ":AddElemsOp",
-        ":DeleteElementsOp",
         ":GraphOpsContext",
         ":GraphState",
+        "//ujcore/data/graph",
+        "//ujcore/data/graph:client",
         "//ujcore/functions:NodeFunctionSpec",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
     ],
 )
 
@@ -57,6 +54,7 @@ cc_library(
         "GraphState.hpp",
     ],
     deps = [
+        "//ujcore/data/graph",
         "//ujcore/functions:NodeFunctionSpec",
         "@abseil-cpp//absl/strings",
     ],

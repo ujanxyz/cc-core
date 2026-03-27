@@ -11,6 +11,7 @@ cc_library(
         "//ujcore/api_schemas:GraphEngineApi",
         "//ujcore/functions:FunctionIoUtils",
         "//ujcore/graph:GraphEngine",
+        "@abseil-cpp//absl/log",
         "@cppschema//:backend_bridge",
         "@nlohmann_json//:json",
     ],
@@ -22,6 +23,8 @@ cc_test(
     srcs = ["GraphEngineApiBackend_Test.cpp"],
     deps = [
         ":GraphEngineApiBackend",
+        "//ujcore/data/graph:absl-stringifies",
+        "@abseil-cpp//absl/strings",
         "@googletest//:gtest_main",
     ],
 )
