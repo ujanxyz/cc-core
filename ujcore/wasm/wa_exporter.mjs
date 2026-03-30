@@ -6,6 +6,10 @@ import { createReadStream } from 'node:fs';
 import path from "node:path";
 import process from "node:process";
 
+// Loading the wasm locally in node environment does not work if it was not
+// built for executing in the node env. This saves extra glue js code.
+const VALIDATE_IN_NODE_ENV = false;
+
 /**
  * Constants and path configurations extracted from Bazel environment variables.
  */
@@ -99,15 +103,17 @@ function verifyAndGetFilesInfo(pathParams) {
  * @param {Object} srcFilesInfo - { wasmBin: string, glueJs: string }
  */
 async function validateGraphWasmModule(srcFilesInfo) {
-    const { wasmBin, glueJs } = srcFilesInfo;
-    const binaryStream = createReadStream(wasmBin);
-    const { default: WasmModule } = await import(glueJs);
-    const module = await WasmModule({ binaryStream });
-    if (!module) {
-        throw new Error("Failed to load WASM module");
+    if (VALIDATE_IN_NODE_ENV) {
+        const { wasmBin, glueJs } = srcFilesInfo;
+        const binaryStream = createReadStream(wasmBin);
+        const { default: WasmModule } = await import(glueJs);
+        const module = await WasmModule({ binaryStream });
+        if (!module) {
+            throw new Error("Failed to load WASM module");
+        }
+        const buildInfo = module.getBuildInfo()
+        console.log(buildInfo);
     }
-    const buildInfo = module.getBuildInfo()
-    console.log(buildInfo);
 }
 
 /**
@@ -175,3 +181,5 @@ async function exportWasmFiles(srcFilesInfo, destDir) {
     
     console.log("[EXPORT] Completed successfully.");
 })();
+
+export {};

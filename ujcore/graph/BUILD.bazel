@@ -9,10 +9,11 @@ cc_library(
     srcs = ["AddElemsOp.cpp"],
     hdrs = ["AddElemsOp.h"],
     deps =[
+        "//ujcore/data/functions",
         "//ujcore/data/graph",
         "//ujcore/data/graph:absl-stringifies",
         "//ujcore/data/graph:client",
-        "//ujcore/functions:NodeFunctionSpec",
+        "//ujcore/data/utils",
         "//ujcore/graph:GraphOpsContext",
         "//ujcore/graph:IdGenerator",
         "@abseil-cpp//absl/log",
@@ -31,7 +32,7 @@ cc_library(
         ":GraphState",
         "//ujcore/data/graph",
         "//ujcore/data/graph:client",
-        "//ujcore/functions:NodeFunctionSpec",
+        "//ujcore/data/functions",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
     ],
@@ -55,7 +56,6 @@ cc_library(
     ],
     deps = [
         "//ujcore/data/graph",
-        "//ujcore/functions:NodeFunctionSpec",
         "@abseil-cpp//absl/strings",
     ],
 )

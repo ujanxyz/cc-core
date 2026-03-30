@@ -4,8 +4,6 @@
 #include "ujcore/data/graph/GraphNode.h"
 #include "ujcore/data/graph/GraphSlot.h"
 
-#include "ujcore/functions/NodeFunctionSpec.hpp"
-
 #include <map>
 #include <optional>
 #include <string>

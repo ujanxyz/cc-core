@@ -9,7 +9,6 @@ cc_library(
     srcs = ["GraphEngineApiBackend.cpp"],
     deps = [
         "//ujcore/api_schemas:GraphEngineApi",
-        "//ujcore/functions:FunctionIoUtils",
         "//ujcore/graph:GraphEngine",
         "@abseil-cpp//absl/log",
         "@cppschema//:backend_bridge",
@@ -25,26 +24,6 @@ cc_test(
         ":GraphEngineApiBackend",
         "//ujcore/data/graph:absl-stringifies",
         "@abseil-cpp//absl/strings",
-        "@googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "PipelineApiBackend",
-    srcs = ["PipelineApiBackend.cpp"],
-    deps = [
-        ":IdGenerator",
-        "@cppschema//:backend_bridge",
-        "//ujcore/api_schemas:PipelineApi",
-    ],
-    alwayslink = 1,  # Forced linking, even if not directly referenced
-)
-
-cc_test(
-    name = "PipelineApiBackend_Test",
-    srcs = ["PipelineApiBackend_Test.cpp"],
-    deps = [
-        ":PipelineApiBackend",
         "@googletest//:gtest_main",
     ],
 )

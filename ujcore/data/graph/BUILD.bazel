@@ -27,6 +27,14 @@ cc_library(
 )
 
 cc_library(
+    name = "function_info",
+    hdrs = ["FunctionInfo.h"],
+    deps = [
+        "//ujcore/data/functions",
+    ],
+)
+
+cc_library(
     name = "graph",
     hdrs = [
         "GraphEdge.h",

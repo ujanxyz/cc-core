@@ -1,0 +1,14 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+cc_library(
+    name = "functions",
+    hdrs = ["FunctionInfo.h"],
+    deps = [
+        "@cppschema//:enum_registry",
+        "@cppschema//:visitor_macros",
+    ],
+)

@@ -11,9 +11,20 @@ bazel_dep(name = "nlohmann_json", version = "3.12.0.bcr.1")
 # https://github.com/emscripten-core/emsdk/issues/1642
 bazel_dep(name = "emsdk", version = "4.0.17")
 
-bazel_dep(name = "cppschema", version = "1.1.0")
+bazel_dep(name = "cppschema", version = "1.3.0")
 git_override(
     module_name = "cppschema",
     remote = "https://github.com/avikdev/cpp-schema.git",
-    commit = "c612a18",
+    commit = "88556066d22f16c44991c14b8cf0de8a62e8284b",
+)
+
+# Hedron's Compile Commands Extractor for Bazel
+# https://github.com/hedronvision/bazel-compile-commands-extractor
+bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
+git_override(
+    module_name = "hedron_compile_commands",
+    remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
+    commit = "abb61a688167623088f8768cc9264798df6a9d10",
+    # Replace the commit hash (above) with the latest (https://github.com/hedronvision/bazel-compile-commands-extractor/commits/main).
+    # Even better, set up Renovate and let it do the work for you (see "Suggestion: Updates" in the README).
 )

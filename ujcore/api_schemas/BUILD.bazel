@@ -10,15 +10,8 @@ cc_library(
     deps = [
         "//ujcore/data/graph",
         "//ujcore/data/graph:client",
+        "//ujcore/data/graph:function_info",
         "@cppschema//:apispec",
+        "@cppschema//:js_converter",
     ],
 )
-
-cc_library(
-    name = "PipelineApi",
-    hdrs = ["PipelineApi.hpp"],
-    deps = [
-        "@cppschema//:apispec",
-    ],
-)
-

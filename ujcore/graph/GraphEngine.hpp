@@ -6,11 +6,11 @@
 #include <vector>
 
 #include "absl/status/statusor.h"
+#include "ujcore/data/functions/FunctionInfo.h"
 #include "ujcore/data/graph/ClientMessages.h"
 #include "ujcore/data/graph/GraphEdge.h"
 #include "ujcore/data/graph/GraphNode.h"
 #include "ujcore/data/graph/GraphSlot.h"
-#include "ujcore/functions/NodeFunctionSpec.hpp"
 #include "ujcore/graph/GraphState.hpp"
 #include "ujcore/graph/TopoSortOrder.h"
 
@@ -41,7 +41,7 @@ class GraphEngine {
   std::vector<data::GraphEdge> GetEdges() const;
   std::vector<data::GraphSlot> GetSlots() const;
 
-  absl::StatusOr<data::GraphNode> InsertNode(const NodeFunctionSpec& spec);
+  absl::StatusOr<data::GraphNode> InsertNode(const data::FunctionInfo& fn_info);
 
   absl::StatusOr<std::vector<data::GraphEdge>> AddEdges(const std::vector<data::AddEdgeEntry>& entries);
 

@@ -3,7 +3,8 @@
         {
             "name": "Mac",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "/usr/local/include"
             ],
             "defines": [],
             "compilerPath": "/usr/local/opt/llvm/bin/clang",

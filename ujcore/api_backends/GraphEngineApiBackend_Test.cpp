@@ -9,13 +9,18 @@
 #include "gmock/gmock-matchers.h"
 #include "ujcore/api_schemas/GraphEngineApi.hpp"
 #include "ujcore/data/graph/AbslStringifies.h"
+#include "ujcore/data/graph/FunctionInfo.h"
 
 namespace ujcore {
 namespace {
 
 using ::cppschema::ApiRegistry;
 using ::testing::ElementsAre;
+using ::ujcore::data::FnExtendedInfo;
+using ::ujcore::data::FunctionInfo;
+using ::ujcore::data::PureFuncExt;
 
+using CreateNodeRequest = GraphEngineApi::CreateNodeRequest;
 using AddEdgesRequest = GraphEngineApi::AddEdgesRequest;
 using AddEdgesResponse = GraphEngineApi::AddEdgesResponse;
 using GraphDataResponse = GraphEngineApi::GraphDataResponse;
@@ -25,24 +30,33 @@ using CreateNodeResponse = GraphEngineApi::CreateNodeResponse;
 TEST(GraphEngineApiBackendTest, Basic) {
     VoidType kVoid;
 
-    std::string payload = R"({
-        "spec": {
-            "kind": "lam",
-            "label": "Noise",
-            "description": "Generates noise",
-            "data_type": "float",
-            "arg_types": ["vec2"],
-            "inputs": [
-                { "name": "seed", "data_type": "int" }
-            ]
+    FnExtendedInfo ext = {
+        .kind = FnExtendedInfo::FnKind::PURE_FN,
+        .purefn = PureFuncExt {
+            .ins = {
+                { .name = "p", .dtype = "point2d" },
+                { .name = "dx", .dtype = "float" },
+            },
+            .outs = {
+                { .name = "fp", .dtype = "point2d" },
+            },
         }
-    })";
+    };
+
+    CreateNodeRequest create_req = {
+        .func = FunctionInfo {
+            .uri = "/fn/geom/translate-x",
+            .label = "Translate Point X",
+            .desc = "Translate a 2D point along X-axis by a given delta",
+            .ext = ext,
+        },
+    };
     
-    CreateNodeResponse create_resp = ApiRegistry<GraphEngineApi>::Get().template Call<std::string, CreateNodeResponse>("createNode", payload);
+    CreateNodeResponse create_resp = ApiRegistry<GraphEngineApi>::Get().template Call<CreateNodeRequest, CreateNodeResponse>("createNode", create_req);
     ASSERT_TRUE(create_resp.node.has_value());
     EXPECT_EQ(absl::StrCat(*create_resp.node), "(n#1:s2GhcWpBLP, slots:$out,$in:seed, fn:/fn/points-on-curve)");
 
-    create_resp = ApiRegistry<GraphEngineApi>::Get().template Call<std::string, CreateNodeResponse>("createNode", payload);
+    create_resp = ApiRegistry<GraphEngineApi>::Get().template Call<CreateNodeRequest, CreateNodeResponse>("createNode", create_req);
     ASSERT_TRUE(create_resp.node.has_value());
     EXPECT_EQ(absl::StrCat(*create_resp.node), "(n#2:ZBqg1rBrgq, slots:$out,$in:seed, fn:/fn/points-on-curve)");
 

@@ -69,18 +69,19 @@ std::vector<data::GraphSlot> GraphEngine::GetSlots() const {
   return result;
 }
 
-absl::StatusOr<data::GraphNode> GraphEngine::InsertNode(const NodeFunctionSpec& spec) {
+absl::StatusOr<data::GraphNode> GraphEngine::InsertNode(const data::FunctionInfo& fn_info) {
   GraphOpsContext ctx = {
     .config = config_,
     .state = state_,
     .toposort_order = &topo_sort_order_,
   };
 
-  auto node_or = AddElemsOp_CreateNode(ctx, spec);
+  auto node_or = AddElemsOp_CreateNode(ctx, fn_info);
   if (!node_or.ok()) return std::move(node_or).status();
 
   return node_or;
 }
+
 
 absl::StatusOr<std::vector<data::GraphEdge>> GraphEngine::AddEdges(const std::vector<data::AddEdgeEntry>& entries) {
   GraphOpsContext ctx = {

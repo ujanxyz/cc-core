@@ -1,0 +1,20 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+cc_library(
+    name = "utils",
+    srcs = [
+        "CreateNodeSlots.cpp",
+    ],
+    hdrs = [
+        "CreateNodeSlots.h",
+    ],
+    deps = [
+        "//ujcore/data/functions",
+        "//ujcore/data/graph",
+        "@abseil-cpp//absl/status:statusor",
+    ],
+)

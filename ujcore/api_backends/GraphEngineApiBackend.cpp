@@ -8,14 +8,14 @@
 #include "cppschema/apispec/api_registry.h"
 #include "cppschema/backend/api_backend_bridge.h"
 #include "nlohmann/json.hpp"
-#include "ujcore/functions/FunctionIoUtils.hpp"
+#include "ujcore/data/graph/FunctionInfo.h"
 #include "ujcore/graph/GraphEngine.hpp"
 
 namespace ujcore {
 
 using json = ::nlohmann::json;
 
-std::string EngineResultTojson(const EngineOpResult& result) {
+static std::string EngineResultTojson(const EngineOpResult& result) {
     json j = {};
     if (!result.nodes_added.empty()) {
         auto arr = json::array();
@@ -55,21 +55,9 @@ std::string EngineResultTojson(const EngineOpResult& result) {
     return j.dump();
 }
 
-static NodeFunctionSpec ParseNodeFunction(const std::string& payload_str) {
-    json j = json::parse(payload_str);
-    if (!(j.contains("spec") && j["spec"].is_object())) {
-        LOG(FATAL) << "Object 'spec' not found in json: " << payload_str;
-    }
-    NodeFunctionSpec spec;
-    if (!ParseNodeFuncSpecFromJsonObj(j["spec"], spec)) {
-        LOG(FATAL) << "Failed t parse NodeFunctionSpec from json";
-    }
-    return spec;
-}
-
-
 class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
  public:
+    using CreateNodeRequest = GraphEngineApi::CreateNodeRequest;
     using AddEdgesRequest = GraphEngineApi::AddEdgesRequest;
     using AddEdgesResponse = GraphEngineApi::AddEdgesResponse;
 
@@ -86,9 +74,8 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         };
     }
 
-    CreateNodeResponse createNodeImpl(const std::string& spec_json) {
-        NodeFunctionSpec fnspec = ParseNodeFunction(spec_json);
-        absl::StatusOr<data::GraphNode> node_or = engine_.InsertNode(fnspec);
+    CreateNodeResponse createNodeImpl(const CreateNodeRequest& request) {
+        absl::StatusOr<data::GraphNode> node_or = engine_.InsertNode(request.func);
         if (!node_or.ok()) {
             LOG(FATAL) << "Insert node error: " << node_or.status();
         }

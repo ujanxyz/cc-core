@@ -9,127 +9,12 @@
 #include "ujcore/data/graph/AbslStringifies.h"
 #include "ujcore/data/graph/GraphNode.h"
 #include "ujcore/data/graph/GraphSlot.h"
+#include "ujcore/data/utils/CreateNodeSlots.h"
 #include "ujcore/graph/IdGenerator.h"
 
 namespace ujcore {
-namespace {
 
-data::GraphSlot MakeSlotV2(const uint32_t parent, const std::string& name, const std::string& dtype, const bool isoutput) {
-    return data::GraphSlot {
-        .parent = parent,
-        .name = name,
-        .dtype = dtype,
-        .isoutput = isoutput,
-    };
-}
-
-/**
- * For a new node based on a function spec, construct its slots.
- * Each node type defines its slot topology and naming convention:
- *
- * - Graph Input ("in")
- *   - 1 output slot
- *   - "<id>$out"
- *
- * - Graph Output ("out")
- *   - 1 input slot
- *   - "<id>$in"
- *
- * - Function Node ("fn")
- *   - N input slots:  "<id>$in:<param-name>"
- *   - M output slots: "<id>$out:<param-name>"
- *
- * - Operator Node ("op")
- *   - 1 implicit input  slot: "<id>$in"
- *   - 1 implicit output slot: "<id>$out"
- *   - N named input slots:    "<id>$in:<param-name>"
- *
- * - Lambda Node ("lam")
- *   - 1 output slot (functor): "<id>$out"
- *   - N input slots:           "<id>$in:<param-name>"
- */
-std::vector<data::GraphSlot> CreateNodeSlotsV2(const NodeFunctionSpec& func_spec, const uint32_t node_id, const std::string& node_alnumid) {
-    const std::string prefix = "$";
-
-    const auto in_id = [&](std::string_view name = "") {
-        return name.empty()
-            ? prefix + "in"
-            : prefix + "in:" + std::string(name);
-    };
-    const auto out_id = [&](std::string_view name = "") {
-        return name.empty()
-            ? prefix + "out"
-            : prefix + "out:" + std::string(name);
-    };
-
-    std::vector<data::GraphSlot> output;
-
-    if (func_spec.kind == "in") {
-        const auto& ext = std::any_cast<const InputNodeExt&>(func_spec.ext);
-
-        output.push_back(
-            MakeSlotV2(node_id, out_id(), ext.data_type, true));
-    }
-    else if (func_spec.kind == "out") {
-        const auto& ext = std::any_cast<const OutputNodeExt&>(func_spec.ext);
-
-        output.push_back(
-            MakeSlotV2(node_id, in_id(), ext.data_type, false));
-    }
-    else if (func_spec.kind == "fn") {
-        const auto& ext = std::any_cast<const FunctionNodeExt&>(func_spec.ext);
-
-        // Function inputs
-        for (const auto& p : ext.inputs) {
-            output.push_back(
-                MakeSlotV2(node_id, in_id(p.name), p.data_type, false));
-        }
-
-        // Function outputs
-        for (const auto& p : ext.outputs) {
-            output.push_back(
-                MakeSlotV2(node_id, out_id(p.name), p.data_type, true));
-        }
-    }
-    else if (func_spec.kind == "op") {
-        const auto& ext = std::any_cast<const OperatorNodeExt&>(func_spec.ext);
-
-        // Implicit input/output
-        output.push_back(
-            MakeSlotV2(node_id, in_id(), ext.data_type, false));
-
-        output.push_back(
-            MakeSlotV2(node_id, out_id(), ext.data_type, true));
-
-        // Named inputs
-        for (const auto& p : ext.inputs) {
-            output.push_back(
-                MakeSlotV2(node_id, in_id(p.name), p.data_type, false));
-        }
-    }
-    else if (func_spec.kind == "lam") {
-        const auto& ext = std::any_cast<const LambdaNodeExt&>(func_spec.ext);
-
-        // Output (functor)
-        output.push_back(
-            MakeSlotV2(node_id, out_id(), ext.data_type, true));
-
-        // Inputs
-        for (const auto& p : ext.inputs) {
-            output.push_back(
-                MakeSlotV2(node_id, in_id(p.name), p.data_type, false));
-        }
-    }
-    else {
-        LOG(FATAL) << "Invalid function kind: " << func_spec.kind;
-    }
-
-    return output;
-}
-
-}  // namespace
-
-absl::StatusOr<data::GraphNode> AddElemsOp_CreateNode(GraphOpsContext& ctx, const NodeFunctionSpec& fnspec) {
+absl::StatusOr<data::GraphNode> AddElemsOp_CreateNode(GraphOpsContext& ctx, const data::FunctionInfo& fn_info) {
     const GraphConfig& config = ctx.config;
     GraphState& state = ctx.state;
     auto* const toposort_order = ctx.toposort_order;
@@ -137,7 +22,11 @@ absl::StatusOr<data::GraphNode> AddElemsOp_CreateNode(GraphOpsContext& ctx, cons
     const uint32_t raw_id = ++(state.idgen_state.next_node_id);
     const std::string alphanum_id = GenSplitMix64OfLength(raw_id + config.nodeid_splitmix_offset, 10);
 
-    std::vector<data::GraphSlot> new_slots = CreateNodeSlotsV2(fnspec, raw_id, alphanum_id);
+    auto slots_or = CreateNodeSlots(fn_info, raw_id, alphanum_id);
+    if (!slots_or.ok()) {
+        return std::move(slots_or).status();
+    }
+    std::vector<data::GraphSlot> new_slots = std::move(slots_or).value();
 
     std::vector<std::string> slot_names;
     slot_names.reserve(new_slots.size());
@@ -149,7 +38,7 @@ absl::StatusOr<data::GraphNode> AddElemsOp_CreateNode(GraphOpsContext& ctx, cons
     data::GraphNode graph_node = {
         .id = raw_id,
         .alnumid = alphanum_id,
-        .fnuri = "/fn/points-on-curve",
+        .fnuri = fn_info.uri,
         .slots = slot_names,
     };
 

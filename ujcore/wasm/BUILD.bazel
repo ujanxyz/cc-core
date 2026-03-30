@@ -20,11 +20,15 @@ cc_binary(
     linkopts = [
         "--bind",  # Enable embind
         "--closure=0",  # Do not use closure
+        "--clear-cache=1",
         "--no-entry",
-        "-sMODULARIZE=1",
-        "-sSTANDALONE_WASM",
+        "-s EXPORT_ES6=1",
+        "-s USE_ES6_IMPORT_META=1",
+        "-s ENVIRONMENT=node,worker",
+        "-s MODULARIZE=1",
+        "-s STANDALONE_WASM",
         # Export the module creation function with a specific name, replacing the default 'Module'.
-        "-sEXPORT_NAME=CreateUjWasmModule"
+        "-sEXPORT_NAME=CreateUjWasmModule",
     ],
     # This target won't build successfully on its own using system headers, because of missing
     # emscripten headers etc. Therefore, we hide it from wildcards.
