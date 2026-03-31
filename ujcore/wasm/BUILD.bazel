@@ -33,6 +33,10 @@ cc_binary(
     # This target won't build successfully on its own using system headers, because of missing
     # emscripten headers etc. Therefore, we hide it from wildcards.
     tags = ["manual"],
+
+    copts = select({
+        "//conditions:default": ["-Wno-error=unused-command-line-argument"],
+    })
 )
 
 wasm_cc_binary(

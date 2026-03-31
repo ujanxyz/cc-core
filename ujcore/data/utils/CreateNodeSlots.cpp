@@ -1,5 +1,7 @@
 #include "ujcore/data/utils/CreateNodeSlots.h"
 
+#include <string>
+
 #include "absl/status/status.h"
 
 namespace ujcore::data {

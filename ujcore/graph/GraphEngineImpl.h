@@ -24,14 +24,14 @@ struct EngineOpResult {
   std::optional<std::vector<std::string>> topo_order;
 };
 
-class GraphEngine {
+class GraphEngineImpl {
  public:
   struct DeleteRequest {
     std::set<std::string> node_ids;
     std::set<std::string> edge_ids;
   };
 
-  GraphEngine();
+  GraphEngineImpl();
 
   GraphState* mutable_state() {
     return &state_;
@@ -58,3 +58,4 @@ class GraphEngine {
 };
 
 }  // namespace ujcore
+

@@ -4,14 +4,17 @@
             "name": "Mac",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/local/include"
+                "/Users/Shared/install/emsdk/upstream/emscripten/system/include",
+                "/Users/Shared/install/emsdk/upstream/lib/clang/19/include"
             ],
             "defines": [],
-            "compilerPath": "/usr/local/opt/llvm/bin/clang",
+            "macFrameworkPath": [
+                "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks"
+            ],
+            "compilerPath": "/Users/Shared/install/emsdk/upstream/bin/clang",
             "cStandard": "c17",
             "cppStandard": "c++20",
-            "intelliSenseMode": "macos-clang-x64",
-            "documentationStyle": "Doxygen"
+            "intelliSenseMode": "macos-clang-x64"
         }
     ],
     "version": 4

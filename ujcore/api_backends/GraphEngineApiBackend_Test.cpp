@@ -9,7 +9,6 @@
 #include "gmock/gmock-matchers.h"
 #include "ujcore/api_schemas/GraphEngineApi.hpp"
 #include "ujcore/data/graph/AbslStringifies.h"
-#include "ujcore/data/graph/FunctionInfo.h"
 
 namespace ujcore {
 namespace {

@@ -1,38 +1,21 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 package(
     default_visibility = ["//visibility:public"],
 )
 
 cc_library(
-    name = "AddElemsOp",
-    srcs = ["AddElemsOp.cpp"],
-    hdrs = ["AddElemsOp.h"],
+    name = "GraphEngineImpl",
+    srcs = ["GraphEngineImpl.cpp"],
+    hdrs = ["GraphEngineImpl.h"],
     deps =[
-        "//ujcore/data/functions",
-        "//ujcore/data/graph",
-        "//ujcore/data/graph:absl-stringifies",
-        "//ujcore/data/graph:client",
-        "//ujcore/data/utils",
-        "//ujcore/graph:GraphOpsContext",
-        "//ujcore/graph:IdGenerator",
-        "@abseil-cpp//absl/log",
-        "@abseil-cpp//absl/status:statusor",
-        "@abseil-cpp//absl/strings",
-    ],
-)
-
-cc_library(
-    name = "GraphEngine",
-    srcs = ["GraphEngine.cpp"],
-    hdrs = ["GraphEngine.hpp"],
-    deps =[
-        ":AddElemsOp",
         ":GraphOpsContext",
         ":GraphState",
         "//ujcore/data/graph",
         "//ujcore/data/graph:client",
         "//ujcore/data/functions",
+        "//ujcore/data/utils",
+        "//ujcore/graph:IdGenerator",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
     ],

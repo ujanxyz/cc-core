@@ -1,5 +1,5 @@
-#include <iostream>
 #include <string>
+
 
 #include <emscripten/bind.h>
 #include <emscripten/em_js.h>
@@ -9,6 +9,7 @@
 #include "ujcore/base/build_info.hpp"
 
 emscripten::val get_build_info() {
+
     using emval = emscripten::val;
     emval info = emval::object();
     const buildinfo::BuildInfo& build_info = buildinfo::GetSystemBuildInfo();

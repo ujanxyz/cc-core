@@ -1,15 +1,11 @@
 #include "ujcore/api_schemas/GraphEngineApi.hpp"
 
-#include <iostream>
-#include <memory>
 #include <set>
 
 #include "absl/log/log.h"
-#include "cppschema/apispec/api_registry.h"
 #include "cppschema/backend/api_backend_bridge.h"
 #include "nlohmann/json.hpp"
-#include "ujcore/data/graph/FunctionInfo.h"
-#include "ujcore/graph/GraphEngine.hpp"
+#include "ujcore/graph/GraphEngineImpl.h"
 
 namespace ujcore {
 
@@ -108,7 +104,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
     }
 
  private:
-   GraphEngine engine_;
+   GraphEngineImpl engine_;
 };
 
 static __attribute__((constructor)) void RegisterPipelineApiBackend() {

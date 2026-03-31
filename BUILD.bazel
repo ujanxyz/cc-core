@@ -1,0 +1,14 @@
+load("@hedron_compile_commands//:refresh_compile_commands.bzl", "refresh_compile_commands")
+
+# Alternatively you can run `bazel run @hedron_compile_commands//:refresh_all`
+# if your setup is simple enough.
+# Please read https://github.com/hedronvision/bazel-compile-commands-extractor
+refresh_compile_commands(
+    name = "copy_compile_commands",
+    targets = {
+        # List out your binary targets you want to have compile_commands.json
+        # for in order to have autocomplete working correctly.
+        "//ujcore/api_backends:GraphEngineApiBackend_Test": "",
+        "//ujcore/wasm:entrypoint_wa": "",
+    },
+)
