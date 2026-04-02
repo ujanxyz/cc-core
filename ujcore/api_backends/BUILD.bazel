@@ -22,7 +22,7 @@ cc_test(
     srcs = ["GraphEngineApiBackend_Test.cpp"],
     deps = [
         ":GraphEngineApiBackend",
-        "//ujcore/data/graph:absl-stringifies",
+        "//ujcore/data:AbslStringifies",
         "@abseil-cpp//absl/strings",
         "@googletest//:gtest_main",
     ],

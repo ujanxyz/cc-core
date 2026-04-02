@@ -1,16 +1,14 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 
 package(
     default_visibility = ["//:__subpackages__"],
 )
 
 cc_library(
-    name = "absl-stringifies",
-    hdrs = [
-        "AbslStringifies.h",
-    ],
+    name = "AbslStringifies",
+    hdrs = ["AbslStringifies.h"],
     deps = [
-        ":graph",
+        ":plinfo",
         # Although there is no header dependency on absl::strings, this is a must
         # have peer dependency, as the caller primarility uses this lib to enable
         # absl friendly string conversion (e.g. for use in `absl::StrCat`)
@@ -19,29 +17,19 @@ cc_library(
 )
 
 cc_library(
-    name = "client",
-    hdrs = ["ClientMessages.h"],
+    name = "plinfo",
+    hdrs = ["plinfo.h"],
     deps = [
+        "@cppschema//:enum_registry",
         "@cppschema//:visitor_macros",
     ],
 )
 
 cc_library(
-    name = "function_info",
-    hdrs = ["FunctionInfo.h"],
+    name = "plstate",
+    hdrs = ["plstate.h"],
     deps = [
-        "//ujcore/data/functions",
-    ],
-)
-
-cc_library(
-    name = "graph",
-    hdrs = [
-        "GraphEdge.h",
-        "GraphNode.h",
-        "GraphSlot.h",
-    ],
-    deps = [
+        "@cppschema//:enum_registry",
         "@cppschema//:visitor_macros",
     ],
 )

@@ -7,10 +7,7 @@
 
 #include "absl/status/statusor.h"
 #include "ujcore/data/functions/FunctionInfo.h"
-#include "ujcore/data/graph/ClientMessages.h"
-#include "ujcore/data/graph/GraphEdge.h"
-#include "ujcore/data/graph/GraphNode.h"
-#include "ujcore/data/graph/GraphSlot.h"
+#include "ujcore/data/plinfo.h"
 #include "ujcore/graph/GraphState.hpp"
 #include "ujcore/graph/TopoSortOrder.h"
 
@@ -37,17 +34,20 @@ class GraphEngineImpl {
     return &state_;
   }
 
-  std::vector<data::GraphNode> GetNodes() const;
-  std::vector<data::GraphEdge> GetEdges() const;
-  std::vector<data::GraphSlot> GetSlots() const;
+  std::vector<plinfo::NodeInfo> GetNodeInfos() const;
+  std::vector<plinfo::EdgeInfo> GetEdgeInfos() const;
+  std::vector<plinfo::SlotInfo> GetSlotInfos() const;
 
-  absl::StatusOr<data::GraphNode> InsertNode(const data::FunctionInfo& fn_info);
+  absl::StatusOr<plinfo::NodeInfo> AddNode(const data::FunctionInfo& fn_info);
+  absl::StatusOr<plinfo::EdgeInfo> AddEdge(
+      const std::string& sourceNode, const std::string& sourceSlot,
+      const std::string& targetNode, const std::string& targetSlot);
 
-  absl::StatusOr<std::vector<data::GraphEdge>> AddEdges(const std::vector<data::AddEdgeEntry>& entries);
+  absl::StatusOr<std::vector<std::string> /* edge ids */>
+  DeleteElements(const std::vector<std::string>& nodeIds, const std::vector<std::string>& edgeIds);
 
-  absl::StatusOr<data::NodeAndEdgeIds> DeleteElements(const data::NodeAndEdgeIds& input);
-
-  absl::StatusOr<data::NodeAndEdgeIds> ClearGraph();
+  // Returns the total number of deleted nodes + edges.
+  absl::StatusOr<int> ClearGraph();
 
  private:
   void AddAndResetTopoOrder(EngineOpResult& result);

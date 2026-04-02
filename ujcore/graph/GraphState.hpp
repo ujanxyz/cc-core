@@ -1,15 +1,11 @@
 #pragma once
 
-#include "ujcore/data/graph/GraphEdge.h"
-#include "ujcore/data/graph/GraphNode.h"
-#include "ujcore/data/graph/GraphSlot.h"
+#include "ujcore/data/plinfo.h"
+#include "ujcore/data/plstate.h"
 
 #include <map>
-#include <optional>
 #include <string>
-#include <tuple>
 #include <unordered_map>
-#include <vector>
 
 namespace ujcore {
 
@@ -26,12 +22,17 @@ struct GraphConfig {
 struct GraphState {
     IdGeneratorState idgen_state;
 
-    std::map<uint32_t /* node id */, data::GraphNode> nodes_map;
-    std::map<uint32_t /* edge id */, data::GraphEdge> edges_map;
-    std::map<data::SlotId, data::GraphSlot> slots;
+    std::map<plinfo::SlotId, plinfo::SlotInfo> slot_infos;
+    std::map<uint32_t /* node id (raw) */, plinfo::NodeInfo> node_infos;
+    std::map<uint32_t /* edge id (raw) */, plinfo::EdgeInfo> edge_infos;
 
-    // Maps alpha-num to raw node id.
+    // States (Dynamic data):
+    std::map<plinfo::SlotId, plstate::SlotState> slot_states;
+    std::map<uint32_t /* node id (raw) */, plstate::NodeState> node_states;
+
+    // Maps alpha-num / concatenated ids to raw numeric id.
     std::unordered_map<std::string, uint32_t> node_id_lookup;
+    std::unordered_map<std::string /* catid */, uint32_t> edge_id_lookup;
 
 };
 

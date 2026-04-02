@@ -1,0 +1,81 @@
+#include "ujcore/data/utils/CreateNodeSlots.h"
+
+#include <string>
+
+#include "absl/status/status.h"
+#include "ujcore/utils/status_macros.h"
+
+namespace ujcore::data {
+namespace {
+
+GraphSlot MakeSlotV2(const uint32_t parent, const std::string& name, const std::string& dtype, const bool isoutput) {
+    return GraphSlot {
+        .parent = parent,
+        .name = name,
+        .dtype = dtype,
+        .isoutput = isoutput,
+    };
+}
+
+absl::StatusOr<std::vector<GraphSlot>>
+ParamsToSlotsSlots(const std::vector<ParamInfo>& params, const uint32_t node_id, const std::string& node_alnumid) {
+    std::vector<GraphSlot> ins;
+    std::vector<GraphSlot> outs;
+    std::vector<GraphSlot> mut_ins;
+    std::vector<GraphSlot> mut_outs;
+    for (const ParamInfo& p : params) {
+        switch (p.access) {
+            case ParamInfo::AccessEnum::I:
+                ins.push_back(
+                    MakeSlotV2(node_id, ("in:" + p.name), p.dtype, false));
+                break;
+            case ParamInfo::AccessEnum::O:
+                ins.push_back(
+                    MakeSlotV2(node_id, ("out:" + p.name), p.dtype, true));
+                break;
+            case ParamInfo::AccessEnum::M:
+                mut_ins.push_back(
+                    MakeSlotV2(node_id, ("in:" + p.name), p.dtype, false));
+                mut_outs.push_back(
+                    MakeSlotV2(node_id, ("out:" + p.name), p.dtype, true));
+                break;
+        }
+    }
+    if (!outs.empty() && !mut_ins.empty()) {
+        return absl::InvalidArgumentError("Function cannot have both out and mutable param");
+    }
+    std::vector<GraphSlot> slots;
+    if (!ins.empty()) {
+        for (auto&& s : std::move(ins)) {
+            slots.push_back(std::move(s));
+        }
+    }
+    if (!mut_ins.empty()) {
+        for (auto&& s : std::move(ins)) {
+            slots.push_back(std::move(s));
+        }
+    }
+    if (!outs.empty()) {
+        for (auto&& s : std::move(ins)) {
+            slots.push_back(std::move(s));
+        }
+    }
+    if (!mut_outs.empty()) {
+        for (auto&& s : std::move(ins)) {
+            slots.push_back(std::move(s));
+        }
+    }
+    return slots;
+}
+
+
+}  // namespace
+
+absl::StatusOr<std::vector<GraphSlot>>
+CreateNodeSlots(const FunctionInfo& fn_info, const uint32_t node_id, const std::string& node_alnumid) {
+    ASSIGN_OR_RETURN(std::vector<GraphSlot> slots, ParamsToSlotsSlots(fn_info.params, node_id, node_alnumid));
+    // TODO: Further validate slots.
+    return slots;
+}
+
+}  // namespace ujcore::data

@@ -53,53 +53,63 @@ static std::string EngineResultTojson(const EngineOpResult& result) {
 
 class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
  public:
-    using CreateNodeRequest = GraphEngineApi::CreateNodeRequest;
-    using AddEdgesRequest = GraphEngineApi::AddEdgesRequest;
-    using AddEdgesResponse = GraphEngineApi::AddEdgesResponse;
-
     using GraphDataResponse = GraphEngineApi::GraphDataResponse;
+    using CreateNodeRequest = GraphEngineApi::CreateNodeRequest;
+    using AddEdgeRequest = GraphEngineApi::AddEdgeRequest;
+    using AddEdgeResponse = GraphEngineApi::AddEdgeResponse;
+
+    using DeleteElementsRequest = GraphEngineApi::DeleteElementsRequest;
+    using DeleteElementsResponse = GraphEngineApi::DeleteElementsResponse;
+
     using CreateNodeResponse = GraphEngineApi::CreateNodeResponse;
 
     GraphEngineApiBackend() {}
 
     GraphDataResponse getGraphImpl(const VoidType& kvoid) {
         return GraphDataResponse {
-            .nodes = engine_.GetNodes(),
-            .edges = engine_.GetEdges(),
-            .slots = engine_.GetSlots(),
+            .nodeInfos = engine_.GetNodeInfos(),
+            .edgeInfos = engine_.GetEdgeInfos(),
+            .slotInfos = engine_.GetSlotInfos(),
         };
     }
 
     CreateNodeResponse createNodeImpl(const CreateNodeRequest& request) {
-        absl::StatusOr<data::GraphNode> node_or = engine_.InsertNode(request.func);
-        if (!node_or.ok()) {
-            LOG(FATAL) << "Insert node error: " << node_or.status();
+        auto nodeInfo = engine_.AddNode(request.func);
+        if (!nodeInfo.ok()) {
+            LOG(FATAL) << "Insert node error: " << nodeInfo.status();
         }
         return CreateNodeResponse {
-            .node = std::move(node_or).value(),
-            .edges = {},
+            .nodeInfo = std::move(nodeInfo).value(),
         };
     }
 
-    AddEdgesResponse addEdgesImpl(const AddEdgesRequest& request) {
-        auto edges_or = engine_.AddEdges(request.entries);
-        if (!edges_or.ok()) {
-            LOG(FATAL) << "Add edges error: " << edges_or.status();
+    AddEdgeResponse addEdgeImpl(const AddEdgeRequest& request) {
+        auto edgeInfo = engine_.AddEdge(request.sourceNode, request.sourceSlot, request.targetNode, request.targetSlot);
+        if (!edgeInfo.ok()) {
+            LOG(FATAL) << "Add edge error: " << edgeInfo.status();
         }
-        return AddEdgesResponse {
-            .edges = std::move(edges_or).value(),
+        return AddEdgeResponse {
+            .edgeInfo = std::move(edgeInfo).value(),
         };
     }
 
-    data::NodeAndEdgeIds deleteElementsImpl(const data::NodeAndEdgeIds& input) {
-        auto deleted_ids_or = engine_.DeleteElements(input);
-        if (!deleted_ids_or.ok()) {
-            LOG(FATAL) << "Delete elements error: " << deleted_ids_or.status();
+    DeleteElementsResponse deleteElementsImpl(const DeleteElementsRequest& request) {
+        auto deletedIdsOr = engine_.DeleteElements(request.nodeIds, request.edgeIds);
+        if (!deletedIdsOr.ok()) {
+            LOG(FATAL) << "Delete elements error: " << deletedIdsOr.status();
         }
-        return std::move(deleted_ids_or).value();
+        const std::vector<std::string> deletedEdgeIds = std::move(deletedIdsOr).value();
+        return DeleteElementsResponse {
+            .nodeIds = request.nodeIds,
+            .edgeIds = std::move(deletedEdgeIds),
+        };
     }
 
-    data::NodeAndEdgeIds clearGraphImpl(const VoidType&) {
+    VoidType clearGraphImpl(const VoidType&) {
+        auto countOr = engine_.ClearGraph();
+        if (!countOr.ok()) {
+            LOG(FATAL) << "Clear graph error: " << countOr.status();
+        }
         return {};
     }
 
@@ -112,7 +122,7 @@ static __attribute__((constructor)) void RegisterPipelineApiBackend() {
     GraphEngineApi::ImplPtrs<GraphEngineApiBackend> ptrs = {
         .getGraph = &GraphEngineApiBackend::getGraphImpl,
         .createNode = &GraphEngineApiBackend::createNodeImpl,
-        .addEdges = &GraphEngineApiBackend::addEdgesImpl,
+        .addEdge = &GraphEngineApiBackend::addEdgeImpl,
         .deleteElements = &GraphEngineApiBackend::deleteElementsImpl,
         .clearGraph = &GraphEngineApiBackend::clearGraphImpl,
     };

@@ -15,3 +15,6 @@ common --stamp --workspace_status_command=./scripts/bazel-build-info.sh
 # build:release -c opt --stamp
 
 test --test_output=errors
+
+build --cxxopt=-std=c++20
+build --cxxopt=-Werror=return-type

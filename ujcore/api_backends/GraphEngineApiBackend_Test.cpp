@@ -8,91 +8,87 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock-matchers.h"
 #include "ujcore/api_schemas/GraphEngineApi.hpp"
-#include "ujcore/data/graph/AbslStringifies.h"
+#include "ujcore/data/functions/FunctionInfo.h"
+#include "ujcore/data/AbslStringifies.h"
 
 namespace ujcore {
 namespace {
 
 using ::cppschema::ApiRegistry;
 using ::testing::ElementsAre;
-using ::ujcore::data::FnExtendedInfo;
 using ::ujcore::data::FunctionInfo;
-using ::ujcore::data::PureFuncExt;
+using ::ujcore::data::ParamInfo;
 
-using CreateNodeRequest = GraphEngineApi::CreateNodeRequest;
-using AddEdgesRequest = GraphEngineApi::AddEdgesRequest;
-using AddEdgesResponse = GraphEngineApi::AddEdgesResponse;
 using GraphDataResponse = GraphEngineApi::GraphDataResponse;
+using CreateNodeRequest = GraphEngineApi::CreateNodeRequest;
+using AddEdgeRequest = GraphEngineApi::AddEdgeRequest;
+using AddEdgeResponse = GraphEngineApi::AddEdgeResponse;
+using DeleteElementsRequest = GraphEngineApi::DeleteElementsRequest;
+using DeleteElementsResponse = GraphEngineApi::DeleteElementsResponse;
+
 using CreateNodeResponse = GraphEngineApi::CreateNodeResponse;
 
 
 TEST(GraphEngineApiBackendTest, Basic) {
     VoidType kVoid;
-
-    FnExtendedInfo ext = {
-        .kind = FnExtendedInfo::FnKind::PURE_FN,
-        .purefn = PureFuncExt {
-            .ins = {
-                { .name = "p", .dtype = "point2d" },
-                { .name = "dx", .dtype = "float" },
-            },
-            .outs = {
-                { .name = "fp", .dtype = "point2d" },
-            },
-        }
-    };
-
     CreateNodeRequest create_req = {
         .func = FunctionInfo {
             .uri = "/fn/geom/translate-x",
             .label = "Translate Point X",
             .desc = "Translate a 2D point along X-axis by a given delta",
-            .ext = ext,
+            .params = {
+                ParamInfo { .name = "p", .dtype = "point2d", .access = ParamInfo::AccessEnum::I },
+                ParamInfo { .name = "dx", .dtype = "float", .access = ParamInfo::AccessEnum::I },
+                ParamInfo { .name = "fp", .dtype = "point2d", .access = ParamInfo::AccessEnum::O },
+            },
         },
     };
     
     CreateNodeResponse create_resp = ApiRegistry<GraphEngineApi>::Get().template Call<CreateNodeRequest, CreateNodeResponse>("createNode", create_req);
-    ASSERT_TRUE(create_resp.node.has_value());
-    EXPECT_EQ(absl::StrCat(*create_resp.node), "(n#1:s2GhcWpBLP, slots:$out,$in:seed, fn:/fn/points-on-curve)");
+    ASSERT_TRUE(create_resp.nodeInfo.has_value());
+    EXPECT_EQ(absl::StrCat(*create_resp.nodeInfo), "(n#1:s2GhcWpBLP; fn:/fn/geom/translate-x; ins:p,dx; outs:fp)");
 
     create_resp = ApiRegistry<GraphEngineApi>::Get().template Call<CreateNodeRequest, CreateNodeResponse>("createNode", create_req);
-    ASSERT_TRUE(create_resp.node.has_value());
-    EXPECT_EQ(absl::StrCat(*create_resp.node), "(n#2:ZBqg1rBrgq, slots:$out,$in:seed, fn:/fn/points-on-curve)");
+    ASSERT_TRUE(create_resp.nodeInfo.has_value());
+    EXPECT_EQ(absl::StrCat(*create_resp.nodeInfo), "(n#2:ZBqg1rBrgq; fn:/fn/geom/translate-x; ins:p,dx; outs:fp)");
 
-    data::AddEdgeEntry add_edge_1 = {
-        .node0 = "s2GhcWpBLP",
-        .slot0 = "$out",
-        .node1 = "ZBqg1rBrgq",
-        .slot1 = "$in:seed",
+    AddEdgeRequest add_edge_req1 = {
+        .sourceNode = "s2GhcWpBLP",
+        .sourceSlot = "fp",
+        .targetNode = "ZBqg1rBrgq",
+        .targetSlot = "p",
     };
-    data::AddEdgeEntry add_edge_2 = {
-        .node0 = "ZBqg1rBrgq",
-        .slot0 = "$out",
-        .node1 = "s2GhcWpBLP",
-        .slot1 = "$in:seed",
+    AddEdgeRequest add_edge_req2 = {
+        .sourceNode = "s2GhcWpBLP",
+        .sourceSlot = "fp",
+        .targetNode = "ZBqg1rBrgq",
+        .targetSlot = "p",
     };
-    AddEdgesRequest add_edges_req = {
-        .entries = { add_edge_1, add_edge_2 },
-    };
-    AddEdgesResponse edges_resp = ApiRegistry<GraphEngineApi>::Get().template Call<AddEdgesRequest, AddEdgesResponse>("addEdges", add_edges_req);
-    ASSERT_EQ(edges_resp.edges.size(), 2);
+
+    AddEdgeResponse edge_resp1 = ApiRegistry<GraphEngineApi>::Get().template Call<AddEdgeRequest, AddEdgeResponse>("addEdge", add_edge_req1);
+    ASSERT_TRUE(edge_resp1.edgeInfo.has_value());
+    EXPECT_EQ(absl::StrCat(*edge_resp1.edgeInfo), "(e#s2GhcWpBLP$fp--ZBqg1rBrgq$p: [1/fp] -> [2/p])");
+
+    AddEdgeResponse edge_resp2 = ApiRegistry<GraphEngineApi>::Get().template Call<AddEdgeRequest, AddEdgeResponse>("addEdge", add_edge_req2);
+    ASSERT_TRUE(edge_resp2.edgeInfo.has_value());
+    EXPECT_EQ(absl::StrCat(*edge_resp2.edgeInfo), "(e#s2GhcWpBLP$fp--ZBqg1rBrgq$p: [1/fp] -> [2/p])");
+
 
     GraphDataResponse graph = ApiRegistry<GraphEngineApi>::Get().template Call<VoidType, GraphDataResponse>("getGraph", kVoid);
-    ASSERT_EQ(graph.nodes.size(), 2);
-    ASSERT_EQ(graph.edges.size(), 2);
-    ASSERT_EQ(graph.slots.size(), 4);
-    // EXPECT_EQ(absl::StrCat(graph.slots), "{(out-slot#1 @ n#1, s2GhcWpBLP$out/float), (in-slot#2 @ n#1, s2GhcWpBLP$in:seed/int), (out-slot#3 @ n#2, ZBqg1rBrgq$out/float), (in-slot#4 @ n#2, ZBqg1rBrgq$in:seed/int)}");
-    LOG(INFO) << "Graph nodes: " << absl::StrCat(graph.nodes);
-    LOG(INFO) << "Graph edges: " << absl::StrCat(graph.edges);
-    LOG(INFO) << "Graph slots: " << absl::StrCat(graph.slots);
+    ASSERT_EQ(graph.nodeInfos.size(), 2);
+    ASSERT_EQ(graph.edgeInfos.size(), 2);
+    ASSERT_EQ(graph.slotInfos.size(), 6);
+    LOG(INFO) << "Graph nodes: " << absl::StrCat(graph.nodeInfos);
+    LOG(INFO) << "Graph edges: " << absl::StrCat(graph.edgeInfos);
+    LOG(INFO) << "Graph slots: " << absl::StrCat(graph.slotInfos);
 
-    data::NodeAndEdgeIds node_n_edge_ids = {
-        .node_ids = {1},
-        .edge_ids = {},
+    DeleteElementsRequest deleteReq1 = {
+        .nodeIds = {"ZBqg1rBrgq"},
+        .edgeIds = {},
     };
-    node_n_edge_ids = ApiRegistry<GraphEngineApi>::Get().template Call<data::NodeAndEdgeIds, data::NodeAndEdgeIds>("deleteElements", node_n_edge_ids);
-    ASSERT_THAT(node_n_edge_ids.node_ids, ElementsAre(1));
-    ASSERT_THAT(node_n_edge_ids.edge_ids, ElementsAre());
+    DeleteElementsResponse deleteResp = ApiRegistry<GraphEngineApi>::Get().template Call<DeleteElementsRequest, DeleteElementsResponse>("deleteElements", deleteReq1);
+    EXPECT_THAT(deleteResp.nodeIds, ElementsAre("ZBqg1rBrgq"));
+    EXPECT_THAT(deleteResp.edgeIds, ElementsAre());
 
 }
 

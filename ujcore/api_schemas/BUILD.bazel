@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 
 package(
     default_visibility = ["//:__subpackages__"],
@@ -8,9 +8,9 @@ cc_library(
     name = "GraphEngineApi",
     hdrs = ["GraphEngineApi.hpp"],
     deps = [
-        "//ujcore/data/graph",
-        "//ujcore/data/graph:client",
-        "//ujcore/data/graph:function_info",
+        "//ujcore/data:plinfo",
+        "//ujcore/data:plstate",
+        "//ujcore/data/functions",
         "@cppschema//:apispec",
         "@cppschema//:js_converter",
     ],

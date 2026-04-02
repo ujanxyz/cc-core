@@ -5,67 +5,70 @@
 #include <vector>
 
 #include "cppschema/apispec/api_framework.h"
-#include "cppschema/common/enum_registry.h"
 #include "cppschema/common/types.h"
 #include "cppschema/common/visitor_macros.h"
-#include "ujcore/data/graph/ClientMessages.h"
-#include "ujcore/data/graph/FunctionInfo.h"
-#include "ujcore/data/graph/GraphEdge.h"
-#include "ujcore/data/graph/GraphNode.h"
-#include "ujcore/data/graph/GraphSlot.h"
+#include "ujcore/data/functions/FunctionInfo.h"
+#include "ujcore/data/plinfo.h"
+#include "ujcore/data/plstate.h"
 
 namespace ujcore {
 
 struct GraphEngineApi {
+    // API: getGraph
+    struct GraphDataResponse {
+        std::vector<plinfo::NodeInfo> nodeInfos;
+        std::vector<plinfo::EdgeInfo> edgeInfos;
+        std::vector<plinfo::SlotInfo> slotInfos;
+        DEFINE_STRUCT_VISITOR_FUNCTION(nodeInfos, edgeInfos, slotInfos);
+    };
+
+    // API: createNode
     struct CreateNodeRequest {
         data::FunctionInfo func;
         DEFINE_STRUCT_VISITOR_FUNCTION(func);
     };
-
-    struct ElementStats {
-        int32_t num_nodes {0};
-        int32_t num_edges {0};
-        int32_t num_slots {0};
-        DEFINE_STRUCT_VISITOR_FUNCTION(num_nodes, num_edges, num_slots);
-    };
-
-    struct GraphDataResponse {
-        std::vector<data::GraphNode> nodes;
-        std::vector<data::GraphEdge> edges;
-        std::vector<data::GraphSlot> slots;
-        DEFINE_STRUCT_VISITOR_FUNCTION(slots, nodes, edges);
-    };
-
     struct CreateNodeResponse {
-        std::optional<data::GraphNode> node;
-        std::vector<data::GraphEdge> edges;
-        DEFINE_STRUCT_VISITOR_FUNCTION(node, edges);
+        std::optional<plinfo::NodeInfo> nodeInfo;
+        std::optional<plstate::NodeState> nodeState;
+        DEFINE_STRUCT_VISITOR_FUNCTION(nodeInfo, nodeState);
     };
 
-    struct AddEdgesRequest {
-        std::vector<data::AddEdgeEntry> entries;
-        DEFINE_STRUCT_VISITOR_FUNCTION(entries);
+    // API: addEdge
+    struct AddEdgeRequest {
+        std::string sourceNode;
+        std::string sourceSlot;
+        std::string targetNode;
+        std::string targetSlot;
+        DEFINE_STRUCT_VISITOR_FUNCTION(sourceNode, sourceSlot, targetNode, targetSlot);
+    };
+    struct AddEdgeResponse {
+        std::optional<plinfo::EdgeInfo> edgeInfo;
+        DEFINE_STRUCT_VISITOR_FUNCTION(edgeInfo);
     };
 
-    struct AddEdgesResponse {
-        std::vector<data::GraphEdge> edges;
-        DEFINE_STRUCT_VISITOR_FUNCTION(edges);
+    // API: deleteElements
+    struct DeleteElementsRequest {
+        std::vector<std::string> nodeIds;
+        std::vector<std::string> edgeIds;
+        DEFINE_STRUCT_VISITOR_FUNCTION(nodeIds, edgeIds);
+    };
+    struct DeleteElementsResponse {
+        std::vector<std::string> nodeIds;
+        std::vector<std::string> edgeIds;
+        std::vector<std::string> topoOrder;
+        DEFINE_STRUCT_VISITOR_FUNCTION(nodeIds, edgeIds, topoOrder);
     };
 
     cppschema::ApiStub<VoidType, GraphDataResponse> getGraph;
-
     cppschema::ApiStub<CreateNodeRequest, CreateNodeResponse> createNode;
-
-    cppschema::ApiStub<AddEdgesRequest, AddEdgesResponse> addEdges;
-
-    cppschema::ApiStub<data::NodeAndEdgeIds, data::NodeAndEdgeIds> deleteElements;
-
-    cppschema::ApiStub<VoidType, data::NodeAndEdgeIds> clearGraph;
+    cppschema::ApiStub<AddEdgeRequest, AddEdgeResponse> addEdge;
+    cppschema::ApiStub<DeleteElementsRequest, DeleteElementsResponse> deleteElements;
+    cppschema::ApiStub<VoidType, VoidType> clearGraph;
 
     DEFINE_API_VISITOR_FUNCTION(
         getGraph,
         createNode,
-        addEdges,
+        addEdge,
         deleteElements,
         clearGraph);
 };

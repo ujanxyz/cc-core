@@ -9,26 +9,14 @@ cc_library(
     srcs = ["GraphEngineImpl.cpp"],
     hdrs = ["GraphEngineImpl.h"],
     deps =[
-        ":GraphOpsContext",
         ":GraphState",
-        "//ujcore/data/graph",
-        "//ujcore/data/graph:client",
+        ":TopoSortOrder",
+        "//ujcore/data:plinfo",
         "//ujcore/data/functions",
-        "//ujcore/data/utils",
         "//ujcore/graph:IdGenerator",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
-    ],
-)
-
-cc_library(
-    name = "GraphOpsContext",
-    srcs = ["GraphOpsContext.cpp"],
-    hdrs = ["GraphOpsContext.h"],
-    deps =[
-        ":GraphState",
-        ":IdGenerator",
-        ":TopoSortOrder",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -38,7 +26,8 @@ cc_library(
         "GraphState.hpp",
     ],
     deps = [
-        "//ujcore/data/graph",
+        "//ujcore/data:plinfo",
+        "//ujcore/data:plstate",
         "@abseil-cpp//absl/strings",
     ],
 )
