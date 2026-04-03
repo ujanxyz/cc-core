@@ -1,59 +1,15 @@
-#include "ujcore/api_schemas/GraphEngineApi.hpp"
-
-#include <set>
+#include "ujcore/api_schemas/GraphEngineApi.h"
 
 #include "absl/log/log.h"
 #include "cppschema/backend/api_backend_bridge.h"
-#include "nlohmann/json.hpp"
+#include "ujcore/data/plinfo.h"
 #include "ujcore/graph/GraphEngineImpl.h"
 
 namespace ujcore {
 
-using json = ::nlohmann::json;
-
-static std::string EngineResultTojson(const EngineOpResult& result) {
-    json j = {};
-    if (!result.nodes_added.empty()) {
-        auto arr = json::array();
-        for (const auto& e : result.nodes_added) {
-            arr.push_back(e);
-        }
-        j["nodesAdded"] = arr;
-    }
-    if (!result.edges_added.empty()) {
-        auto arr = json::array();
-        for (const auto& e : result.edges_added) {
-            arr.push_back(e);
-        }
-        j["edgesAdded"] = arr;
-    }
-    if (!result.nodes_deleted.empty()) {
-        auto arr = json::array();
-        for (const auto& e : result.nodes_deleted) {
-            arr.push_back(e);
-        }
-        j["nodesDeleted"] = arr;
-    }
-    if (!result.edges_deleted.empty()) {
-        auto arr = json::array();
-        for (const auto& e : result.edges_deleted) {
-            arr.push_back(e);
-        }
-        j["edgesDeleted"] = arr;
-    }
-    if (result.topo_order.has_value()) {
-        auto arr = json::array();
-        for (const auto& e : result.topo_order.value()) {
-            arr.push_back(e);
-        }
-        j["topoOrder"] = arr;
-    }
-    return j.dump();
-}
-
 class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
  public:
-    using GraphDataResponse = GraphEngineApi::GraphDataResponse;
+    using GetGraphResponse = GraphEngineApi::GetGraphResponse;
     using CreateNodeRequest = GraphEngineApi::CreateNodeRequest;
     using AddEdgeRequest = GraphEngineApi::AddEdgeRequest;
     using AddEdgeResponse = GraphEngineApi::AddEdgeResponse;
@@ -65,8 +21,8 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
 
     GraphEngineApiBackend() {}
 
-    GraphDataResponse getGraphImpl(const VoidType& kvoid) {
-        return GraphDataResponse {
+    GetGraphResponse getGraphImpl(const VoidType& kvoid) {
+        return GetGraphResponse {
             .nodeInfos = engine_.GetNodeInfos(),
             .edgeInfos = engine_.GetEdgeInfos(),
             .slotInfos = engine_.GetSlotInfos(),
@@ -74,13 +30,26 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
     }
 
     CreateNodeResponse createNodeImpl(const CreateNodeRequest& request) {
-        auto nodeInfo = engine_.AddNode(request.func);
-        if (!nodeInfo.ok()) {
-            LOG(FATAL) << "Insert node error: " << nodeInfo.status();
+        auto nodeInfoOr = engine_.AddNode(request.func);
+        if (!nodeInfoOr.ok()) {
+            LOG(FATAL) << "Insert node error: " << nodeInfoOr.status();
         }
-        return CreateNodeResponse {
-            .nodeInfo = std::move(nodeInfo).value(),
+        plinfo::NodeInfo nodeInfo = std::move(nodeInfoOr).value();
+
+        auto lookupNodeSlots = [this, nodeId = nodeInfo.id](const std::vector<std::string>& slotNames, std::vector<plinfo::SlotInfo>& result) -> void {
+            auto slotsOr = engine_.LookupNodeSlots(nodeId, slotNames);
+            if (!slotsOr.ok()) {
+                LOG(FATAL) << "Lookup node slots error: " << slotsOr.status();
+            }
+            result = std::move(slotsOr).value();
         };
+
+        CreateNodeResponse response;
+        lookupNodeSlots(nodeInfo.ins, response.ins);
+        lookupNodeSlots(nodeInfo.outs, response.outs);
+        lookupNodeSlots(nodeInfo.inouts, response.inouts);
+        response.nodeInfo = std::move(nodeInfo);
+        return response;
     }
 
     AddEdgeResponse addEdgeImpl(const AddEdgeRequest& request) {

@@ -71,6 +71,6 @@ struct EdgeInfo {
     DEFINE_STRUCT_VISITOR_FUNCTION(id, catid, node0, node1, slot0, slot1);
 };
 
-using SlotId = std::tuple<uint32_t /* parent node id */, std::string /* slot name */>;
+using SlotId = std::pair<uint32_t /* parent node id */, std::string /* slot name */>;
 
 }  // namespace ujcore::plinfo

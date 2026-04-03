@@ -6,7 +6,7 @@ package(
 
 cc_library(
     name = "GraphEngineApi",
-    hdrs = ["GraphEngineApi.hpp"],
+    hdrs = ["GraphEngineApi.h"],
     deps = [
         "//ujcore/data:plinfo",
         "//ujcore/data:plstate",

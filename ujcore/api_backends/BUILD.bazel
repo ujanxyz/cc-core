@@ -12,7 +12,6 @@ cc_library(
         "//ujcore/graph:GraphEngineImpl",
         "@abseil-cpp//absl/log",
         "@cppschema//:backend_bridge",
-        "@nlohmann_json//:json",
     ],
     alwayslink = 1,  # Forced linking, even if not directly referenced
 )

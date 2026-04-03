@@ -15,7 +15,7 @@ namespace ujcore {
 
 struct GraphEngineApi {
     // API: getGraph
-    struct GraphDataResponse {
+    struct GetGraphResponse {
         std::vector<plinfo::NodeInfo> nodeInfos;
         std::vector<plinfo::EdgeInfo> edgeInfos;
         std::vector<plinfo::SlotInfo> slotInfos;
@@ -30,7 +30,11 @@ struct GraphEngineApi {
     struct CreateNodeResponse {
         std::optional<plinfo::NodeInfo> nodeInfo;
         std::optional<plstate::NodeState> nodeState;
-        DEFINE_STRUCT_VISITOR_FUNCTION(nodeInfo, nodeState);
+
+        std::vector<plinfo::SlotInfo> ins;
+        std::vector<plinfo::SlotInfo> outs;
+        std::vector<plinfo::SlotInfo> inouts;
+        DEFINE_STRUCT_VISITOR_FUNCTION(nodeInfo, nodeState, ins, outs, inouts);
     };
 
     // API: addEdge
@@ -59,7 +63,7 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(nodeIds, edgeIds, topoOrder);
     };
 
-    cppschema::ApiStub<VoidType, GraphDataResponse> getGraph;
+    cppschema::ApiStub<VoidType, GetGraphResponse> getGraph;
     cppschema::ApiStub<CreateNodeRequest, CreateNodeResponse> createNode;
     cppschema::ApiStub<AddEdgeRequest, AddEdgeResponse> addEdge;
     cppschema::ApiStub<DeleteElementsRequest, DeleteElementsResponse> deleteElements;

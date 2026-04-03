@@ -38,6 +38,10 @@ class GraphEngineImpl {
   std::vector<plinfo::EdgeInfo> GetEdgeInfos() const;
   std::vector<plinfo::SlotInfo> GetSlotInfos() const;
 
+  // Upon success returns the same number of SlotInfos
+  absl::StatusOr<std::vector<plinfo::SlotInfo>> LookupNodeSlots(uint32_t nodeId, const std::vector<std::string>& slotNames) const;
+
+
   absl::StatusOr<plinfo::NodeInfo> AddNode(const data::FunctionInfo& fn_info);
   absl::StatusOr<plinfo::EdgeInfo> AddEdge(
       const std::string& sourceNode, const std::string& sourceSlot,

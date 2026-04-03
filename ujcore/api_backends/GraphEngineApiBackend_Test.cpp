@@ -7,7 +7,7 @@
 #include "cppschema/common/types.h"
 #include "gtest/gtest.h"
 #include "gmock/gmock-matchers.h"
-#include "ujcore/api_schemas/GraphEngineApi.hpp"
+#include "ujcore/api_schemas/GraphEngineApi.h"
 #include "ujcore/data/functions/FunctionInfo.h"
 #include "ujcore/data/AbslStringifies.h"
 
@@ -19,15 +19,13 @@ using ::testing::ElementsAre;
 using ::ujcore::data::FunctionInfo;
 using ::ujcore::data::ParamInfo;
 
-using GraphDataResponse = GraphEngineApi::GraphDataResponse;
+using GetGraphResponse = GraphEngineApi::GetGraphResponse;
 using CreateNodeRequest = GraphEngineApi::CreateNodeRequest;
+using CreateNodeResponse = GraphEngineApi::CreateNodeResponse;
 using AddEdgeRequest = GraphEngineApi::AddEdgeRequest;
 using AddEdgeResponse = GraphEngineApi::AddEdgeResponse;
 using DeleteElementsRequest = GraphEngineApi::DeleteElementsRequest;
 using DeleteElementsResponse = GraphEngineApi::DeleteElementsResponse;
-
-using CreateNodeResponse = GraphEngineApi::CreateNodeResponse;
-
 
 TEST(GraphEngineApiBackendTest, Basic) {
     VoidType kVoid;
@@ -74,7 +72,7 @@ TEST(GraphEngineApiBackendTest, Basic) {
     EXPECT_EQ(absl::StrCat(*edge_resp2.edgeInfo), "(e#s2GhcWpBLP$fp--ZBqg1rBrgq$p: [1/fp] -> [2/p])");
 
 
-    GraphDataResponse graph = ApiRegistry<GraphEngineApi>::Get().template Call<VoidType, GraphDataResponse>("getGraph", kVoid);
+    GetGraphResponse graph = ApiRegistry<GraphEngineApi>::Get().template Call<VoidType, GetGraphResponse>("getGraph", kVoid);
     ASSERT_EQ(graph.nodeInfos.size(), 2);
     ASSERT_EQ(graph.edgeInfos.size(), 2);
     ASSERT_EQ(graph.slotInfos.size(), 6);

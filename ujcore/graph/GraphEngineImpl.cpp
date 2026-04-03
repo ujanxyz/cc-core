@@ -96,6 +96,23 @@ std::vector<plinfo::SlotInfo> GraphEngineImpl::GetSlotInfos() const {
   return GetValuesFromInfosMap(state_.slot_infos);
 }
 
+absl::StatusOr<std::vector<plinfo::SlotInfo>> GraphEngineImpl::LookupNodeSlots(
+    const uint32_t nodeId,
+    const std::vector<std::string>& slotNames) const {
+  std::vector<plinfo::SlotInfo> infos;
+  infos.reserve(slotNames.size());
+  for (const std::string& slotName : slotNames) {
+    const plinfo::SlotId slotId = {nodeId, slotName}; 
+    const auto iter = state_.slot_infos.find(slotId);
+    if (iter != state_.slot_infos.end()) {
+      infos.push_back(iter->second);
+    } else {
+      return absl::InternalError(absl::StrCat("Slot id lookup failed: (", slotId.first, ", ", slotId.second, ")"));
+    }
+  }
+  return infos;
+}
+
 absl::StatusOr<plinfo::NodeInfo> GraphEngineImpl::AddNode(const data::FunctionInfo& fn_info) {
   const uint32_t rawId = ++(state_.idgen_state.next_node_id);
   const std::string alphanumId = GenSplitMix64OfLength(rawId + config_.nodeid_splitmix_offset, 10);
