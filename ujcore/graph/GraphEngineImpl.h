@@ -8,7 +8,8 @@
 #include "absl/status/statusor.h"
 #include "ujcore/data/functions/FunctionInfo.h"
 #include "ujcore/data/plinfo.h"
-#include "ujcore/graph/GraphState.hpp"
+#include "ujcore/data/plstate.h"
+#include "ujcore/graph/GraphState.h"
 #include "ujcore/graph/TopoSortOrder.h"
 
 namespace ujcore {
@@ -39,16 +40,20 @@ class GraphEngineImpl {
   std::vector<plinfo::SlotInfo> GetSlotInfos() const;
 
   // Upon success returns the same number of SlotInfos
-  absl::StatusOr<std::vector<plinfo::SlotInfo>> LookupNodeSlots(uint32_t nodeId, const std::vector<std::string>& slotNames) const;
+  absl::StatusOr<std::vector<plinfo::SlotInfo>> LookupNodeSlotInfos(uint32_t nodeId, const std::vector<std::string>& slotNames) const;
+
+  // Upon success returns the same number of SlotStates
+  absl::StatusOr<std::vector<std::pair<plinfo::SlotId, plstate::SlotState>>>
+  LookupSlotStates(const std::vector<plinfo::SlotId>& slotIds);
 
 
   absl::StatusOr<plinfo::NodeInfo> AddNode(const data::FunctionInfo& fn_info);
   absl::StatusOr<plinfo::EdgeInfo> AddEdge(
-      const std::string& sourceNode, const std::string& sourceSlot,
-      const std::string& targetNode, const std::string& targetSlot);
+      const uint32_t sourceNode, const std::string& sourceSlot,
+      const uint32_t targetNode, const std::string& targetSlot);
 
-  absl::StatusOr<std::vector<std::string> /* edge ids */>
-  DeleteElements(const std::vector<std::string>& nodeIds, const std::vector<std::string>& edgeIds);
+  absl::StatusOr<std::tuple<std::vector<uint32_t> /* edge ids */, std::set<plinfo::SlotId> /* deleted slot ids*/, std::set<plinfo::SlotId> /* affected slot ids */ >>
+  DeleteElements(const std::vector<uint32_t>& nodeIds, const std::vector<uint32_t>& edgeIds);
 
   // Returns the total number of deleted nodes + edges.
   absl::StatusOr<int> ClearGraph();

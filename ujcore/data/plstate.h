@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <set>
 #include <string>
 
 #include "cppschema/common/enum_registry.h"
@@ -12,14 +13,17 @@
 namespace ujcore::plstate {
 
 struct SlotState {
-    // Generation id to keep track of changes.
-    int32_t gen {0LL};
-
     // TODO: Store data about:
     // Manual entry.
-    // Edge connections.
 
-    DEFINE_STRUCT_VISITOR_FUNCTION(gen);
+    // Edge connections: Raw ids of edges.
+    std::set<uint32_t> inEdges;
+    std::set<uint32_t> outEdges;
+
+    // Generation id to keep track of changes.
+    int32_t genId {0LL};
+
+    DEFINE_STRUCT_VISITOR_FUNCTION(inEdges, outEdges, genId);
 };
 
 struct NodeState {
@@ -29,17 +33,17 @@ struct NodeState {
         ERR,
     };
 
-    // Generation id to keep track of changes.
-    int32_t gen {0LL};
-
     // UI visible label.
     // TODO: Enable u8 string in JS conversion. Use std::u8string
     std::string label;
 
     ConnectedState connected = ConnectedState::WAIT;
 
+    // Generation id to keep track of changes.
+    int32_t genId {0LL};
+
     DEFINE_ENUM_CONVERSION_FUNCTION(ConnectedState, WAIT, RUN, ERR);
-    DEFINE_STRUCT_VISITOR_FUNCTION(gen, label, connected);
+    DEFINE_STRUCT_VISITOR_FUNCTION(label, connected, genId);
 };
 
 }  // namespace ujcore::plstate

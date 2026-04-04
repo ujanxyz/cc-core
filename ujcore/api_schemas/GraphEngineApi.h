@@ -31,42 +31,64 @@ struct GraphEngineApi {
         std::optional<plinfo::NodeInfo> nodeInfo;
         std::optional<plstate::NodeState> nodeState;
 
-        std::vector<plinfo::SlotInfo> ins;
-        std::vector<plinfo::SlotInfo> outs;
-        std::vector<plinfo::SlotInfo> inouts;
-        DEFINE_STRUCT_VISITOR_FUNCTION(nodeInfo, nodeState, ins, outs, inouts);
+        std::vector<plinfo::SlotInfo> inInfos;
+        std::vector<plinfo::SlotInfo> outInfos;
+        std::vector<plinfo::SlotInfo> inoutInfos;
+
+        std::vector<plstate::SlotState> inStates;
+        std::vector<plstate::SlotState> outStates;
+        std::vector<plstate::SlotState> inoutStates;
+
+        DEFINE_STRUCT_VISITOR_FUNCTION(nodeInfo, nodeState, inInfos, outInfos, inoutInfos, inStates, outStates, inoutStates);
     };
 
     // API: addEdge
     struct AddEdgeRequest {
-        std::string sourceNode;
+        uint32_t sourceNode;
         std::string sourceSlot;
-        std::string targetNode;
+        uint32_t targetNode;
         std::string targetSlot;
         DEFINE_STRUCT_VISITOR_FUNCTION(sourceNode, sourceSlot, targetNode, targetSlot);
     };
     struct AddEdgeResponse {
         std::optional<plinfo::EdgeInfo> edgeInfo;
-        DEFINE_STRUCT_VISITOR_FUNCTION(edgeInfo);
+        std::optional<plstate::SlotState> sourceState;
+        std::optional<plstate::SlotState> targetState;
+        DEFINE_STRUCT_VISITOR_FUNCTION(edgeInfo, sourceState, targetState);
     };
 
     // API: deleteElements
     struct DeleteElementsRequest {
-        std::vector<std::string> nodeIds;
-        std::vector<std::string> edgeIds;
+        std::vector<uint32_t> nodeIds;
+        std::vector<uint32_t> edgeIds;
+        std::vector<plinfo::SlotId> deletedSlotIds;
+        std::vector<plinfo::SlotId> affectedSlotIds;
         DEFINE_STRUCT_VISITOR_FUNCTION(nodeIds, edgeIds);
     };
     struct DeleteElementsResponse {
-        std::vector<std::string> nodeIds;
-        std::vector<std::string> edgeIds;
+        std::vector<uint32_t> nodeIds;
+        std::vector<uint32_t> edgeIds;
+        std::vector<plinfo::SlotId> deletedSlotIds;
+        std::vector<plinfo::SlotId> affectedSlotIds;
         std::vector<std::string> topoOrder;
-        DEFINE_STRUCT_VISITOR_FUNCTION(nodeIds, edgeIds, topoOrder);
+        DEFINE_STRUCT_VISITOR_FUNCTION(nodeIds, edgeIds, deletedSlotIds, affectedSlotIds, topoOrder);
+    };
+
+    // API: getSlotStates
+   struct GetSlotStatesRequest {
+        std::vector<plinfo::SlotId> slotIds;
+        DEFINE_STRUCT_VISITOR_FUNCTION(slotIds);
+    };
+    struct GetSlotStatesResponse {
+        std::vector<std::pair<plinfo::SlotId, plstate::SlotState>> slotStates;
+        DEFINE_STRUCT_VISITOR_FUNCTION(slotStates);
     };
 
     cppschema::ApiStub<VoidType, GetGraphResponse> getGraph;
     cppschema::ApiStub<CreateNodeRequest, CreateNodeResponse> createNode;
     cppschema::ApiStub<AddEdgeRequest, AddEdgeResponse> addEdge;
     cppschema::ApiStub<DeleteElementsRequest, DeleteElementsResponse> deleteElements;
+    cppschema::ApiStub<GetSlotStatesRequest, GetSlotStatesResponse> getSlotStates;        
     cppschema::ApiStub<VoidType, VoidType> clearGraph;
 
     DEFINE_API_VISITOR_FUNCTION(
@@ -74,6 +96,7 @@ struct GraphEngineApi {
         createNode,
         addEdge,
         deleteElements,
+        getSlotStates,
         clearGraph);
 };
 

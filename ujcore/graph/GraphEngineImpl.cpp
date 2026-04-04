@@ -1,13 +1,40 @@
 #include "ujcore/graph/GraphEngineImpl.h"
 
 #include "absl/strings/str_cat.h"
+#include "ujcore/data/AbslStringifies.h"
 #include "ujcore/data/functions/FunctionInfo.h"
 #include "ujcore/data/plinfo.h"
 #include "ujcore/data/plstate.h"
 #include "ujcore/graph/IdGenerator.h"
+#include "ujcore/utils/status_macros.h"
 
 namespace ujcore {
 namespace {
+
+absl::StatusOr<std::tuple<const plinfo::NodeInfo*, plstate::NodeState*>> InternalGetNodeInfoAndState(GraphState& state, const uint32_t nodeId) {
+  const auto infoIter = state.node_infos.find(nodeId);
+  if (infoIter == state.node_infos.end()) {
+    return absl::InternalError(absl::StrCat("Node info lookup failed: ", nodeId));
+  }
+  const auto stateIter = state.node_states.find(nodeId);
+  if (stateIter == state.node_states.end()) {
+    return absl::InternalError(absl::StrCat("Node state lookup failed: ", nodeId));
+  }
+  return std::make_tuple(&infoIter->second, &stateIter->second);
+}
+
+absl::StatusOr<std::tuple<const plinfo::SlotInfo*, plstate::SlotState*>> InternalGetSlotInfoAndState(GraphState& state, const uint32_t nodeId, const std::string& slotName) {
+  const plinfo::SlotId slotId = {nodeId, slotName};
+  const auto infoIter = state.slot_infos.find(slotId);
+  if (infoIter == state.slot_infos.end()) {
+    return absl::InternalError(absl::StrCat("Slot info lookup failed: ", slotId));
+  }
+  const auto stateIter = state.slot_states.find(slotId);
+  if (stateIter == state.slot_states.end()) {
+    return absl::InternalError(absl::StrCat("Slot state lookup failed: ", slotId));
+  }
+  return std::make_tuple(&infoIter->second, &stateIter->second);
+}
 
 std::vector<plinfo::SlotInfo> AddNodeSlotsInternal(const data::FunctionInfo& fnInfo, const uint32_t rawId, plinfo::NodeInfo& nodeInfo) {
     using ::ujcore::plinfo::SlotInfo;
@@ -40,15 +67,24 @@ std::vector<plinfo::SlotInfo> AddNodeSlotsInternal(const data::FunctionInfo& fnI
 }
 
 // Returns the set of actually deleted node ids.
-void DeleteNodesGetOrphanEdges(const std::vector<std::string>& nodeIds, GraphState& state, std::set<uint32_t>& orphanEdges) {
-  for (const std::string& nodeId : nodeIds) {
-    const uint32_t rawNodeId = state.node_id_lookup[nodeId];
-    if (rawNodeId < 0) continue;
-    state.node_id_lookup.erase(nodeId);
+// Returns the deleted slotids.
+std::set<plinfo::SlotId> InternalDeleteNodesGetOrphanEdges(const std::vector<uint32_t>& nodeIds, GraphState& state, std::set<uint32_t>& orphanEdges) {
+  std::set<uint32_t> nodeIdsToDelete;
+  for (const uint32_t rawNodeId : nodeIds) {
+    nodeIdsToDelete.insert(rawNodeId);
     state.node_infos.erase(rawNodeId);
     state.node_states.erase(rawNodeId);
     // TODO: Put the node's adjacent edges in to 'orphan_edges'.
   }
+
+  // Delete the slots of the deleted nodes.
+  std::set<plinfo::SlotId> slotIdsToDelete;
+  for (const auto& [slotId, slotInfo] : state.slot_infos) {
+    if (nodeIdsToDelete.contains(slotId.parent)) {
+      slotIdsToDelete.insert(slotId);
+    }
+  }
+  return slotIdsToDelete;
 }
 
 // Returns the collection of actually deleted edges.
@@ -57,7 +93,6 @@ std::map<uint32_t, plinfo::EdgeInfo> DeleteEdges(const std::set<uint32_t>& edgeI
   for (const uint32_t rawEdgeId : edgeIds) {
     const auto iter = state.edge_infos.find(rawEdgeId);
     if (iter == state.edge_infos.end()) continue;
-      state.edge_id_lookup.erase(iter->second.catid);
       // TODO: Queue any post-deletion action following the deletion of this edge.
       deletedEdges[rawEdgeId] = std::move(iter->second);
       state.edge_infos.erase(iter);
@@ -77,6 +112,7 @@ std::vector<T> GetValuesFromInfosMap(const std::map<K, T>& infosMap) {
 
 }  // namespace
 
+//--------------------------------------------------------------------------------------------------
 GraphEngineImpl::GraphEngineImpl() {
   config_ = {
     .nodeid_splitmix_offset = 0ULL,
@@ -96,7 +132,7 @@ std::vector<plinfo::SlotInfo> GraphEngineImpl::GetSlotInfos() const {
   return GetValuesFromInfosMap(state_.slot_infos);
 }
 
-absl::StatusOr<std::vector<plinfo::SlotInfo>> GraphEngineImpl::LookupNodeSlots(
+absl::StatusOr<std::vector<plinfo::SlotInfo>> GraphEngineImpl::LookupNodeSlotInfos(
     const uint32_t nodeId,
     const std::vector<std::string>& slotNames) const {
   std::vector<plinfo::SlotInfo> infos;
@@ -107,17 +143,32 @@ absl::StatusOr<std::vector<plinfo::SlotInfo>> GraphEngineImpl::LookupNodeSlots(
     if (iter != state_.slot_infos.end()) {
       infos.push_back(iter->second);
     } else {
-      return absl::InternalError(absl::StrCat("Slot id lookup failed: (", slotId.first, ", ", slotId.second, ")"));
+      return absl::InternalError(absl::StrCat("Slot info lookup failed: ", slotId));
     }
   }
   return infos;
+}
+
+absl::StatusOr<std::vector<std::pair<plinfo::SlotId, plstate::SlotState>>>
+GraphEngineImpl::LookupSlotStates(const std::vector<plinfo::SlotId>& slotIds) {
+  std::vector<std::pair<plinfo::SlotId, plstate::SlotState>> slotStates;
+  slotStates.reserve(slotIds.size());
+  for (const plinfo::SlotId& slotId : slotIds) {
+    const auto iter = state_.slot_states.find(slotId);
+    if (iter != state_.slot_states.end()) {
+      slotStates.emplace_back(slotId, iter->second);
+    } else {
+      return absl::InternalError(absl::StrCat("Slot state lookup failed: ", slotId));
+    }
+  }
+  return slotStates;
 }
 
 absl::StatusOr<plinfo::NodeInfo> GraphEngineImpl::AddNode(const data::FunctionInfo& fn_info) {
   const uint32_t rawId = ++(state_.idgen_state.next_node_id);
   const std::string alphanumId = GenSplitMix64OfLength(rawId + config_.nodeid_splitmix_offset, 10);
   plinfo::NodeInfo nodeInfo = {
-    .id = rawId,
+    .rawId = rawId,
     .alnumid = alphanumId,
     .fnuri = fn_info.uri,
   };
@@ -126,64 +177,98 @@ absl::StatusOr<plinfo::NodeInfo> GraphEngineImpl::AddNode(const data::FunctionIn
   for (auto&& slot : std::move(slots)) {
     const plinfo::SlotId slot_id = {rawId, slot.name};
     state_.slot_states[slot_id] = plstate::SlotState {
-      .gen = 0,
+      .genId = 0,
     };
     state_.slot_infos[slot_id] = std::move(slot);
   }
   state_.node_infos[rawId] = nodeInfo;
-  state_.node_id_lookup[alphanumId] = rawId;
+  state_.node_states[rawId] = plstate::NodeState {
+    .genId = 0,
+  };
   return nodeInfo;
 }
 
-absl::StatusOr<plinfo::EdgeInfo> GraphEngineImpl::AddEdge(const std::string& sourceNode, const std::string& sourceSlot, const std::string& targetNode, const std::string& targetSlot) {
-  const uint32_t node0_id = state_.node_id_lookup[sourceNode];
-  const uint32_t node1_id = state_.node_id_lookup[targetNode];
-  if (node0_id == 0 || node1_id == 0) {
-      return absl::InternalError("Node id lookup failed: " + sourceNode + ", " + targetNode);
-  }
-  const auto& slots = state_.slot_infos;
+absl::StatusOr<plinfo::EdgeInfo> GraphEngineImpl::AddEdge(const uint32_t sourceNode, const std::string& sourceSlot, const uint32_t targetNode, const std::string& targetSlot) {
+  const plinfo::NodeInfo* nodeInfo0 = nullptr;
+  const plinfo::NodeInfo* nodeInfo1 = nullptr;
+  plstate::NodeState* nodeState0 = nullptr;
+  plstate::NodeState* nodeState1 = nullptr;
+  // This quits if any node info or state lookup fails, which means the edge cannot be added.
+  ASSIGN_OR_RETURN(std::tie(nodeInfo0, nodeState0), InternalGetNodeInfoAndState(state_, sourceNode));
+  ASSIGN_OR_RETURN(std::tie(nodeInfo1, nodeState1), InternalGetNodeInfoAndState(state_, targetNode));
 
-  auto iter0 = slots.find(std::make_tuple(node0_id, sourceSlot));
-  if (iter0 == slots.end()) {
-      return absl::InternalError(absl::StrCat("Slot lookup failed: ", sourceSlot, " in ", sourceNode));
-  }
+  const plinfo::SlotInfo* slotInfo0 = nullptr;
+  const plinfo::SlotInfo* slotInfo1 = nullptr;
+  plstate::SlotState* slotState0 = nullptr;
+  plstate::SlotState* slotState1 = nullptr;
 
-  auto iter1 = slots.find(std::make_tuple(node1_id, targetSlot));
-  if (iter1 == slots.end()) {
-      return absl::InternalError(absl::StrCat("Slot lookup failed: ", targetSlot, " in ", targetNode));
+  // This quits if any slot info or state lookup fails, which means the edge cannot be added.
+  ASSIGN_OR_RETURN(std::tie(slotInfo0, slotState0), InternalGetSlotInfoAndState(state_, sourceNode, sourceSlot));
+  ASSIGN_OR_RETURN(std::tie(slotInfo1, slotState1), InternalGetSlotInfoAndState(state_, targetNode, targetSlot));
+
+  if (!slotState1->inEdges.empty()) {
+    return absl::InternalError("Target slot already has an edge");
   }
 
   const uint32_t rawId = static_cast<uint32_t>(++state_.idgen_state.next_edge_id);
-  const std::string catid = absl::StrCat(sourceNode, "$", sourceSlot, "--", targetNode, "$", targetSlot);
+  const std::string catid = absl::StrCat(nodeInfo0->alnumid, "$", sourceSlot, "--", nodeInfo1->alnumid, "$", targetSlot);
   const auto newEdge = plinfo::EdgeInfo {
     .id = rawId,
     .catid = catid,
-    .node0 = node0_id,
-    .node1 = node1_id,
+    .node0 = sourceNode,
+    .node1 = targetNode,
     .slot0 = sourceSlot,
     .slot1 = targetSlot,
   };
-  state_.edge_id_lookup[catid] = rawId;
   state_.edge_infos[rawId] = newEdge;
+
+  slotState0->outEdges.insert(rawId);
+  slotState1->inEdges.insert(rawId);
   return newEdge;
 }
 
-absl::StatusOr<std::vector<std::string> /* edge ids */>
-GraphEngineImpl::DeleteElements(const std::vector<std::string>& nodeIds, const std::vector<std::string>& edgeIds) {
-    std::set<uint32_t> uniqueEdgeIds;
-  DeleteNodesGetOrphanEdges(nodeIds, state_, uniqueEdgeIds);
-
-  for (const std::string& edgeId : edgeIds) {
-    const uint32_t rawEdgeId = state_.edge_id_lookup[edgeId];
-    if (rawEdgeId > 0) uniqueEdgeIds.insert(rawEdgeId);
+absl::StatusOr<std::tuple<std::vector<uint32_t> /* edge ids */, std::set<plinfo::SlotId> /* deleted slot ids*/, std::set<plinfo::SlotId> /* affected slot ids */ >>
+GraphEngineImpl::DeleteElements(const std::vector<uint32_t>& nodeIds, const std::vector<uint32_t>& edgeIds) {
+  // The affected edges re the ones explicitly deleted or implicitly deleted due to node deletion.
+  // We need to collect them together to properly update the states of their adjacent slots.
+  std::set<uint32_t> affectedEdgeIds;
+  std::set<plinfo::SlotId> slotIdsToDelete = InternalDeleteNodesGetOrphanEdges(nodeIds, state_, affectedEdgeIds);
+  for (const uint32_t edgeId : edgeIds) {
+    affectedEdgeIds.insert(edgeId);
   }
 
-  std::map<uint32_t, plinfo::EdgeInfo> deletedEdges = DeleteEdges(uniqueEdgeIds, state_);
-  std::vector<std::string> deletedEdgeIds;
-  for (const auto& [id, edge] : deletedEdges) {
-    deletedEdgeIds.push_back(edge.catid);
+  // First delete the slots of the deleted nodes, so their state won't be updated when we update
+  // the states of the adjacent slots of the deleted edges.
+  for (const plinfo::SlotId& slotId : slotIdsToDelete) {
+    state_.slot_infos.erase(slotId);
+    state_.slot_states.erase(slotId);
   }
-  return deletedEdgeIds;
+
+  // Delete the edges and collect the slot ids of those deleted edges.
+  std::set<plinfo::SlotId> affectedSlotIds;
+  std::vector<uint32_t> deletedEdgeIds;
+  std::map<uint32_t, plinfo::EdgeInfo> deletedEdges = DeleteEdges(affectedEdgeIds, state_);
+  for (const auto& [edgeId, edgeInfo] : deletedEdges) {
+    // Update the incoming and outgoing edge ids at the source and target slot of the deleted edge.
+    const plinfo::SlotId sourceSlotId = {edgeInfo.node0, edgeInfo.slot0};
+    const plinfo::SlotId targetSlotId = {edgeInfo.node1, edgeInfo.slot1};
+
+    auto sourceSlotStateIter = state_.slot_states.find(sourceSlotId);
+    if (sourceSlotStateIter != state_.slot_states.end()) {
+      sourceSlotStateIter->second.outEdges.erase(edgeId);
+      affectedSlotIds.insert(sourceSlotId);
+    }
+
+    auto targetSlotStateIter = state_.slot_states.find(targetSlotId);
+    if (targetSlotStateIter != state_.slot_states.end()) {
+      targetSlotStateIter->second.inEdges.erase(edgeId);
+      affectedSlotIds.insert(targetSlotId);
+    }
+
+    deletedEdgeIds.push_back(edgeInfo.id);
+  }
+
+  return std::make_tuple(deletedEdgeIds, slotIdsToDelete, affectedSlotIds);
 }
 
 absl::StatusOr<int> GraphEngineImpl::ClearGraph() {
@@ -211,8 +296,6 @@ absl::StatusOr<int> GraphEngineImpl::ClearGraph() {
 
   state_.node_states.clear();
   state_.slot_states.clear();
-  state_.node_id_lookup.clear();
-  state_.edge_id_lookup.clear();
   return deletedNodeIds.size() + deletedEdgeIds.size();
 }
 

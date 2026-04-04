@@ -4,6 +4,7 @@
 #include "cppschema/backend/api_backend_bridge.h"
 #include "ujcore/data/plinfo.h"
 #include "ujcore/graph/GraphEngineImpl.h"
+#include "ujcore/utils/status_macros.h"
 
 namespace ujcore {
 
@@ -13,9 +14,10 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
     using CreateNodeRequest = GraphEngineApi::CreateNodeRequest;
     using AddEdgeRequest = GraphEngineApi::AddEdgeRequest;
     using AddEdgeResponse = GraphEngineApi::AddEdgeResponse;
-
     using DeleteElementsRequest = GraphEngineApi::DeleteElementsRequest;
     using DeleteElementsResponse = GraphEngineApi::DeleteElementsResponse;
+    using GetSlotStatesRequest = GraphEngineApi::GetSlotStatesRequest;
+    using GetSlotStatesResponse = GraphEngineApi::GetSlotStatesResponse;
 
     using CreateNodeResponse = GraphEngineApi::CreateNodeResponse;
 
@@ -36,41 +38,93 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         }
         plinfo::NodeInfo nodeInfo = std::move(nodeInfoOr).value();
 
-        auto lookupNodeSlots = [this, nodeId = nodeInfo.id](const std::vector<std::string>& slotNames, std::vector<plinfo::SlotInfo>& result) -> void {
-            auto slotsOr = engine_.LookupNodeSlots(nodeId, slotNames);
+        auto addNodeSlotInfos = [this, nodeRawId = nodeInfo.rawId](const std::vector<std::string>& slotNames, std::vector<plinfo::SlotInfo>& result) -> void {
+            auto slotsOr = engine_.LookupNodeSlotInfos(nodeRawId, slotNames);
             if (!slotsOr.ok()) {
                 LOG(FATAL) << "Lookup node slots error: " << slotsOr.status();
             }
             result = std::move(slotsOr).value();
         };
+        auto addNodeSlotStates = [this, nodeRawId = nodeInfo.rawId](const std::vector<std::string>& slotNames, std::vector<plstate::SlotState>& result) -> void {
+            std::vector<plinfo::SlotId> slotIds;
+            slotIds.reserve(slotNames.size());
+            for (const std::string& slotName : slotNames) {
+                slotIds.push_back(plinfo::SlotId{nodeRawId, slotName});
+            }
+            auto slotStatesOr = engine_.LookupSlotStates(slotIds);
+            if (!slotStatesOr.ok()) {
+                LOG(FATAL) << "Lookup node slots error: " << slotStatesOr.status();
+            }
+            std::vector<plstate::SlotState> states;
+            states.reserve(slotStatesOr->size());
+            for (auto& [_, slotState] : std::move(slotStatesOr).value()) {
+                states.push_back(std::move(slotState));
+            }
+            result = std::move(states);
+        };
 
         CreateNodeResponse response;
-        lookupNodeSlots(nodeInfo.ins, response.ins);
-        lookupNodeSlots(nodeInfo.outs, response.outs);
-        lookupNodeSlots(nodeInfo.inouts, response.inouts);
+        addNodeSlotInfos(nodeInfo.ins, response.inInfos);
+        addNodeSlotInfos(nodeInfo.outs, response.outInfos);
+        addNodeSlotInfos(nodeInfo.inouts, response.inoutInfos);
+        addNodeSlotStates(nodeInfo.ins, response.inStates);
+        addNodeSlotStates(nodeInfo.outs, response.outStates);
+        addNodeSlotStates(nodeInfo.inouts, response.inoutStates);
         response.nodeInfo = std::move(nodeInfo);
         return response;
     }
 
     AddEdgeResponse addEdgeImpl(const AddEdgeRequest& request) {
-        auto edgeInfo = engine_.AddEdge(request.sourceNode, request.sourceSlot, request.targetNode, request.targetSlot);
-        if (!edgeInfo.ok()) {
-            LOG(FATAL) << "Add edge error: " << edgeInfo.status();
+        auto edgeInfoOr = engine_.AddEdge(request.sourceNode, request.sourceSlot, request.targetNode, request.targetSlot);
+        if (!edgeInfoOr.ok()) {
+            LOG(FATAL) << "Add edge error: " << edgeInfoOr.status();
         }
+        const plinfo::EdgeInfo edgeInfo = std::move(edgeInfoOr).value();
+
+        auto state0Or = engine_.LookupSlotStates({ plinfo::SlotId{edgeInfo.node0, edgeInfo.slot0} });
+        auto state1Or = engine_.LookupSlotStates({ plinfo::SlotId{edgeInfo.node1, edgeInfo.slot1} });
+        if (!state0Or.ok() || state0Or->size() != 1) {
+            LOG(FATAL) << "Lookup source slot state error: " << state0Or.status();
+        }
+        if (!state1Or.ok() || state1Or->size() != 1) {
+            LOG(FATAL) << "Lookup target slot state error: " << state1Or.status();
+        }
+
+        plstate::SlotState& sourceState = std::move(state0Or).value()[0].second;
+        plstate::SlotState& targetState = std::move(state1Or).value()[0].second;
+        sourceState.outEdges.insert(edgeInfo.id);
+        targetState.inEdges.insert(edgeInfo.id);
+
         return AddEdgeResponse {
-            .edgeInfo = std::move(edgeInfo).value(),
+            .edgeInfo = std::move(edgeInfo),
+            .sourceState = sourceState,
+            .targetState = targetState,
         };
     }
 
     DeleteElementsResponse deleteElementsImpl(const DeleteElementsRequest& request) {
-        auto deletedIdsOr = engine_.DeleteElements(request.nodeIds, request.edgeIds);
-        if (!deletedIdsOr.ok()) {
-            LOG(FATAL) << "Delete elements error: " << deletedIdsOr.status();
+        auto deleteResultOr = engine_.DeleteElements(request.nodeIds, request.edgeIds);
+        if (!deleteResultOr.ok()) {
+            LOG(FATAL) << "Delete elements error: " << deleteResultOr.status();
         }
-        const std::vector<std::string> deletedEdgeIds = std::move(deletedIdsOr).value();
+
+        std::vector<uint32_t> deletedEdgeIds;
+        std::set<plinfo::SlotId> deletedSlotIds;
+        std::set<plinfo::SlotId> affectedSlotIds;
+        std::tie(deletedEdgeIds, deletedSlotIds, affectedSlotIds) = std::move(deleteResultOr).value();
+
         return DeleteElementsResponse {
             .nodeIds = request.nodeIds,
             .edgeIds = std::move(deletedEdgeIds),
+            .deletedSlotIds = std::vector<plinfo::SlotId>(deletedSlotIds.begin(), deletedSlotIds.end()),
+            .affectedSlotIds = std::vector<plinfo::SlotId>(affectedSlotIds.begin(), affectedSlotIds.end()),
+        };
+    }
+
+    GetSlotStatesResponse getSlotStatesImpl(const GetSlotStatesRequest& request) {
+        auto statesOr = engine_.LookupSlotStates(request.slotIds);
+        return GetSlotStatesResponse {
+            .slotStates = std::move(statesOr).value(),
         };
     }
 
@@ -93,6 +147,7 @@ static __attribute__((constructor)) void RegisterPipelineApiBackend() {
         .createNode = &GraphEngineApiBackend::createNodeImpl,
         .addEdge = &GraphEngineApiBackend::addEdgeImpl,
         .deleteElements = &GraphEngineApiBackend::deleteElementsImpl,
+        .getSlotStates = &GraphEngineApiBackend::getSlotStatesImpl,
         .clearGraph = &GraphEngineApiBackend::clearGraphImpl,
     };
     cppschema::RegisterBackend<GraphEngineApi, GraphEngineApiBackend>(impl, ptrs);

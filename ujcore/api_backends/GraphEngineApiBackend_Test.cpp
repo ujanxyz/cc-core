@@ -51,25 +51,25 @@ TEST(GraphEngineApiBackendTest, Basic) {
     EXPECT_EQ(absl::StrCat(*create_resp.nodeInfo), "(n#2:ZBqg1rBrgq; fn:/fn/geom/translate-x; ins:p,dx; outs:fp)");
 
     AddEdgeRequest add_edge_req1 = {
-        .sourceNode = "s2GhcWpBLP",
+        .sourceNode = 2,
         .sourceSlot = "fp",
-        .targetNode = "ZBqg1rBrgq",
+        .targetNode = 1,
         .targetSlot = "p",
     };
     AddEdgeRequest add_edge_req2 = {
-        .sourceNode = "s2GhcWpBLP",
+        .sourceNode = 1,
         .sourceSlot = "fp",
-        .targetNode = "ZBqg1rBrgq",
+        .targetNode = 2,
         .targetSlot = "p",
     };
 
     AddEdgeResponse edge_resp1 = ApiRegistry<GraphEngineApi>::Get().template Call<AddEdgeRequest, AddEdgeResponse>("addEdge", add_edge_req1);
     ASSERT_TRUE(edge_resp1.edgeInfo.has_value());
-    EXPECT_EQ(absl::StrCat(*edge_resp1.edgeInfo), "(e#s2GhcWpBLP$fp--ZBqg1rBrgq$p: [1/fp] -> [2/p])");
+    EXPECT_EQ(absl::StrCat(*edge_resp1.edgeInfo), "(ZBqg1rBrgq$fp--s2GhcWpBLP$p: [2/fp] -> [1/p])");
 
     AddEdgeResponse edge_resp2 = ApiRegistry<GraphEngineApi>::Get().template Call<AddEdgeRequest, AddEdgeResponse>("addEdge", add_edge_req2);
     ASSERT_TRUE(edge_resp2.edgeInfo.has_value());
-    EXPECT_EQ(absl::StrCat(*edge_resp2.edgeInfo), "(e#s2GhcWpBLP$fp--ZBqg1rBrgq$p: [1/fp] -> [2/p])");
+    EXPECT_EQ(absl::StrCat(*edge_resp2.edgeInfo), "(s2GhcWpBLP$fp--ZBqg1rBrgq$p: [1/fp] -> [2/p])");
 
 
     GetGraphResponse graph = ApiRegistry<GraphEngineApi>::Get().template Call<VoidType, GetGraphResponse>("getGraph", kVoid);
@@ -81,11 +81,11 @@ TEST(GraphEngineApiBackendTest, Basic) {
     LOG(INFO) << "Graph slots: " << absl::StrCat(graph.slotInfos);
 
     DeleteElementsRequest deleteReq1 = {
-        .nodeIds = {"ZBqg1rBrgq"},
+        .nodeIds = {1},
         .edgeIds = {},
     };
     DeleteElementsResponse deleteResp = ApiRegistry<GraphEngineApi>::Get().template Call<DeleteElementsRequest, DeleteElementsResponse>("deleteElements", deleteReq1);
-    EXPECT_THAT(deleteResp.nodeIds, ElementsAre("ZBqg1rBrgq"));
+    EXPECT_THAT(deleteResp.nodeIds, ElementsAre(1));
     EXPECT_THAT(deleteResp.edgeIds, ElementsAre());
 
 }

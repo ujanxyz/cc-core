@@ -31,6 +31,11 @@ std::string CollectionToStr(const T& collection) {
 namespace plinfo {
 
 template <typename Sink>
+void AbslStringify(Sink& sink, const plinfo::SlotId& slotId) {
+    absl::Format(&sink, "%d.%s", slotId.parent, slotId.name);
+}
+
+template <typename Sink>
 void AbslStringify(Sink& sink, const plinfo::NodeInfo& node) {
     std::string slotsStr;
     if (node.ins.size() > 0) {
@@ -42,12 +47,12 @@ void AbslStringify(Sink& sink, const plinfo::NodeInfo& node) {
     if (node.inouts.size() > 0) {
       absl::StrAppend(&slotsStr, "; inouts:", absl::StrJoin(node.inouts, ","));
     }
-    absl::Format(&sink, "(n#%d:%s; fn:%s%s)", node.id, node.alnumid, node.fnuri, slotsStr);
+    absl::Format(&sink, "(n#%d:%s; fn:%s%s)", node.rawId, node.alnumid, node.fnuri, slotsStr);
 }
 
 template <typename Sink>
 void AbslStringify(Sink& sink, const plinfo::EdgeInfo& edge) {
-    absl::Format(&sink, "(e#%s: [%d/%s] -> [%d/%s])", edge.catid, edge.node0, edge.slot0, edge.node1, edge.slot1);
+    absl::Format(&sink, "(%s: [%d/%s] -> [%d/%s])", edge.catid, edge.node0, edge.slot0, edge.node1, edge.slot1);
 }
 
 template <typename Sink>

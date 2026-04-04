@@ -29,11 +29,6 @@ struct GraphState {
     // States (Dynamic data):
     std::map<plinfo::SlotId, plstate::SlotState> slot_states;
     std::map<uint32_t /* node id (raw) */, plstate::NodeState> node_states;
-
-    // Maps alpha-num / concatenated ids to raw numeric id.
-    std::unordered_map<std::string, uint32_t> node_id_lookup;
-    std::unordered_map<std::string /* catid */, uint32_t> edge_id_lookup;
-
 };
 
 }  // namespace ujcore

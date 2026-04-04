@@ -38,7 +38,7 @@ struct SlotInfo {
 
 struct NodeInfo {
     // Valid node id should start from 1, i.e. always > 0.
-    uint32_t id {0};
+    uint32_t rawId {0};
 
     // Base-62 alphanumeric id, e.g. "ZBqg1rBrgq". This is directly translated from the int64 id.
     std::string alnumid;
@@ -51,7 +51,7 @@ struct NodeInfo {
     std::vector<std::string> outs;
     std::vector<std::string> inouts;
 
-    DEFINE_STRUCT_VISITOR_FUNCTION(id, alnumid, fnuri, ins, outs, inouts);
+    DEFINE_STRUCT_VISITOR_FUNCTION(rawId, alnumid, fnuri, ins, outs, inouts);
 };
 
 struct EdgeInfo {
@@ -71,6 +71,23 @@ struct EdgeInfo {
     DEFINE_STRUCT_VISITOR_FUNCTION(id, catid, node0, node1, slot0, slot1);
 };
 
-using SlotId = std::pair<uint32_t /* parent node id */, std::string /* slot name */>;
+struct SlotId {
+    uint32_t parent;  // parent node id
+    std::string name;  // slot name
+
+    DEFINE_STRUCT_VISITOR_FUNCTION(parent, name);
+};
 
 }  // namespace ujcore::plinfo
+
+template <>
+struct std::less<ujcore::plinfo::SlotId>
+{
+    bool operator()(const ujcore::plinfo::SlotId &a, const ujcore::plinfo::SlotId &b) const {
+        if (a.parent != b.parent) {
+            return a.parent < b.parent;
+        } else {
+            return a.name.compare(b.name) < 0;
+        }
+    }
+};

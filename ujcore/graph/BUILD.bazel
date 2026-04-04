@@ -11,9 +11,11 @@ cc_library(
     deps =[
         ":GraphState",
         ":TopoSortOrder",
+        "//ujcore/data:AbslStringifies",
         "//ujcore/data:plinfo",
         "//ujcore/data/functions",
         "//ujcore/graph:IdGenerator",
+        "//ujcore/utils:status_macros",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
@@ -22,9 +24,7 @@ cc_library(
 
 cc_library(
     name = "GraphState",
-    hdrs = [
-        "GraphState.hpp",
-    ],
+    hdrs = ["GraphState.h"],
     deps = [
         "//ujcore/data:plinfo",
         "//ujcore/data:plstate",
