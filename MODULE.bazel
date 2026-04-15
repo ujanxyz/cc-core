@@ -14,12 +14,16 @@ bazel_dep(name = "nlohmann_json", version = "3.12.0.bcr.1")
 bazel_dep(name = "emsdk", version = "4.0.17")
 
 
-bazel_dep(name = "cppschema", version = "1.3.0")
+bazel_dep(name = "cppschema", version = "1.3.1")
 git_override(
     module_name = "cppschema",
     remote = "https://github.com/avikdev/cpp-schema.git",
-    commit = "88556066d22f16c44991c14b8cf0de8a62e8284b",
+    commit = "bc67505b1b1dad2e5dbefa64c35096f3ba9a0bd2",
 )
+# local_path_override(
+#     module_name = "cppschema",
+#     path = "../../github-avikdev/cpp-schema",
+# )
 
 # hedron_compile_commands is not published to the BCR so you must use an override
 bazel_dep(name = "hedron_compile_commands", dev_dependency = True)

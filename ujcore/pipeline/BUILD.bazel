@@ -1,0 +1,40 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "PipelineFnNode",
+    srcs = ["PipelineFnNode.cpp"],
+    hdrs = ["PipelineFnNode.h"],
+    deps = [
+        "//ujcore/function:AttributeData",
+        "//ujcore/function:FunctionBase",
+        "//ujcore/function:FunctionContext",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:check",
+    ],
+)
+
+cc_library(
+    name = "PipelineRunner",
+    srcs = ["PipelineRunner.cpp"],
+    hdrs = ["PipelineRunner.h"],
+    deps = [
+        ":PipelineFnNode",
+        "//ujcore/data:GraphState",
+        "//ujcore/function:AttributeData",
+        "//ujcore/function:FunctionRegistry",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:check",
+    ],
+)
+
+cc_test(
+    name = "PipelineRunner_Test",
+    srcs = ["PipelineRunner_Test.cpp"],
+    deps = [
+        ":PipelineRunner",
+        "//ujcore/function:TestFunction",
+        "@googletest//:gtest_main",
+    ],
+)

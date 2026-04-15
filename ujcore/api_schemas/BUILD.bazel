@@ -10,7 +10,7 @@ cc_library(
     deps = [
         "//ujcore/data:plinfo",
         "//ujcore/data:plstate",
-        "//ujcore/data/functions",
+        "//ujcore/data:FunctionInfo",
         "@cppschema//:apispec",
         "@cppschema//:js_converter",
     ],

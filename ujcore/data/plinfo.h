@@ -5,6 +5,7 @@
 
 #include "cppschema/common/enum_registry.h"
 #include "cppschema/common/visitor_macros.h"
+#include "ujcore/data/IdTypes.h"
 
 // plinfo: Pipeline info
 // Fixed information for pipeline elements, node, edge, slot etc.
@@ -22,9 +23,9 @@ struct SlotInfo {
     };
   
     // Id (raw) of the parent node.
-    uint32_t parent;
+    NodeId parent;
 
-    // The slot name. E.g. "in:x", "out:fx"
+    // The slot name. E.g. "x", "fx"
     std::string name;
 
     // The data type of what flows through the slot.
@@ -38,7 +39,7 @@ struct SlotInfo {
 
 struct NodeInfo {
     // Valid node id should start from 1, i.e. always > 0.
-    uint32_t rawId {0};
+    NodeId rawId {0};
 
     // Base-62 alphanumeric id, e.g. "ZBqg1rBrgq". This is directly translated from the int64 id.
     std::string alnumid;
@@ -55,15 +56,15 @@ struct NodeInfo {
 };
 
 struct EdgeInfo {
-    // Valid node id should start from 1, i.e. always > 0.
-    uint32_t id {0};
+    // Valid node id should start from 1, i.e. always id > 0.
+    EdgeId id {0};
 
     // Concatenated id from parts.
     std::string catid;
 
     // Id (raw) of the source and target node.
-    uint32_t node0 {0};
-    uint32_t node1 {0};
+    NodeId node0 {0};
+    NodeId node1 {0};
 
     std::string slot0;
     std::string slot1;
@@ -71,23 +72,4 @@ struct EdgeInfo {
     DEFINE_STRUCT_VISITOR_FUNCTION(id, catid, node0, node1, slot0, slot1);
 };
 
-struct SlotId {
-    uint32_t parent;  // parent node id
-    std::string name;  // slot name
-
-    DEFINE_STRUCT_VISITOR_FUNCTION(parent, name);
-};
-
 }  // namespace ujcore::plinfo
-
-template <>
-struct std::less<ujcore::plinfo::SlotId>
-{
-    bool operator()(const ujcore::plinfo::SlotId &a, const ujcore::plinfo::SlotId &b) const {
-        if (a.parent != b.parent) {
-            return a.parent < b.parent;
-        } else {
-            return a.name.compare(b.name) < 0;
-        }
-    }
-};

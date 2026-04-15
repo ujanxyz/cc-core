@@ -1,17 +1,19 @@
-#include "ujcore/graph/GraphEngineImpl.h"
+#include "ujcore/graph/GraphBuilder.h"
 
 #include "absl/strings/str_cat.h"
-#include "ujcore/data/AbslStringifies.h"
-#include "ujcore/data/functions/FunctionInfo.h"
+#include "ujcore/data/AbslStringifies.h"  // IWYU pragma: keep
 #include "ujcore/data/plinfo.h"
 #include "ujcore/data/plstate.h"
+#include "ujcore/function/FunctionRegistry.h"
 #include "ujcore/graph/IdGenerator.h"
 #include "ujcore/utils/status_macros.h"
+#include "ujcore/function/FunctionSpec.h"
 
 namespace ujcore {
 namespace {
 
-absl::StatusOr<std::tuple<const plinfo::NodeInfo*, plstate::NodeState*>> InternalGetNodeInfoAndState(GraphState& state, const uint32_t nodeId) {
+absl::StatusOr<std::tuple<const plinfo::NodeInfo*, plstate::NodeState*>>
+InternalGetNodeInfoAndState(GraphState& state, const NodeId nodeId) {
   const auto infoIter = state.node_infos.find(nodeId);
   if (infoIter == state.node_infos.end()) {
     return absl::InternalError(absl::StrCat("Node info lookup failed: ", nodeId));
@@ -23,8 +25,9 @@ absl::StatusOr<std::tuple<const plinfo::NodeInfo*, plstate::NodeState*>> Interna
   return std::make_tuple(&infoIter->second, &stateIter->second);
 }
 
-absl::StatusOr<std::tuple<const plinfo::SlotInfo*, plstate::SlotState*>> InternalGetSlotInfoAndState(GraphState& state, const uint32_t nodeId, const std::string& slotName) {
-  const plinfo::SlotId slotId = {nodeId, slotName};
+absl::StatusOr<std::tuple<const plinfo::SlotInfo*, plstate::SlotState*>>
+InternalGetSlotInfoAndState(GraphState& state, const NodeId nodeId, const std::string& slotName) {
+  const SlotId slotId = {nodeId, slotName};
   const auto infoIter = state.slot_infos.find(slotId);
   if (infoIter == state.slot_infos.end()) {
     return absl::InternalError(absl::StrCat("Slot info lookup failed: ", slotId));
@@ -36,26 +39,27 @@ absl::StatusOr<std::tuple<const plinfo::SlotInfo*, plstate::SlotState*>> Interna
   return std::make_tuple(&infoIter->second, &stateIter->second);
 }
 
-std::vector<plinfo::SlotInfo> AddNodeSlotsInternal(const data::FunctionInfo& fnInfo, const uint32_t rawId, plinfo::NodeInfo& nodeInfo) {
+std::vector<plinfo::SlotInfo>
+AddNodeSlotsInternal(const FunctionSpec& fnInfo, const NodeId nodeId, plinfo::NodeInfo& nodeInfo) {
     using ::ujcore::plinfo::SlotInfo;
     std::vector<SlotInfo> slots;
     slots.reserve(fnInfo.params.size());
-    for (const data::ParamInfo& param : fnInfo.params) {
+    for (const FuncParamSpec& param : fnInfo.params) {
       SlotInfo slot = {
-        .parent = rawId,
+        .parent = nodeId,
         .name = param.name,
         .dtype = param.dtype,
       };
       switch (param.access) {
-        case data::ParamInfo::AccessEnum::I:
+        case FuncParamSpec::AccessEnum::kInput:
           slot.access = SlotInfo::AccessEnum::I;
           nodeInfo.ins.push_back(param.name);
           break;
-        case data::ParamInfo::AccessEnum::O:
+        case FuncParamSpec::AccessEnum::kOutput:
           slot.access = SlotInfo::AccessEnum::O;
           nodeInfo.outs.push_back(param.name);
           break;
-        case data::ParamInfo::AccessEnum::M:
+        case FuncParamSpec::AccessEnum::kInOut:
           slot.access = SlotInfo::AccessEnum::M;
           nodeInfo.inouts.push_back(param.name);
           break;
@@ -68,19 +72,19 @@ std::vector<plinfo::SlotInfo> AddNodeSlotsInternal(const data::FunctionInfo& fnI
 
 // Returns the set of actually deleted node ids.
 // Returns the deleted slotids.
-std::set<plinfo::SlotId> InternalDeleteNodesGetOrphanEdges(const std::vector<uint32_t>& nodeIds, GraphState& state, std::set<uint32_t>& orphanEdges) {
-  std::set<uint32_t> nodeIdsToDelete;
-  for (const uint32_t rawNodeId : nodeIds) {
-    nodeIdsToDelete.insert(rawNodeId);
-    state.node_infos.erase(rawNodeId);
-    state.node_states.erase(rawNodeId);
+std::set<SlotId> InternalDeleteNodesGetOrphanEdges(const std::vector<NodeId>& nodeIds, GraphState& state, std::set<EdgeId>& orphanEdges) {
+  std::set<NodeId> nodeIdsToDelete;
+  for (const NodeId nodeId : nodeIds) {
+    nodeIdsToDelete.insert(nodeId);
+    state.node_infos.erase(nodeId);
+    state.node_states.erase(nodeId);
     // TODO: Put the node's adjacent edges in to 'orphan_edges'.
   }
 
   // Delete the slots of the deleted nodes.
-  std::set<plinfo::SlotId> slotIdsToDelete;
+  std::set<SlotId> slotIdsToDelete;
   for (const auto& [slotId, slotInfo] : state.slot_infos) {
-    if (nodeIdsToDelete.contains(slotId.parent)) {
+    if (nodeIdsToDelete.contains(NodeId(slotId.parent))) {
       slotIdsToDelete.insert(slotId);
     }
   }
@@ -88,13 +92,13 @@ std::set<plinfo::SlotId> InternalDeleteNodesGetOrphanEdges(const std::vector<uin
 }
 
 // Returns the collection of actually deleted edges.
-std::map<uint32_t, plinfo::EdgeInfo> DeleteEdges(const std::set<uint32_t>& edgeIds, GraphState& state) {
-  std::map<uint32_t, plinfo::EdgeInfo> deletedEdges;
-  for (const uint32_t rawEdgeId : edgeIds) {
-    const auto iter = state.edge_infos.find(rawEdgeId);
+std::map<EdgeId, plinfo::EdgeInfo> InternalDeleteEdges(const std::set<EdgeId>& edgeIds, GraphState& state) {
+  std::map<EdgeId, plinfo::EdgeInfo> deletedEdges;
+  for (const EdgeId edgeId : edgeIds) {
+    const auto iter = state.edge_infos.find(edgeId);
     if (iter == state.edge_infos.end()) continue;
       // TODO: Queue any post-deletion action following the deletion of this edge.
-      deletedEdges[rawEdgeId] = std::move(iter->second);
+      deletedEdges[edgeId] = std::move(iter->second);
       state.edge_infos.erase(iter);
     }
     return deletedEdges;
@@ -113,32 +117,31 @@ std::vector<T> GetValuesFromInfosMap(const std::map<K, T>& infosMap) {
 }  // namespace
 
 //--------------------------------------------------------------------------------------------------
-GraphEngineImpl::GraphEngineImpl() {
+GraphBuilder::GraphBuilder(GraphState& state, TopoSortOrder& topoSorter): state_(state), topoSorter_(topoSorter) {
   config_ = {
     .nodeid_splitmix_offset = 0ULL,
-    .edgeid_splitmix_offset = 412234ULL,
   };
 }
 
-std::vector<plinfo::NodeInfo> GraphEngineImpl::GetNodeInfos() const {
+std::vector<plinfo::NodeInfo> GraphBuilder::GetNodeInfos() const {
   return GetValuesFromInfosMap(state_.node_infos);
 }
 
-std::vector<plinfo::EdgeInfo> GraphEngineImpl::GetEdgeInfos() const {
+std::vector<plinfo::EdgeInfo> GraphBuilder::GetEdgeInfos() const {
   return GetValuesFromInfosMap(state_.edge_infos);
 }
 
-std::vector<plinfo::SlotInfo> GraphEngineImpl::GetSlotInfos() const {
+std::vector<plinfo::SlotInfo> GraphBuilder::GetSlotInfos() const {
   return GetValuesFromInfosMap(state_.slot_infos);
 }
 
-absl::StatusOr<std::vector<plinfo::SlotInfo>> GraphEngineImpl::LookupNodeSlotInfos(
-    const uint32_t nodeId,
+absl::StatusOr<std::vector<plinfo::SlotInfo>> GraphBuilder::LookupNodeSlotInfos(
+    const NodeId nodeId,
     const std::vector<std::string>& slotNames) const {
   std::vector<plinfo::SlotInfo> infos;
   infos.reserve(slotNames.size());
   for (const std::string& slotName : slotNames) {
-    const plinfo::SlotId slotId = {nodeId, slotName}; 
+    const SlotId slotId = {nodeId, slotName}; 
     const auto iter = state_.slot_infos.find(slotId);
     if (iter != state_.slot_infos.end()) {
       infos.push_back(iter->second);
@@ -149,11 +152,11 @@ absl::StatusOr<std::vector<plinfo::SlotInfo>> GraphEngineImpl::LookupNodeSlotInf
   return infos;
 }
 
-absl::StatusOr<std::vector<std::pair<plinfo::SlotId, plstate::SlotState>>>
-GraphEngineImpl::LookupSlotStates(const std::vector<plinfo::SlotId>& slotIds) {
-  std::vector<std::pair<plinfo::SlotId, plstate::SlotState>> slotStates;
+absl::StatusOr<std::vector<std::pair<SlotId, plstate::SlotState>>>
+GraphBuilder::LookupSlotStates(const std::vector<SlotId>& slotIds) {
+  std::vector<std::pair<SlotId, plstate::SlotState>> slotStates;
   slotStates.reserve(slotIds.size());
-  for (const plinfo::SlotId& slotId : slotIds) {
+  for (const SlotId& slotId : slotIds) {
     const auto iter = state_.slot_states.find(slotId);
     if (iter != state_.slot_states.end()) {
       slotStates.emplace_back(slotId, iter->second);
@@ -164,31 +167,36 @@ GraphEngineImpl::LookupSlotStates(const std::vector<plinfo::SlotId>& slotIds) {
   return slotStates;
 }
 
-absl::StatusOr<plinfo::NodeInfo> GraphEngineImpl::AddNode(const data::FunctionInfo& fn_info) {
-  const uint32_t rawId = ++(state_.idgen_state.next_node_id);
-  const std::string alphanumId = GenSplitMix64OfLength(rawId + config_.nodeid_splitmix_offset, 10);
+absl::StatusOr<plinfo::NodeInfo> GraphBuilder::AddFuncNode(const FunctionInfo& fnInfo) {
+  auto& registry = FunctionRegistry::GetInstance();
+  std::unique_ptr<FunctionSpec> funcSpec = registry.GetSpecFromUri(fnInfo.uri);
+  if (funcSpec == nullptr) {
+    return absl::NotFoundError(absl::StrCat("Function not found: ", fnInfo.uri));
+  }
+  const NodeId nodeId (++state_.idgen_state.next_node_id);
+  const std::string alphanumId = GenSplitMix64OfLength(nodeId.value + config_.nodeid_splitmix_offset, 10);
   plinfo::NodeInfo nodeInfo = {
-    .rawId = rawId,
+    .rawId = nodeId,
     .alnumid = alphanumId,
-    .fnuri = fn_info.uri,
+    .fnuri = funcSpec->uri,
   };
-  std::vector<plinfo::SlotInfo> slots = AddNodeSlotsInternal(fn_info, rawId, nodeInfo);
-  // TODO: Add slots.
+  std::vector<plinfo::SlotInfo> slots = AddNodeSlotsInternal(*funcSpec, nodeId, nodeInfo);
   for (auto&& slot : std::move(slots)) {
-    const plinfo::SlotId slot_id = {rawId, slot.name};
+    const SlotId slot_id = {nodeId, slot.name};
     state_.slot_states[slot_id] = plstate::SlotState {
       .genId = 0,
     };
     state_.slot_infos[slot_id] = std::move(slot);
   }
-  state_.node_infos[rawId] = nodeInfo;
-  state_.node_states[rawId] = plstate::NodeState {
+  state_.node_infos[nodeId] = nodeInfo;
+  state_.node_states[nodeId] = plstate::NodeState {
     .genId = 0,
   };
+  topoSorter_.AddNode(nodeId);
   return nodeInfo;
 }
 
-absl::StatusOr<plinfo::EdgeInfo> GraphEngineImpl::AddEdge(const uint32_t sourceNode, const std::string& sourceSlot, const uint32_t targetNode, const std::string& targetSlot) {
+absl::StatusOr<plinfo::EdgeInfo> GraphBuilder::AddEdge(const NodeId sourceNode, const std::string& sourceSlot, const NodeId targetNode, const std::string& targetSlot) {
   const plinfo::NodeInfo* nodeInfo0 = nullptr;
   const plinfo::NodeInfo* nodeInfo1 = nullptr;
   plstate::NodeState* nodeState0 = nullptr;
@@ -210,48 +218,49 @@ absl::StatusOr<plinfo::EdgeInfo> GraphEngineImpl::AddEdge(const uint32_t sourceN
     return absl::InternalError("Target slot already has an edge");
   }
 
-  const uint32_t rawId = static_cast<uint32_t>(++state_.idgen_state.next_edge_id);
+  const EdgeId edgeId (++state_.idgen_state.next_edge_id);
   const std::string catid = absl::StrCat(nodeInfo0->alnumid, "$", sourceSlot, "--", nodeInfo1->alnumid, "$", targetSlot);
   const auto newEdge = plinfo::EdgeInfo {
-    .id = rawId,
+    .id = edgeId,
     .catid = catid,
     .node0 = sourceNode,
     .node1 = targetNode,
     .slot0 = sourceSlot,
     .slot1 = targetSlot,
   };
-  state_.edge_infos[rawId] = newEdge;
+  state_.edge_infos[edgeId] = newEdge;
 
-  slotState0->outEdges.insert(rawId);
-  slotState1->inEdges.insert(rawId);
+  slotState0->outEdges.insert(edgeId);
+  slotState1->inEdges.insert(edgeId);
+  topoSorter_.AddEdge(sourceNode, targetNode);
   return newEdge;
 }
 
-absl::StatusOr<std::tuple<std::vector<uint32_t> /* edge ids */, std::set<plinfo::SlotId> /* deleted slot ids*/, std::set<plinfo::SlotId> /* affected slot ids */ >>
-GraphEngineImpl::DeleteElements(const std::vector<uint32_t>& nodeIds, const std::vector<uint32_t>& edgeIds) {
+absl::StatusOr<std::tuple<std::vector<EdgeId>, std::set<SlotId> /* deleted slot ids*/, std::set<SlotId> /* affected slot ids */ >>
+GraphBuilder::DeleteElements(const std::vector<NodeId>& nodeIds, const std::vector<EdgeId>& edgeIds) {
   // The affected edges re the ones explicitly deleted or implicitly deleted due to node deletion.
   // We need to collect them together to properly update the states of their adjacent slots.
-  std::set<uint32_t> affectedEdgeIds;
-  std::set<plinfo::SlotId> slotIdsToDelete = InternalDeleteNodesGetOrphanEdges(nodeIds, state_, affectedEdgeIds);
-  for (const uint32_t edgeId : edgeIds) {
+  std::set<EdgeId> affectedEdgeIds;
+  std::set<SlotId> slotIdsToDelete = InternalDeleteNodesGetOrphanEdges(nodeIds, state_, affectedEdgeIds);
+  for (const EdgeId edgeId : edgeIds) {
     affectedEdgeIds.insert(edgeId);
   }
 
   // First delete the slots of the deleted nodes, so their state won't be updated when we update
   // the states of the adjacent slots of the deleted edges.
-  for (const plinfo::SlotId& slotId : slotIdsToDelete) {
+  for (const SlotId& slotId : slotIdsToDelete) {
     state_.slot_infos.erase(slotId);
     state_.slot_states.erase(slotId);
   }
 
   // Delete the edges and collect the slot ids of those deleted edges.
-  std::set<plinfo::SlotId> affectedSlotIds;
-  std::vector<uint32_t> deletedEdgeIds;
-  std::map<uint32_t, plinfo::EdgeInfo> deletedEdges = DeleteEdges(affectedEdgeIds, state_);
+  std::set<SlotId> affectedSlotIds;
+  std::vector<EdgeId> deletedEdgeIds;
+  std::map<EdgeId, plinfo::EdgeInfo> deletedEdges = InternalDeleteEdges(affectedEdgeIds, state_);
   for (const auto& [edgeId, edgeInfo] : deletedEdges) {
     // Update the incoming and outgoing edge ids at the source and target slot of the deleted edge.
-    const plinfo::SlotId sourceSlotId = {edgeInfo.node0, edgeInfo.slot0};
-    const plinfo::SlotId targetSlotId = {edgeInfo.node1, edgeInfo.slot1};
+    const SlotId sourceSlotId = {edgeInfo.node0, edgeInfo.slot0};
+    const SlotId targetSlotId = {edgeInfo.node1, edgeInfo.slot1};
 
     auto sourceSlotStateIter = state_.slot_states.find(sourceSlotId);
     if (sourceSlotStateIter != state_.slot_states.end()) {
@@ -266,22 +275,30 @@ GraphEngineImpl::DeleteElements(const std::vector<uint32_t>& nodeIds, const std:
     }
 
     deletedEdgeIds.push_back(edgeInfo.id);
+
+    // TODO: The edge should be deleted from topo-order if there is no more edge between the same
+    // source and target node. Check that and delete the node to node dependency.
+    // topoSorter_.RemoveEdge(edgeInfo.node0, edgeInfo.node1);
+  }
+
+  for (const NodeId nid : nodeIds) {
+    topoSorter_.RemoveNode(nid);
   }
 
   return std::make_tuple(deletedEdgeIds, slotIdsToDelete, affectedSlotIds);
 }
 
-absl::StatusOr<int> GraphEngineImpl::ClearGraph() {
-  std::vector<uint32_t> deletedNodeIds;
-  std::vector<uint32_t> deletedEdgeIds;
+absl::StatusOr<int> GraphBuilder::ClearGraph() {
+  std::vector<NodeId> deletedNodeIds;
+  std::vector<EdgeId> deletedEdgeIds;
 
   // Remove the edges and collect their ids.
   {
     decltype(state_.edge_infos) edges_map;
     edges_map.swap(state_.edge_infos);
     deletedEdgeIds.reserve(edges_map.size());
-    for (const auto& [id, _] : edges_map) {
-      deletedEdgeIds.push_back(id);
+    for (const auto& [edgeId, _] : edges_map) {
+      deletedEdgeIds.push_back(edgeId);
     }
   }
   // Remove the nodes and collect their ids.
@@ -299,11 +316,24 @@ absl::StatusOr<int> GraphEngineImpl::ClearGraph() {
   return deletedNodeIds.size() + deletedEdgeIds.size();
 }
 
-void GraphEngineImpl::AddAndResetTopoOrder(EngineOpResult& result) {
-  if (topo_sort_order_.HasDirtyBitSet()) {
-    result.topo_order = topo_sort_order_.CurrentOrder();
-    topo_sort_order_.ClearDirtyBit();
+absl::StatusOr<std::vector<FunctionInfo>>
+GraphBuilder::GetAvailableFuncInfos() const {
+  auto& registry = FunctionRegistry::GetInstance();
+  const std::vector<std::string> allUris = registry.GetAllUris();
+
+  std::vector<FunctionInfo> funcInfos;
+  funcInfos.reserve(allUris.size());
+
+  for (const auto& uri :  allUris) {
+    auto spec = registry.GetSpecFromUri(uri);
+    if (spec == nullptr) continue;
+    funcInfos.push_back(FunctionInfo {
+      .uri = uri,
+      .label = spec->label,
+      .desc = spec->desc,
+    });
   }
+  return funcInfos;
 }
 
 }  // namespace ujcore

@@ -1,0 +1,63 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "AttributeData",
+    hdrs = ["AttributeData.h"],
+    deps = [
+        ":AttributeDataType",
+    ],
+)
+
+cc_library(
+    name = "AttributeDataType",
+    hdrs = ["AttributeDataType.h"],
+)
+
+cc_library(
+    name = "FunctionBase",
+    hdrs = ["FunctionBase.h"],
+    deps = [
+        ":AttributeData",
+        ":FunctionContext",
+        ":FunctionSpec",
+    ],
+)
+
+cc_library(
+    name = "FunctionContext",
+    hdrs = ["FunctionContext.h"],
+    deps = [
+        ":AttributeData",
+    ],
+)
+
+cc_library(
+    name = "FunctionRegistry",
+    hdrs = ["FunctionRegistry.h"],
+    deps = [
+        ":FunctionBase",
+        "@abseil-cpp//absl/log",
+    ],
+)
+
+cc_library(
+    name = "FunctionSpec",
+    hdrs = ["FunctionSpec.h"],
+    deps = [
+        "@cppschema//:enum_registry",
+        "@cppschema//:visitor_macros",
+    ],
+)
+
+cc_library(
+    name = "TestFunction",
+    srcs = ["TestFunction.cpp"],
+    deps = [
+        ":FunctionRegistry",
+        ":FunctionSpec",
+        "@abseil-cpp//absl/log",
+    ],
+    alwayslink = 1,
+)

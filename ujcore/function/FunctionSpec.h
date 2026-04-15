@@ -1,24 +1,24 @@
 #pragma once
 
-#include "cppschema/common/enum_registry.h"
-#include "cppschema/common/visitor_macros.h"
-
+#include <cassert>
 #include <string>
 #include <vector>
 
-namespace ujcore::data {
+namespace ujcore {
 
-struct ParamInfo {
+struct FuncParamSpec {
   // Input params are read-only, output params are created from scratch.
   // Mutable params are both read and modified.
   enum class AccessEnum {
-    I,  // Input
-    O,  // Output
-    M,  // Mutatable
+    kInput,   // Input
+    kOutput,  // Output
+    kInOut,   // Mutatable
   };
 
   // Local name, e.g. "x", "fx".
   std::string name;
+
+  AccessEnum access = AccessEnum::kInput;
 
   // The data type. Left as free string for implementation. "[]T" denotes array of type T.
   // Common values are:
@@ -28,11 +28,6 @@ struct ParamInfo {
   // Rectangles are represented as "float4".
   // Colors are represented as "float3" (for RGB).
   std::string dtype;
-
-  AccessEnum access = AccessEnum::I;
-
-  DEFINE_ENUM_CONVERSION_FUNCTION(AccessEnum, I, O, M);
-  DEFINE_STRUCT_VISITOR_FUNCTION(name, dtype, access);
 };
 
 // // The following structs with a "..Ext" suffix in their name describe the extension fields for
@@ -99,7 +94,7 @@ struct ParamInfo {
 // };
 
 // Describes the execution function used in a node.
-struct FunctionInfo {
+struct FunctionSpec {
   // enum class ParamAccess {
   //   _,
   //   I, /* input */
@@ -118,9 +113,58 @@ struct FunctionInfo {
   std::string desc;
 
   // Input and output params.
-  std::vector<ParamInfo> params;
-
-  DEFINE_STRUCT_VISITOR_FUNCTION(uri, label, desc, params);
+  std::vector<FuncParamSpec> params;
 };
 
-}  // namespace ujcore::data
+/**
+ * A builder for creating FunctionSpec instances.
+ */
+class FunctionSpecBuilder {
+public:
+    explicit FunctionSpecBuilder(const std::string& uri) {
+        spec_ = std::make_unique<FunctionSpec>();
+        spec_->uri = uri;
+    }
+
+    FunctionSpecBuilder& WithLabel(const std::string& label) {
+        assert(!finalized_);
+        spec_->label = label;
+        return *this;
+    }
+
+    FunctionSpecBuilder& WithDesc(const std::string& desc) {
+        assert(!finalized_);
+        spec_->desc = desc;
+        return *this;
+    }
+
+    FunctionSpecBuilder& WithInputParam(const std::string& name, const std::string& dtype) {
+        assert(!finalized_);
+        spec_->params.push_back({name, FuncParamSpec::AccessEnum::kInput, dtype});
+        return *this;
+    }
+
+    FunctionSpecBuilder& WithOutParam(const std::string& name, const std::string& dtype) {
+        assert(!finalized_);
+        spec_->params.push_back({name, FuncParamSpec::AccessEnum::kOutput, dtype});
+        return *this;
+    }
+
+    FunctionSpecBuilder& WithInOutParam(const std::string& name, const std::string& dtype) {
+        assert(!finalized_);
+        spec_->params.push_back({name, FuncParamSpec::AccessEnum::kInOut, dtype});
+        return *this;
+    }
+
+    std::unique_ptr<FunctionSpec> Detach() {
+        assert(!finalized_);
+        finalized_ = true;
+        return std::move(spec_);
+    }
+
+private:
+    std::unique_ptr<FunctionSpec> spec_;
+    bool finalized_ = false;
+};
+
+}  // namespace ujcore

@@ -7,7 +7,7 @@
 #include "cppschema/apispec/api_framework.h"
 #include "cppschema/common/types.h"
 #include "cppschema/common/visitor_macros.h"
-#include "ujcore/data/functions/FunctionInfo.h"
+#include "ujcore/data/FunctionInfo.h"
 #include "ujcore/data/plinfo.h"
 #include "ujcore/data/plstate.h"
 
@@ -24,7 +24,7 @@ struct GraphEngineApi {
 
     // API: createNode
     struct CreateNodeRequest {
-        data::FunctionInfo func;
+        FunctionInfo func;
         DEFINE_STRUCT_VISITOR_FUNCTION(func);
     };
     struct CreateNodeResponse {
@@ -44,9 +44,9 @@ struct GraphEngineApi {
 
     // API: addEdge
     struct AddEdgeRequest {
-        uint32_t sourceNode;
+        NodeId sourceNode;
         std::string sourceSlot;
-        uint32_t targetNode;
+        NodeId targetNode;
         std::string targetSlot;
         DEFINE_STRUCT_VISITOR_FUNCTION(sourceNode, sourceSlot, targetNode, targetSlot);
     };
@@ -59,29 +59,35 @@ struct GraphEngineApi {
 
     // API: deleteElements
     struct DeleteElementsRequest {
-        std::vector<uint32_t> nodeIds;
-        std::vector<uint32_t> edgeIds;
-        std::vector<plinfo::SlotId> deletedSlotIds;
-        std::vector<plinfo::SlotId> affectedSlotIds;
+        std::vector<NodeId> nodeIds;
+        std::vector<EdgeId> edgeIds;
+        std::vector<SlotId> deletedSlotIds;
+        std::vector<SlotId> affectedSlotIds;
         DEFINE_STRUCT_VISITOR_FUNCTION(nodeIds, edgeIds);
     };
     struct DeleteElementsResponse {
-        std::vector<uint32_t> nodeIds;
-        std::vector<uint32_t> edgeIds;
-        std::vector<plinfo::SlotId> deletedSlotIds;
-        std::vector<plinfo::SlotId> affectedSlotIds;
+        std::vector<NodeId> nodeIds;
+        std::vector<EdgeId> edgeIds;
+        std::vector<SlotId> deletedSlotIds;
+        std::vector<SlotId> affectedSlotIds;
         std::vector<std::string> topoOrder;
         DEFINE_STRUCT_VISITOR_FUNCTION(nodeIds, edgeIds, deletedSlotIds, affectedSlotIds, topoOrder);
     };
 
     // API: getSlotStates
    struct GetSlotStatesRequest {
-        std::vector<plinfo::SlotId> slotIds;
+        std::vector<SlotId> slotIds;
         DEFINE_STRUCT_VISITOR_FUNCTION(slotIds);
     };
     struct GetSlotStatesResponse {
-        std::vector<std::pair<plinfo::SlotId, plstate::SlotState>> slotStates;
+        std::vector<std::pair<SlotId, plstate::SlotState>> slotStates;
         DEFINE_STRUCT_VISITOR_FUNCTION(slotStates);
+    };
+
+    // API: getAvailableFuncs
+    struct GetAvailableFuncsResponse {
+        std::vector<FunctionInfo> infos;
+        DEFINE_STRUCT_VISITOR_FUNCTION(infos);
     };
 
     cppschema::ApiStub<VoidType, GetGraphResponse> getGraph;
@@ -90,6 +96,7 @@ struct GraphEngineApi {
     cppschema::ApiStub<DeleteElementsRequest, DeleteElementsResponse> deleteElements;
     cppschema::ApiStub<GetSlotStatesRequest, GetSlotStatesResponse> getSlotStates;        
     cppschema::ApiStub<VoidType, VoidType> clearGraph;
+    cppschema::ApiStub<VoidType, GetAvailableFuncsResponse> getAvailableFuncs;
 
     DEFINE_API_VISITOR_FUNCTION(
         getGraph,
@@ -97,8 +104,8 @@ struct GraphEngineApi {
         addEdge,
         deleteElements,
         getSlotStates,
-        clearGraph);
+        clearGraph,
+        getAvailableFuncs);
 };
-
 
 }  // namespace ujcore

@@ -6,6 +6,7 @@
 
 #include "cppschema/common/enum_registry.h"
 #include "cppschema/common/visitor_macros.h"
+#include "ujcore/data/IdTypes.h"
 
 // plstate: Pipeline satte
 // Varying state information for pipeline elements, node, slot etc.
@@ -14,11 +15,11 @@ namespace ujcore::plstate {
 
 struct SlotState {
     // TODO: Store data about:
-    // Manual entry.
+    // Manual  entry.
 
     // Edge connections: Raw ids of edges.
-    std::set<uint32_t> inEdges;
-    std::set<uint32_t> outEdges;
+    std::set<EdgeId> inEdges;
+    std::set<EdgeId> outEdges;
 
     // Generation id to keep track of changes.
     int32_t genId {0LL};

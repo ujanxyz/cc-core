@@ -8,16 +8,15 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock-matchers.h"
 #include "ujcore/api_schemas/GraphEngineApi.h"
-#include "ujcore/data/functions/FunctionInfo.h"
 #include "ujcore/data/AbslStringifies.h"
+#include "ujcore/data/FunctionInfo.h"
 
 namespace ujcore {
 namespace {
 
 using ::cppschema::ApiRegistry;
 using ::testing::ElementsAre;
-using ::ujcore::data::FunctionInfo;
-using ::ujcore::data::ParamInfo;
+using ::ujcore::FunctionInfo;
 
 using GetGraphResponse = GraphEngineApi::GetGraphResponse;
 using CreateNodeRequest = GraphEngineApi::CreateNodeRequest;
@@ -31,35 +30,30 @@ TEST(GraphEngineApiBackendTest, Basic) {
     VoidType kVoid;
     CreateNodeRequest create_req = {
         .func = FunctionInfo {
-            .uri = "/fn/geom/translate-x",
+            .uri = "/test/myfn",
             .label = "Translate Point X",
             .desc = "Translate a 2D point along X-axis by a given delta",
-            .params = {
-                ParamInfo { .name = "p", .dtype = "point2d", .access = ParamInfo::AccessEnum::I },
-                ParamInfo { .name = "dx", .dtype = "float", .access = ParamInfo::AccessEnum::I },
-                ParamInfo { .name = "fp", .dtype = "point2d", .access = ParamInfo::AccessEnum::O },
-            },
         },
     };
     
     CreateNodeResponse create_resp = ApiRegistry<GraphEngineApi>::Get().template Call<CreateNodeRequest, CreateNodeResponse>("createNode", create_req);
     ASSERT_TRUE(create_resp.nodeInfo.has_value());
-    EXPECT_EQ(absl::StrCat(*create_resp.nodeInfo), "(n#1:s2GhcWpBLP; fn:/fn/geom/translate-x; ins:p,dx; outs:fp)");
+    EXPECT_EQ(absl::StrCat(*create_resp.nodeInfo), "(n#1:s2GhcWpBLP; fn:/test/myfn; ins:p,dx; outs:fp)");
 
     create_resp = ApiRegistry<GraphEngineApi>::Get().template Call<CreateNodeRequest, CreateNodeResponse>("createNode", create_req);
     ASSERT_TRUE(create_resp.nodeInfo.has_value());
-    EXPECT_EQ(absl::StrCat(*create_resp.nodeInfo), "(n#2:ZBqg1rBrgq; fn:/fn/geom/translate-x; ins:p,dx; outs:fp)");
+    EXPECT_EQ(absl::StrCat(*create_resp.nodeInfo), "(n#2:ZBqg1rBrgq; fn:/test/myfn; ins:p,dx; outs:fp)");
 
     AddEdgeRequest add_edge_req1 = {
-        .sourceNode = 2,
+        .sourceNode = NodeId(2),
         .sourceSlot = "fp",
-        .targetNode = 1,
+        .targetNode = NodeId(1),
         .targetSlot = "p",
     };
     AddEdgeRequest add_edge_req2 = {
-        .sourceNode = 1,
+        .sourceNode = NodeId(1),
         .sourceSlot = "fp",
-        .targetNode = 2,
+        .targetNode = NodeId(2),
         .targetSlot = "p",
     };
 
@@ -80,12 +74,13 @@ TEST(GraphEngineApiBackendTest, Basic) {
     LOG(INFO) << "Graph edges: " << absl::StrCat(graph.edgeInfos);
     LOG(INFO) << "Graph slots: " << absl::StrCat(graph.slotInfos);
 
+
     DeleteElementsRequest deleteReq1 = {
-        .nodeIds = {1},
+        .nodeIds = {NodeId(1)},
         .edgeIds = {},
     };
     DeleteElementsResponse deleteResp = ApiRegistry<GraphEngineApi>::Get().template Call<DeleteElementsRequest, DeleteElementsResponse>("deleteElements", deleteReq1);
-    EXPECT_THAT(deleteResp.nodeIds, ElementsAre(1));
+    EXPECT_THAT(deleteResp.nodeIds, ElementsAre(NodeId(1)));
     EXPECT_THAT(deleteResp.edgeIds, ElementsAre());
 
 }

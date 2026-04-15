@@ -5,6 +5,7 @@
 
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
+#include "ujcore/data/IdTypes.h"
 #include "ujcore/data/plinfo.h"
 
 namespace ujcore {
@@ -28,12 +29,22 @@ std::string CollectionToStr(const T& collection) {
 
 }  // namespace detail
 
-namespace plinfo {
+template <typename Sink>
+void AbslStringify(Sink& sink, const NodeId& nodeId) {
+    absl::Format(&sink, "%d", nodeId.value);
+}
 
 template <typename Sink>
-void AbslStringify(Sink& sink, const plinfo::SlotId& slotId) {
-    absl::Format(&sink, "%d.%s", slotId.parent, slotId.name);
+void AbslStringify(Sink& sink, const EdgeId& edgeId) {
+    absl::Format(&sink, "%d", edgeId.value);
 }
+
+template <typename Sink>
+void AbslStringify(Sink& sink, const SlotId& slotId) {
+    absl::Format(&sink, "%d.%s", slotId.parent.value, slotId.name);
+}
+
+namespace plinfo {
 
 template <typename Sink>
 void AbslStringify(Sink& sink, const plinfo::NodeInfo& node) {
@@ -47,12 +58,13 @@ void AbslStringify(Sink& sink, const plinfo::NodeInfo& node) {
     if (node.inouts.size() > 0) {
       absl::StrAppend(&slotsStr, "; inouts:", absl::StrJoin(node.inouts, ","));
     }
-    absl::Format(&sink, "(n#%d:%s; fn:%s%s)", node.rawId, node.alnumid, node.fnuri, slotsStr);
+    absl::Format(&sink, "(n#%d:%s; fn:%s%s)", node.rawId.value, node.alnumid, node.fnuri, slotsStr);
 }
 
 template <typename Sink>
 void AbslStringify(Sink& sink, const plinfo::EdgeInfo& edge) {
-    absl::Format(&sink, "(%s: [%d/%s] -> [%d/%s])", edge.catid, edge.node0, edge.slot0, edge.node1, edge.slot1);
+    absl::Format(&sink, "(%s: [%d/%s] -> [%d/%s])",
+         edge.catid, edge.node0.value, edge.slot0, edge.node1.value, edge.slot1);
 }
 
 template <typename Sink>
@@ -69,7 +81,7 @@ void AbslStringify(Sink& sink, const plinfo::SlotInfo& slot) {
           accessStr = "M";
           break;
     }
-    absl::Format(&sink, "(%d.%s, %s %s)", slot.parent, slot.name, accessStr, slot.dtype);
+    absl::Format(&sink, "(%d.%s, %s %s)", slot.parent.value, slot.name, accessStr, slot.dtype);
 }
 
 // Array of nodes, edges, slots.

@@ -9,7 +9,9 @@ cc_library(
     srcs = ["GraphEngineApiBackend.cpp"],
     deps = [
         "//ujcore/api_schemas:GraphEngineApi",
-        "//ujcore/graph:GraphEngineImpl",
+        "//ujcore/data:GraphState",
+        "//ujcore/function:TestFunction",
+        "//ujcore/graph:GraphBuilder",
         "@abseil-cpp//absl/log",
         "@cppschema//:backend_bridge",
     ],
@@ -22,6 +24,7 @@ cc_test(
     deps = [
         ":GraphEngineApiBackend",
         "//ujcore/data:AbslStringifies",
+        "//ujcore/function:TestFunction",
         "@abseil-cpp//absl/strings",
         "@googletest//:gtest_main",
     ],

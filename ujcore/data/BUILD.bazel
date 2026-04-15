@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 package(
     default_visibility = ["//:__subpackages__"],
@@ -8,6 +8,7 @@ cc_library(
     name = "AbslStringifies",
     hdrs = ["AbslStringifies.h"],
     deps = [
+        ":IdTypes",
         ":plinfo",
         # Although there is no header dependency on absl::strings, this is a must
         # have peer dependency, as the caller primarility uses this lib to enable
@@ -20,6 +21,7 @@ cc_library(
     name = "plinfo",
     hdrs = ["plinfo.h"],
     deps = [
+        ":IdTypes",
         "@cppschema//:enum_registry",
         "@cppschema//:visitor_macros",
     ],
@@ -29,7 +31,66 @@ cc_library(
     name = "plstate",
     hdrs = ["plstate.h"],
     deps = [
+        ":IdTypes",
         "@cppschema//:enum_registry",
         "@cppschema//:visitor_macros",
+    ],
+)
+
+cc_library(
+    name = "FunctionInfo",
+    hdrs = ["FunctionInfo.h"],
+    deps = [
+        "@cppschema//:visitor_macros",
+    ],
+)
+
+cc_library(
+    name = "GraphState",
+    hdrs = ["GraphState.h"],
+    deps = [
+        ":IdTypes",
+        ":TopoSortState",        
+        ":plinfo",
+        ":plstate",
+        "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "IdTypes",
+    hdrs = ["IdTypes.h"],
+    deps = [
+        "@cppschema//:strong_types",
+        "@cppschema//:visitor_macros",
+    ],
+)
+
+cc_library(
+    name = "TopoSortState",
+    hdrs = ["TopoSortState.h"],
+    deps = [
+        ":IdTypes",
+    ],
+)
+
+cc_library(
+    name = "TopoSortOrder",
+    srcs = ["TopoSortOrder.cpp"],
+    hdrs = ["TopoSortOrder.h"],
+    deps = [
+        ":IdTypes",
+        ":TopoSortState",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:check",
+    ],
+)
+
+cc_test(
+    name = "TopoSortOrder_Test",
+    srcs = ["TopoSortOrder_Test.cpp"],
+    deps = [
+        ":TopoSortOrder",
+        "@googletest//:gtest_main",
     ],
 )

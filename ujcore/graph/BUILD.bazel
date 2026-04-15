@@ -5,29 +5,21 @@ package(
 )
 
 cc_library(
-    name = "GraphEngineImpl",
-    srcs = ["GraphEngineImpl.cpp"],
-    hdrs = ["GraphEngineImpl.h"],
+    name = "GraphBuilder",
+    srcs = ["GraphBuilder.cpp"],
+    hdrs = ["GraphBuilder.h"],
     deps =[
-        ":GraphState",
-        ":TopoSortOrder",
         "//ujcore/data:AbslStringifies",
         "//ujcore/data:plinfo",
-        "//ujcore/data/functions",
+        "//ujcore/data:FunctionInfo",
+        "//ujcore/data:GraphState",
+        "//ujcore/data:TopoSortOrder",
+        "//ujcore/function:FunctionRegistry",
+        "//ujcore/function:FunctionSpec",
         "//ujcore/graph:IdGenerator",
         "//ujcore/utils:status_macros",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
-        "@abseil-cpp//absl/strings",
-    ],
-)
-
-cc_library(
-    name = "GraphState",
-    hdrs = ["GraphState.h"],
-    deps = [
-        "//ujcore/data:plinfo",
-        "//ujcore/data:plstate",
         "@abseil-cpp//absl/strings",
     ],
 )
@@ -46,25 +38,6 @@ cc_test(
     srcs = ["IdGenerator_Test.cpp"],
     deps = [
         ":IdGenerator",
-        "@googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "TopoSortOrder",
-    srcs = ["TopoSortOrder.cpp"],
-    hdrs = ["TopoSortOrder.h"],
-    deps = [
-        "@abseil-cpp//absl/log",
-        "@abseil-cpp//absl/log:check",
-    ],
-)
-
-cc_test(
-    name = "TopoSortOrder_Test",
-    srcs = ["TopoSortOrder_Test.cpp"],
-    deps = [
-        ":TopoSortOrder",
         "@googletest//:gtest_main",
     ],
 )
