@@ -20,6 +20,16 @@ cc_library(
 )
 
 cc_library(
+    name = "CommonAttributes",
+    hdrs = ["CommonAttributes.h"],
+    deps = [
+        ":AttributeDataType",
+        "@abseil-cpp//absl/log:check",
+    ],
+)
+
+
+cc_library(
     name = "FuncParamAccess",
     hdrs = ["FuncParamAccess.h"],
 )
@@ -60,5 +70,15 @@ cc_library(
     deps = [
         ":AttributeDataType",
         ":FuncParamAccess",
+    ],
+)
+
+cc_library(
+    name = "ParamAccessors",
+    hdrs = ["ParamAccessors.h"],
+    deps = [
+        ":AttributeData",
+        ":FunctionContext",
+        "@abseil-cpp//absl/log",
     ],
 )

@@ -97,6 +97,7 @@ struct GraphEngineApi {
     cppschema::ApiStub<GetSlotStatesRequest, GetSlotStatesResponse> getSlotStates;        
     cppschema::ApiStub<VoidType, VoidType> clearGraph;
     cppschema::ApiStub<VoidType, GetAvailableFuncsResponse> getAvailableFuncs;
+    cppschema::ApiStub<VoidType, VoidType> runPipeline;
 
     DEFINE_API_VISITOR_FUNCTION(
         getGraph,
@@ -105,7 +106,8 @@ struct GraphEngineApi {
         deleteElements,
         getSlotStates,
         clearGraph,
-        getAvailableFuncs);
+        getAvailableFuncs,
+        runPipeline);
 };
 
 }  // namespace ujcore

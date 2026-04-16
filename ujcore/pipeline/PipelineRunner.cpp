@@ -15,7 +15,6 @@ using ::ujcore::plinfo::SlotInfo;
 using ::ujcore::plstate::SlotDataManual;
 using ::ujcore::plstate::SlotState;
 
-
 absl::Status PipelineRunner::BuildFromState(const GraphState& state) {
     auto& registry = FunctionRegistry::GetInstance();
     nodes_.clear();

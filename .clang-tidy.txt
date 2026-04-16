@@ -1,0 +1,7 @@
+---
+# https://clang.llvm.org/extra/clang-tidy/
+Checks: 'bugprone-*,modernize-*,readability-*,performance-*'
+CheckOptions:
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+WarningsAsErrors: '*'

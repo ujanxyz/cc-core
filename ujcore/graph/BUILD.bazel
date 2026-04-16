@@ -9,6 +9,7 @@ cc_library(
     srcs = ["GraphBuilder.cpp"],
     hdrs = ["GraphBuilder.h"],
     deps =[
+        ":GraphUtils",
         "//ujcore/data:AbslStringifies",
         "//ujcore/data:plinfo",
         "//ujcore/data:FunctionInfo",
@@ -20,6 +21,18 @@ cc_library(
         "//ujcore/utils:status_macros",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "GraphUtils",
+    srcs = ["GraphUtils.cpp"],
+    hdrs = ["GraphUtils.h"],
+    deps =[
+        "//ujcore/data:plinfo",
+        "//ujcore/data:GraphState",
+        "//ujcore/data:IdTypes",
         "@abseil-cpp//absl/strings",
     ],
 )

@@ -30,19 +30,19 @@ TEST(GraphEngineApiBackendTest, Basic) {
     VoidType kVoid;
     CreateNodeRequest create_req = {
         .func = FunctionInfo {
-            .uri = "/test/myfn",
-            .label = "Translate Point X",
-            .desc = "Translate a 2D point along X-axis by a given delta",
+            .uri = "/testing/displace-point",
+            .label = "Displace point",
+            .desc = "[Testing] Displace a 2D point along X-axis by a given delta",
         },
     };
     
     CreateNodeResponse create_resp = ApiRegistry<GraphEngineApi>::Get().template Call<CreateNodeRequest, CreateNodeResponse>("createNode", create_req);
     ASSERT_TRUE(create_resp.nodeInfo.has_value());
-    EXPECT_EQ(absl::StrCat(*create_resp.nodeInfo), "(n#1:s2GhcWpBLP; fn:/test/myfn; ins:p,dx; outs:fp)");
+    EXPECT_EQ(absl::StrCat(*create_resp.nodeInfo), "(n#1:s2GhcWpBLP; fn:/testing/displace-point; ins:p,dx; outs:fp)");
 
     create_resp = ApiRegistry<GraphEngineApi>::Get().template Call<CreateNodeRequest, CreateNodeResponse>("createNode", create_req);
     ASSERT_TRUE(create_resp.nodeInfo.has_value());
-    EXPECT_EQ(absl::StrCat(*create_resp.nodeInfo), "(n#2:ZBqg1rBrgq; fn:/test/myfn; ins:p,dx; outs:fp)");
+    EXPECT_EQ(absl::StrCat(*create_resp.nodeInfo), "(n#2:ZBqg1rBrgq; fn:/testing/displace-point; ins:p,dx; outs:fp)");
 
     AddEdgeRequest add_edge_req1 = {
         .sourceNode = NodeId(2),

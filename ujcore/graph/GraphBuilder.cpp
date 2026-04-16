@@ -5,6 +5,7 @@
 #include "ujcore/data/plinfo.h"
 #include "ujcore/data/plstate.h"
 #include "ujcore/function/FunctionRegistry.h"
+#include "ujcore/graph/GraphUtils.h"
 #include "ujcore/graph/IdGenerator.h"
 #include "ujcore/utils/status_macros.h"
 #include "ujcore/function/FunctionSpec.h"
@@ -278,9 +279,12 @@ GraphBuilder::DeleteElements(const std::vector<NodeId>& nodeIds, const std::vect
 
     deletedEdgeIds.push_back(edgeInfo.id);
 
-    // TODO: The edge should be deleted from topo-order if there is no more edge between the same
+    // The edge should be deleted from topo-order if there is no more edge between the same
     // source and target node. Check that and delete the node to node dependency.
-    // topoSorter_.RemoveEdge(edgeInfo.node0, edgeInfo.node1);
+    auto downstreamNodes = GetDownstreamNodeIds(state_, edgeInfo.node0);
+    if (!downstreamNodes.contains(edgeInfo.node1)) {
+      topoSorter_.RemoveEdge(edgeInfo.node0, edgeInfo.node1);
+    }
   }
 
   for (const NodeId nid : nodeIds) {

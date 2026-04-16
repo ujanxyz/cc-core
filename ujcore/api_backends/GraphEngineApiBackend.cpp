@@ -5,6 +5,7 @@
 #include "ujcore/data/plinfo.h"
 #include "ujcore/data/GraphState.h"
 #include "ujcore/graph/GraphBuilder.h"
+#include "ujcore/pipeline/PipelineRunner.h"
 #include "ujcore/utils/status_macros.h"
 
 namespace ujcore {
@@ -148,10 +149,23 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         };
     }
 
+    VoidType runPipelineImpl(const VoidType&) {
+        auto buildResult = runner_.BuildFromState(state_);
+        if (!buildResult.ok()) {
+            LOG(FATAL) << "Build pipeline error: " << buildResult;
+        }
+        auto runResult = runner_.RunPipeline();
+        if (!runResult.ok()) {
+            LOG(FATAL) << "Run pipeline error: " << runResult;
+        }
+        return {};
+    }
+
  private:
    GraphState state_;
    TopoSortOrder topoSorter_;
    GraphBuilder builder_;
+   PipelineRunner runner_;
 };
 
 static __attribute__((constructor)) void RegisterPipelineApiBackend() {
@@ -164,6 +178,7 @@ static __attribute__((constructor)) void RegisterPipelineApiBackend() {
         .getSlotStates = &GraphEngineApiBackend::getSlotStatesImpl,
         .clearGraph = &GraphEngineApiBackend::clearGraphImpl,
         .getAvailableFuncs = &GraphEngineApiBackend::getAvailableFuncsImpl,
+        .runPipeline = &GraphEngineApiBackend::runPipelineImpl,
     };
     cppschema::RegisterBackend<GraphEngineApi, GraphEngineApiBackend>(impl, ptrs);
 }

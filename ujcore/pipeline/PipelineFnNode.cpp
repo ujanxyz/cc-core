@@ -1,6 +1,7 @@
 #include "ujcore/pipeline/PipelineFnNode.h"
 
 #include "absl/log/log.h"
+#include "ujcore/data/IdTypes.h"
 #include "ujcore/function/AttributeDataType.h"
 
 namespace ujcore {
