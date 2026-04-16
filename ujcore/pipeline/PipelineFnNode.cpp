@@ -1,25 +1,51 @@
 #include "ujcore/pipeline/PipelineFnNode.h"
 
 #include "absl/log/log.h"
+#include "ujcore/function/AttributeDataType.h"
 
-/* static */
-std::unique_ptr<PipelineFnNode>
-PipelineFnNode::Create(const FunctionSpec& funcSpec, std::unique_ptr<FunctionBase> funcInstance) {
-    auto node = std::make_unique<PipelineFnNode>();
-    node->funcInstance_ = std::move(funcInstance);
-    node->functionCtx_ = std::make_unique<FunctionContext>(node.get());
+namespace ujcore {
 
-    node->slots_["x"] = SlotStorage {
-            .access = SlotStorage::AccessKind::kInput,
-            .attribute = {
-                .dtype = AttributeDataType::kFloat,
-            },
-        };
+PipelineFnNode::PipelineFnNode(
+        const NodeId nodeId,
+        const FunctionSpec& funcSpec,
+        std::unique_ptr<FunctionBase> funcInstance)
+        : selfId_(nodeId),
+        funcInstance_(std::move(funcInstance)) {
+    functionCtx_ = std::make_unique<FunctionContext>(this);
+}
 
+absl::StatusOr<bool> PipelineFnNode::RunFunction() {
+    return funcInstance_->OnRun(*functionCtx_);
+}
 
-    if (!node->funcInstance_->OnInit(*node->functionCtx_)) {
-        LOG(ERROR) << "Failed to initialize function instance for node.";
+AttributeData* PipelineFnNode::OnGetParam(FuncParamAccess access, const std::string& name) {
+    auto slotIter = slots_.find(name);
+    if (slotIter == slots_.end()) {
         return nullptr;
     }
-    return node;
+    SlotStorage& slot = slotIter->second;
+    if (slot.access != access) {
+        LOG(ERROR) << "Access mismatch, at slot: " << name;
+    }
+    // TODO: Enable the following logic.
+    // if (!slot.attribute.created) {
+    //     LOG(ERROR) << "Slot data was not created: " << name;
+    //     return nullptr;
+    // }
+    return &(slot.attribute);
 }
+
+void PipelineFnNode::LogFromFunc(std::string_view message) {
+    LOG(INFO) << "[Node-" << selfId_.value << "]: " << message;
+}
+
+void PipelineFnNode::DumpDebugInfoFromFunc() {
+    for (auto& [slotName, slot] : slots_) {
+        LOG(INFO) << "    slot = " << slotName << " : "
+            << static_cast<int>(slot.access) << ", dtype: "
+            << AttributeDataTypeToStr(slot.attribute.dtype)
+            << ", overridden: " << slot.overridden;
+    }
+}
+
+}  // namespace ujcore

@@ -8,10 +8,6 @@ refresh_compile_commands(
     targets = {
         # List out your binary targets you want to have compile_commands.json
         # for in order to have autocomplete working correctly.
-        "//ujcore/api_backends:GraphEngineApiBackend_Test": "",
-        "//ujcore/wasm:entrypoint_wa": "",
-        "//ujcore/data:all": "",
-        "//ujcore/function:all": "",
-        "//ujcore/pipeline:all": "",
+        "//ujcore/...": "",
     },
 )

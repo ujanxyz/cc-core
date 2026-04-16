@@ -2,17 +2,26 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
+# NOTE: Keep this module free of any dependency on other module.
+
 cc_library(
     name = "AttributeData",
     hdrs = ["AttributeData.h"],
     deps = [
         ":AttributeDataType",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
 cc_library(
     name = "AttributeDataType",
+    srcs = ["AttributeDataType.cpp"],
     hdrs = ["AttributeDataType.h"],
+)
+
+cc_library(
+    name = "FuncParamAccess",
+    hdrs = ["FuncParamAccess.h"],
 )
 
 cc_library(
@@ -22,6 +31,7 @@ cc_library(
         ":AttributeData",
         ":FunctionContext",
         ":FunctionSpec",
+        "@abseil-cpp//absl/status:statusor",
     ],
 )
 
@@ -30,11 +40,13 @@ cc_library(
     hdrs = ["FunctionContext.h"],
     deps = [
         ":AttributeData",
+        ":FuncParamAccess",
     ],
 )
 
 cc_library(
     name = "FunctionRegistry",
+    srcs = ["FunctionRegistry.cpp"],
     hdrs = ["FunctionRegistry.h"],
     deps = [
         ":FunctionBase",
@@ -46,18 +58,7 @@ cc_library(
     name = "FunctionSpec",
     hdrs = ["FunctionSpec.h"],
     deps = [
-        "@cppschema//:enum_registry",
-        "@cppschema//:visitor_macros",
+        ":AttributeDataType",
+        ":FuncParamAccess",
     ],
-)
-
-cc_library(
-    name = "TestFunction",
-    srcs = ["TestFunction.cpp"],
-    deps = [
-        ":FunctionRegistry",
-        ":FunctionSpec",
-        "@abseil-cpp//absl/log",
-    ],
-    alwayslink = 1,
 )

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "absl/status/statusor.h"
 #include "ujcore/function/FunctionContext.h"
 #include "ujcore/function/FunctionSpec.h"
 
@@ -11,6 +12,6 @@ public:
         return nullptr;
     }
 
-    virtual bool OnInit(const FunctionContext& ctx) = 0;
-    virtual bool OnRun(const FunctionContext& ctx) = 0;
+    virtual bool OnInit(FunctionContext& ctx) = 0;
+    virtual absl::StatusOr<bool> OnRun(FunctionContext& ctx) = 0;
 };

@@ -48,21 +48,23 @@ AddNodeSlotsInternal(const FunctionSpec& fnInfo, const NodeId nodeId, plinfo::No
       SlotInfo slot = {
         .parent = nodeId,
         .name = param.name,
-        .dtype = param.dtype,
+        .dtype = AttributeDataTypeToStr(param.dtype),
       };
       switch (param.access) {
-        case FuncParamSpec::AccessEnum::kInput:
+        case FuncParamAccess::kInput:
           slot.access = SlotInfo::AccessEnum::I;
           nodeInfo.ins.push_back(param.name);
           break;
-        case FuncParamSpec::AccessEnum::kOutput:
+        case FuncParamAccess::kOutput:
           slot.access = SlotInfo::AccessEnum::O;
           nodeInfo.outs.push_back(param.name);
           break;
-        case FuncParamSpec::AccessEnum::kInOut:
+        case FuncParamAccess::kInOut:
           slot.access = SlotInfo::AccessEnum::M;
           nodeInfo.inouts.push_back(param.name);
           break;
+        case FuncParamAccess::kUnknown:
+          LOG(FATAL);
       }
       slots.push_back(std::move(slot));
     }

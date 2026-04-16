@@ -2,21 +2,20 @@
 
 #include <map>
 #include <memory>
+#include <string_view>
 
+#include "absl/status/statusor.h"
+#include "ujcore/data/IdTypes.h"
 #include "ujcore/function/AttributeData.h"
+#include "ujcore/function/FuncParamAccess.h"
 #include "ujcore/function/FunctionBase.h"
 #include "ujcore/function/FunctionContext.h"
 #include "ujcore/function/FunctionSpec.h"
 
+namespace ujcore {
+
 struct SlotStorage {
-    enum class AccessKind {
-        kUnknown = 0,
-        kInput,
-        kOutput,
-        kInOut,
-        kOverride, // Has manually overridden data.
-    };
-    AccessKind access = AccessKind::kUnknown;
+    FuncParamAccess access = FuncParamAccess::kUnknown;
 
     AttributeData attribute;
 
@@ -24,7 +23,7 @@ struct SlotStorage {
     // coming through an incoming edge.
     // Manual attributes are prepared beforehand and only read execution,
     // they should not be cleared when the node is re-run.
-    bool manual = false;
+    bool overridden = false;
 
     // Tracks if the slot was accessed during the node execution.
     // Used to track progressive execution.
@@ -33,18 +32,24 @@ struct SlotStorage {
 
 class PipelineFnNode : public FunctionContextParent {
 public:
-
-  static std::unique_ptr<PipelineFnNode> Create(
-    const FunctionSpec& funcSpec,
+  explicit PipelineFnNode(
+      NodeId nodeId,
+      const FunctionSpec& funcSpec,
       std::unique_ptr<FunctionBase> funcInstance);
 
   bool Init();
 
-  AttributeData* GetRawAttr(AttributeDataType type, const char *name) override {
-    // TODO: Implement this pure virtual method.
-    return nullptr;
-  }
+  // TODO: Return a RunResult struct.
+  absl::StatusOr<bool> RunFunction();
+  
+  // Methods implementing `FunctionContextParent`.
+
+  AttributeData* OnGetParam(FuncParamAccess access, const std::string& name) override;
+  void LogFromFunc(std::string_view message) override;
+  void DumpDebugInfoFromFunc() override;
+
 private:
+    const NodeId selfId_;
     std::unique_ptr<FunctionBase> funcInstance_;
     std::unique_ptr<FunctionContext> functionCtx_;
     std::map<std::string /* slot name */, SlotStorage> slots_;
@@ -53,3 +58,5 @@ private:
 
     friend class PipelineRunner;
 };
+
+}  // namespace ujcore

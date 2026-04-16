@@ -4,21 +4,16 @@
 #include <string>
 #include <vector>
 
+#include "ujcore/function/AttributeDataType.h"
+#include "ujcore/function/FuncParamAccess.h"
+
 namespace ujcore {
 
 struct FuncParamSpec {
-  // Input params are read-only, output params are created from scratch.
-  // Mutable params are both read and modified.
-  enum class AccessEnum {
-    kInput,   // Input
-    kOutput,  // Output
-    kInOut,   // Mutatable
-  };
-
   // Local name, e.g. "x", "fx".
   std::string name;
 
-  AccessEnum access = AccessEnum::kInput;
+  FuncParamAccess access = FuncParamAccess::kUnknown;
 
   // The data type. Left as free string for implementation. "[]T" denotes array of type T.
   // Common values are:
@@ -27,7 +22,7 @@ struct FuncParamSpec {
   // Geometric types like: 2D coordinates (pair of x,y), intervals are represented as "float2" (2 floats).
   // Rectangles are represented as "float4".
   // Colors are represented as "float3" (for RGB).
-  std::string dtype;
+  AttributeDataType dtype = AttributeDataType::kUnknown;
 };
 
 // // The following structs with a "..Ext" suffix in their name describe the extension fields for
@@ -138,21 +133,21 @@ public:
         return *this;
     }
 
-    FunctionSpecBuilder& WithInputParam(const std::string& name, const std::string& dtype) {
+    FunctionSpecBuilder& WithInputParam(const std::string& name, const AttributeDataType dtype) {
         assert(!finalized_);
-        spec_->params.push_back({name, FuncParamSpec::AccessEnum::kInput, dtype});
+        spec_->params.push_back({name, FuncParamAccess::kInput, dtype});
         return *this;
     }
 
-    FunctionSpecBuilder& WithOutParam(const std::string& name, const std::string& dtype) {
+    FunctionSpecBuilder& WithOutParam(const std::string& name, const AttributeDataType dtype) {
         assert(!finalized_);
-        spec_->params.push_back({name, FuncParamSpec::AccessEnum::kOutput, dtype});
+        spec_->params.push_back({name, FuncParamAccess::kOutput, dtype});
         return *this;
     }
 
-    FunctionSpecBuilder& WithInOutParam(const std::string& name, const std::string& dtype) {
+    FunctionSpecBuilder& WithInOutParam(const std::string& name, const AttributeDataType dtype) {
         assert(!finalized_);
-        spec_->params.push_back({name, FuncParamSpec::AccessEnum::kInOut, dtype});
+        spec_->params.push_back({name, FuncParamAccess::kInOut, dtype});
         return *this;
     }
 

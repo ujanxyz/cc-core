@@ -1,0 +1,19 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+cc_library(
+    name = "TestFunction",
+    srcs = ["TestFunction.cpp"],
+    deps = [
+        "//ujcore/function:FunctionRegistry",
+        "//ujcore/function:FunctionSpec",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/status:statusor",
+    ],
+    alwayslink = 1,
+    testonly = 1,
+)

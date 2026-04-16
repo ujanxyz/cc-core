@@ -27,6 +27,27 @@
       (__VA_ARGS__, STATUS_MACROS_IMPL_ASSIGN_OR_RETURN_2_)) \
   (__VA_ARGS__)
 
+
+#define CAT2(X,Y) X##Y
+#define CAT(X,Y) CAT2(X,Y)
+
+// #define RETURN_IF_NOT_FOUND_IN_MAP(lhs, store, key)                            \
+//     auto CAT(iter, __LINE__) = (store).find(key);                                 \
+//     if (_PREDICT_FALSE(CAT(iter, __LINE__) == (store).end())) {                   \
+//       return absl::NotFoundError("key not found: " + std::string(CAT(iter, __LINE__))    );                    \
+//     }                                                                          \
+//     lhs = CAT(iter, __LINE__)->second;                                            \
+//
+
+
+#define RETURN_IF_NOT_FOUND_IN_MAP(lhs, store, key)                            \
+    auto CAT(iter, __LINE__) = (store).find(key);                              \
+    if (_PREDICT_FALSE(CAT(iter, __LINE__) == (store).end())) {                \
+      return absl::NotFoundError("Key not found: " + std::to_string(__LINE__));     \
+    }                                                                          \
+    lhs = CAT(iter, __LINE__)->second;                                         \
+
+
 // =================================================================
 // == Implementation details, do not rely on anything below here. ==
 // =================================================================

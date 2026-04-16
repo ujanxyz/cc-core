@@ -7,11 +7,14 @@ cc_library(
     srcs = ["PipelineFnNode.cpp"],
     hdrs = ["PipelineFnNode.h"],
     deps = [
+        "//ujcore/data:IdTypes",
         "//ujcore/function:AttributeData",
+        "//ujcore/function:FuncParamAccess",
         "//ujcore/function:FunctionBase",
         "//ujcore/function:FunctionContext",
         "@abseil-cpp//absl/log",
         "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/status:statusor",
     ],
 )
 
@@ -22,10 +25,16 @@ cc_library(
     deps = [
         ":PipelineFnNode",
         "//ujcore/data:GraphState",
+        "//ujcore/data:IdTypes",
         "//ujcore/function:AttributeData",
         "//ujcore/function:FunctionRegistry",
+        "//ujcore/function:FunctionSpec",
+        "//ujcore/utils:status_macros",
         "@abseil-cpp//absl/log",
         "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -34,7 +43,8 @@ cc_test(
     srcs = ["PipelineRunner_Test.cpp"],
     deps = [
         ":PipelineRunner",
-        "//ujcore/function:TestFunction",
+        "//ujcore/testing:TestFunction",
+        "@abseil-cpp//absl/status:status_matchers",
         "@googletest//:gtest_main",
     ],
 )
