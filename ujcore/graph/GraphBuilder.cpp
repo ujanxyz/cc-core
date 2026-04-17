@@ -193,6 +193,8 @@ absl::StatusOr<plinfo::NodeInfo> GraphBuilder::AddFuncNode(const FunctionInfo& f
   }
   state_.node_infos[nodeId] = nodeInfo;
   state_.node_states[nodeId] = plstate::NodeState {
+    .label = funcSpec->label,
+    .connected = plstate::NodeState::ConnectedState::WAIT,
     .genId = 0,
   };
   topoSorter_.AddNode(nodeId);

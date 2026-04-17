@@ -1,6 +1,6 @@
-#include <string>
+#include "ujcore/base/BuildInfo.h"
 
-#include "ujcore/base/build_info.hpp"
+#include <cstdint>
 
 // The code in this file has no public declaration.
 // So everything is wrapped inside an anonymous namespace.

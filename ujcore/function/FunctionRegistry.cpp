@@ -21,7 +21,8 @@ void FunctionRegistry::RegisterFunction(
         if (iter->second.srcLoc == srcLoc) {
             return;
         } else {
-            LOG(FATAL) << "Duplicate registration: " << iter->second.srcLoc << ", " << srcLoc;
+            LOG(FATAL) << "Duplicate registration for uri: " << uri << ", existing srcLoc: "
+                << iter->second.srcLoc << ", new srcLoc: " << srcLoc;
         }
     }
     FunctionEntry entry = {

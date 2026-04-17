@@ -1,7 +1,6 @@
-#include "ujcore/base/build_info.hpp"
+#include "ujcore/base/BuildInfo.h"
 
 #include "gtest/gtest.h"
-#include "gmock/gmock-matchers.h"
 
 namespace buildinfo {
     

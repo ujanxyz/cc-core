@@ -6,6 +6,15 @@
 
 namespace ujcore {
 
+std::optional<plstate::NodeState> GetNodeState(const GraphState& state, NodeId nodeId) {
+    auto iter = state.node_states.find(nodeId);
+    if (iter == state.node_states.end()) {
+        LOG(ERROR) << "Node state not found for node id: " << nodeId.value;
+        return std::nullopt;
+    }
+    return iter->second;
+}
+
 std::set<NodeId> GetDownstreamNodeIds(const GraphState& state, NodeId nodeId) {
     // Get the node info, and from that the out slots.
     auto iter = state.node_infos.find(nodeId);

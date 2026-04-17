@@ -6,7 +6,7 @@
 
 #include "cppschema/wasm/js_api_bridge.h"
 #include "ujcore/api_schemas/GraphEngineApi.h"
-#include "ujcore/base/build_info.hpp"
+#include "ujcore/base/BuildInfo.h"
 
 emscripten::val get_build_info() {
 

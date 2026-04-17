@@ -102,7 +102,6 @@ bool TopoSortOrder::reorder(const NodeId& u, const NodeId& v) {
     }
 
     state_.hasDirtyBit = true;
-    LOG(INFO) << "Order updated due to edge " << u.value << "->" << v.value;
     return true;
 }
 

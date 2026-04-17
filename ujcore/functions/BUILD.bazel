@@ -1,0 +1,20 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+cc_library(
+    name = "BasicFunctions",
+    srcs = ["BasicFunctions.cpp"],
+    deps = [
+        "//ujcore/function:FunctionRegistry",
+        "//ujcore/function:FunctionSpec",
+        "//ujcore/function:CommonAttributes",
+        "//ujcore/function:ParamAccessors",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/status:statusor",
+    ],
+    alwayslink = 1,
+)

@@ -37,6 +37,13 @@ absl::Status PipelineRunner::BuildFromState(const GraphState& state) {
             const SlotInfo& slotInfo = slotInfoIter->second;
             const SlotState& slotState = slotStateIter->second;
 
+            if (slotInfo.access == SlotInfo::AccessEnum::I || slotInfo.access == SlotInfo::AccessEnum::M) {
+                if (!slotState.manual.has_value() && slotState.inEdges.empty()) {
+                    return absl::InvalidArgumentError(
+                        absl::StrCat("Slot has no data source: ", nodeId.value, " : ", param.name));
+                }
+            }
+
             // TODO: Create `ManualDataStep` entry from `slotState.manual`
 
             // TODO: Create a SlotStorage from `plinfo::SlotInfo` and add to the node.

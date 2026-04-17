@@ -1,21 +1,21 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 package(
     default_visibility = ["//visibility:public"],
 )
 
 cc_library(
-    name = "build_info",
-    srcs = ["build_info.cpp"],
-    hdrs = ["build_info.hpp"],
-    linkstamp = "build_linkstamp.cpp",
+    name = "BuildInfo",
+    srcs = ["BuildInfo.cpp"],
+    hdrs = ["BuildInfo.h"],
+    linkstamp = "BuildLinkStamp.cpp",
 )
 
 cc_test(
-    name = "build_info_test",
-    srcs = ["build_info_test.cpp"],
+    name = "BuildInfo_Test",
+    srcs = ["BuildInfo_Test.cpp"],
     deps = [
-        ":build_info",
+        ":BuildInfo",
         "@googletest//:gtest_main",
     ],
 )

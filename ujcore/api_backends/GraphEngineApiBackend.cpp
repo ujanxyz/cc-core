@@ -2,9 +2,11 @@
 
 #include "absl/log/log.h"
 #include "cppschema/backend/api_backend_bridge.h"
+#include "ujcore/data/IdTypes.h"
 #include "ujcore/data/plinfo.h"
 #include "ujcore/data/GraphState.h"
 #include "ujcore/graph/GraphBuilder.h"
+#include "ujcore/graph/GraphUtils.h"
 #include "ujcore/pipeline/PipelineRunner.h"
 #include "ujcore/utils/status_macros.h"
 
@@ -39,16 +41,17 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         if (!nodeInfoOr.ok()) {
             LOG(FATAL) << "Insert node error: " << nodeInfoOr.status();
         }
-        plinfo::NodeInfo nodeInfo = std::move(nodeInfoOr).value();
+        const NodeId nodeId = nodeInfoOr->rawId;
+        const plinfo::NodeInfo nodeInfo = std::move(nodeInfoOr).value();
 
-        auto addNodeSlotInfos = [this, nodeRawId = nodeInfo.rawId](const std::vector<std::string>& slotNames, std::vector<plinfo::SlotInfo>& result) -> void {
+        auto addNodeSlotInfos = [this, nodeRawId = nodeId](const std::vector<std::string>& slotNames, std::vector<plinfo::SlotInfo>& result) -> void {
             auto slotsOr = builder_.LookupNodeSlotInfos(NodeId(nodeRawId), slotNames);
             if (!slotsOr.ok()) {
                 LOG(FATAL) << "Lookup node slots error: " << slotsOr.status();
             }
             result = std::move(slotsOr).value();
         };
-        auto addNodeSlotStates = [this, nodeRawId = nodeInfo.rawId](const std::vector<std::string>& slotNames, std::vector<plstate::SlotState>& result) -> void {
+        auto addNodeSlotStates = [this, nodeRawId = nodeId](const std::vector<std::string>& slotNames, std::vector<plstate::SlotState>& result) -> void {
             std::vector<SlotId> slotIds;
             slotIds.reserve(slotNames.size());
             for (const std::string& slotName : slotNames) {
@@ -74,6 +77,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         addNodeSlotStates(nodeInfo.outs, response.outStates);
         addNodeSlotStates(nodeInfo.inouts, response.inoutStates);
         response.nodeInfo = std::move(nodeInfo);
+        response.nodeState = GetNodeState(state_, nodeId);
         return response;
     }
 

@@ -1,4 +1,4 @@
-#include "ujcore/base/build_info.hpp"
+#include "ujcore/base/BuildInfo.h"
 
 namespace buildinfo {
 namespace {

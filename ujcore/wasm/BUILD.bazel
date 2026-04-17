@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_binary")
 load("@aspect_rules_js//js:defs.bzl", "js_binary")
 load("@emsdk//emscripten_toolchain:wasm_rules.bzl", "wasm_cc_binary")
 
@@ -13,7 +13,9 @@ cc_binary(
     deps = [
          "//ujcore/api_schemas:GraphEngineApi",
          "//ujcore/api_backends:GraphEngineApiBackend",
-         "//ujcore/base:build_info",
+         "//ujcore/base:BuildInfo",
+         # This pulls all the actual function definitions.
+         "//ujcore/functions:BasicFunctions",
          "@cppschema//:js_api_bridge",
     ],
     features = ["emcc_debug_link"],
