@@ -10,6 +10,8 @@ std::string AttributeDataTypeToStr(AttributeDataType enumVal) {
             return "float";
         case AttributeDataType::kPoint2D:
             return "point2d";
+        case AttributeDataType::kBitmap:
+            return "bitmap";
         case AttributeDataType::kGeometry:
             return "geom2d";
         case AttributeDataType::kUnknown:
@@ -22,6 +24,7 @@ AttributeDataType AttributeDataTypeFromStr(const std::string& name) {
         {"color", AttributeDataType::kColor},
         {"float", AttributeDataType::kFloat},
         {"point2d", AttributeDataType::kPoint2D},
+        {"bitmap", AttributeDataType::kBitmap},
         {"geom2d", AttributeDataType::kGeometry},
     });
     auto iter = lookupTable->find(name);

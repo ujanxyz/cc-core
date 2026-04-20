@@ -181,7 +181,8 @@ absl::StatusOr<plinfo::NodeInfo> GraphBuilder::AddFuncNode(const FunctionInfo& f
   plinfo::NodeInfo nodeInfo = {
     .rawId = nodeId,
     .alnumid = alphanumId,
-    .fnuri = funcSpec->uri,
+    .ntype = plinfo::NodeInfo::NodeType::FN,
+    .uri = funcSpec->uri,
   };
   std::vector<plinfo::SlotInfo> slots = AddNodeSlotsInternal(*funcSpec, nodeId, nodeInfo);
   for (auto&& slot : std::move(slots)) {
@@ -199,6 +200,43 @@ absl::StatusOr<plinfo::NodeInfo> GraphBuilder::AddFuncNode(const FunctionInfo& f
   };
   topoSorter_.AddNode(nodeId);
   return nodeInfo;
+}
+
+absl::StatusOr<std::tuple<plinfo::NodeInfo, plinfo::SlotInfo>>
+GraphBuilder::AddIONode(const std::string& dtype, bool isOutput) {
+  const NodeId nodeId (++state_.idgen_state.next_node_id);
+  const std::string alphanumId = GenSplitMix64OfLength(nodeId.value + config_.nodeid_splitmix_offset, 10);
+  plinfo::NodeInfo nodeInfo = {
+    .rawId = nodeId,
+    .alnumid = alphanumId,
+    .ntype = isOutput ? plinfo::NodeInfo::NodeType::OUT : plinfo::NodeInfo::NodeType::IN,
+    .uri = absl::StrCat(isOutput ? "/$OUT/" : "/$IN/", dtype),
+  };
+  // Graph input node has an output slot, and graph output node has an input slot.
+  const plinfo::SlotInfo slotInfo = {
+    .parent = nodeId,
+    .name = isOutput ? "$in" : "$out",
+    .dtype = dtype,
+    .access = isOutput ? plinfo::SlotInfo::AccessEnum::I : plinfo::SlotInfo::AccessEnum::O,
+  };
+  const SlotId slot_id = {nodeId, slotInfo.name};
+  state_.slot_states[slot_id] = plstate::SlotState {
+    .genId = 0,
+  };
+  state_.slot_infos[slot_id] = slotInfo;
+  if (isOutput) {
+    nodeInfo.ins.push_back(slotInfo.name);
+  } else {
+    nodeInfo.outs.push_back(slotInfo.name);
+  }
+  state_.node_infos[nodeId] = nodeInfo;
+  state_.node_states[nodeId] = plstate::NodeState {
+    .label = isOutput ? absl::StrCat("Output: ", dtype) : absl::StrCat("Input: ", dtype),
+    .connected = plstate::NodeState::ConnectedState::WAIT,
+    .genId = 0,
+  };
+  topoSorter_.AddNode(nodeId);
+  return std::make_tuple(nodeInfo, slotInfo);
 }
 
 absl::StatusOr<plinfo::EdgeInfo> GraphBuilder::AddEdge(const NodeId sourceNode, const std::string& sourceSlot, const NodeId targetNode, const std::string& targetSlot) {
@@ -283,7 +321,7 @@ GraphBuilder::DeleteElements(const std::vector<NodeId>& nodeIds, const std::vect
 
     // The edge should be deleted from topo-order if there is no more edge between the same
     // source and target node. Check that and delete the node to node dependency.
-    auto downstreamNodes = GetDownstreamNodeIds(state_, edgeInfo.node0);
+    auto downstreamNodes = GraphUtils::GetDownstreamNodeIds(state_, edgeInfo.node0);
     if (!downstreamNodes.contains(edgeInfo.node1)) {
       topoSorter_.RemoveEdge(edgeInfo.node0, edgeInfo.node1);
     }

@@ -1,15 +1,11 @@
-#include <expected>
-
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
-#include "ujcore/function/AttributeDataType.h"
-#include "ujcore/function/CommonAttributes.h"
 #include "ujcore/function/FunctionBase.h"
 #include "ujcore/function/FunctionRegistry.h"
 #include "ujcore/function/FunctionSpec.h"
 #include "ujcore/function/ParamAccessors.h"
+#include "ujcore/functions/attributes/CommonAttributes.h"
 
 // Place the functions in a anonymous namespace, so if another file uses the
 // same class name, it won't cause symbol conflict.
@@ -18,28 +14,6 @@ namespace {
 using ujcore::FunctionRegistry;
 using ujcore::FunctionSpec;
 using ujcore::FunctionSpecBuilder;
-
-enum class parse_error
-{
-    invalid_input,
-    overflow
-};
-
-auto parse_number(std::string_view& str) -> std::expected<double, parse_error>
-{
-    const char* begin = str.data();
-    char* end;
-    double retval = std::strtod(begin, &end);
-    
-    if (begin == end)
-        return std::unexpected(parse_error::invalid_input);
-    else if (std::isinf(retval))
-        return std::unexpected(parse_error::overflow);
-    
-    str.remove_prefix(end - begin);
-    return retval;
-}
-
 
 class TestEmitFloatFn final : public FunctionBase {
 public:

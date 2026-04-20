@@ -15,14 +15,14 @@
 namespace ujcore {
 namespace {
 
-using ::ujcore::plstate::SlotDataManual;
+using ::ujcore::plstate::EncodedData;
 using ::ujcore::plstate::SlotState;
 
 void SetupGraphState(GraphState& graph) {
     plinfo::NodeInfo n1 = {
         .rawId = NodeId(1),
         .alnumid = "ABC783GH",
-        .fnuri = "/testing/emit-float",
+        .uri = "/testing/emit-float",
         .ins = {},
         .outs = {"v"},
         .inouts = {},
@@ -30,7 +30,7 @@ void SetupGraphState(GraphState& graph) {
     plinfo::NodeInfo n2 = {
         .rawId = NodeId(2),
         .alnumid = "DEF524MO",
-        .fnuri = "/testing/emit-point2d",
+        .uri = "/testing/emit-point2d",
         .ins = {},
         .outs = {"p"},
         .inouts = {},
@@ -38,7 +38,7 @@ void SetupGraphState(GraphState& graph) {
     plinfo::NodeInfo n3 = {
         .rawId = NodeId(3),
         .alnumid = "GHI662D7",
-        .fnuri = "/testing/displace-point",
+        .uri = "/testing/displace-point",
         .ins = {"p", "dx"},
         .outs = {"fp"},
         .inouts = {},
@@ -92,11 +92,9 @@ void SetupGraphState(GraphState& graph) {
         // Node 1, Slot "v"
         .inEdges = {},
         .outEdges = {},
-        // .manual = SlotDataManual {
-        //     .dtype = "float2",
-        //     .encoded = "2.12f,5.75f",
-        // },
-        .manual = std::nullopt,
+        .manual = EncodedData {
+            .payload = "2.12f,5.75f",
+        },
     };
     SlotState slotState2 = {
         // Node 2, Slot "p"

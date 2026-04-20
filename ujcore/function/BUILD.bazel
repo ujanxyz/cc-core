@@ -1,6 +1,8 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
-package(default_visibility = ["//visibility:public"])
+package(
+    default_visibility = ["//:__subpackages__"],
+)
 
 # NOTE: Keep this module free of any dependency on other module.
 
@@ -17,6 +19,26 @@ cc_library(
     name = "AttributeDataType",
     srcs = ["AttributeDataType.cpp"],
     hdrs = ["AttributeDataType.h"],
+)
+
+cc_library(
+    name = "AttributeTypeRegistry",
+    srcs = ["AttributeTypeRegistry.cpp"],
+    hdrs = ["AttributeTypeRegistry.h"],
+    deps = [
+        ":AttributeData",
+        ":AttributeDataType",
+        "@abseil-cpp//absl/log",
+    ],
+)
+
+cc_test(
+    name = "AttributeTypeRegistry_Test",
+    srcs = ["AttributeTypeRegistry_Test.cpp"],
+    deps = [
+        ":AttributeTypeRegistry",
+        "@googletest//:gtest_main",
+    ],
 )
 
 cc_library(
@@ -82,3 +104,4 @@ cc_library(
         "@abseil-cpp//absl/log",
     ],
 )
+

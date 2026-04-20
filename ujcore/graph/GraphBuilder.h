@@ -3,6 +3,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "absl/status/statusor.h"
@@ -49,6 +50,8 @@ class GraphBuilder {
   LookupSlotStates(const std::vector<SlotId>& slotIds);
 
   absl::StatusOr<plinfo::NodeInfo> AddFuncNode(const FunctionInfo& fnInfo);
+
+  absl::StatusOr<std::tuple<plinfo::NodeInfo, plinfo::SlotInfo>> AddIONode(const std::string& dtype, bool isOutput);
 
   absl::StatusOr<plinfo::EdgeInfo> AddEdge(
       const NodeId sourceNode, const std::string& sourceSlot,

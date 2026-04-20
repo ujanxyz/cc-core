@@ -38,22 +38,54 @@ struct SlotInfo {
 };
 
 struct NodeInfo {
+    enum class NodeType {
+        FN,  // Function
+        IN,  // Graph input
+        OUT,  // Graph output
+    };
+
     // Valid node id should start from 1, i.e. always > 0.
     NodeId rawId {0};
 
     // Base-62 alphanumeric id, e.g. "ZBqg1rBrgq". This is directly translated from the int64 id.
     std::string alnumid;
 
+    // The type of node, a function, or an input or output to the overall graph.
+    NodeType ntype = NodeType::FN;
+
     // Identifies the node function used, e.g. "/fn/points-on-curve"
-    std::string fnuri;
+    // The uri of graph inputs functions are named as: "/$IN/<dtype-as-str>"
+    // The uri of graph outputs functions are named as: "/$OUT/<dtype-as-str>"
+    std::string uri;
+
+    // Only for graph IO nodes, the data type of the graph input or output.
+    std::optional<std::string> ioDtype;
 
     // names of the slots contained in this node.
     std::vector<std::string> ins;
     std::vector<std::string> outs;
     std::vector<std::string> inouts;
 
-    DEFINE_STRUCT_VISITOR_FUNCTION(rawId, alnumid, fnuri, ins, outs, inouts);
+    DEFINE_ENUM_CONVERSION_FUNCTION(NodeType, FN, IN, OUT);
+    DEFINE_STRUCT_VISITOR_FUNCTION(rawId, alnumid, ntype, uri, ioDtype, ins, outs, inouts);
 };
+
+// struct IOInfo {
+//     // Valid node id should start from 1, i.e. always > 0.
+//     NodeId rawId {0};
+
+//     // Base-62 alphanumeric id, e.g. "ZBqg1rBrgq". This is directly translated from the int64 id.
+//     std::string alnumid;
+
+//     // Name of the param.
+//     std::string name;
+
+//     std::string dtype;
+
+//     bool isOutput = false;
+
+//     DEFINE_STRUCT_VISITOR_FUNCTION(rawId, alnumid, name, dtype, isOutput);
+// };
 
 struct EdgeInfo {
     // Valid node id should start from 1, i.e. always id > 0.

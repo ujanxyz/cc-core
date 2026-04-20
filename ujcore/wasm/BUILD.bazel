@@ -15,7 +15,7 @@ cc_binary(
          "//ujcore/api_backends:GraphEngineApiBackend",
          "//ujcore/base:BuildInfo",
          # This pulls all the actual function definitions.
-         "//ujcore/functions:BasicFunctions",
+         "//ujcore/functions:all_functions",
          "@cppschema//:js_api_bridge",
     ],
     features = ["emcc_debug_link"],

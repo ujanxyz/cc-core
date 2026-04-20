@@ -1,7 +1,28 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 package(
-    default_visibility = ["//visibility:public"],
+    default_visibility = ["//:__subpackages__"],
+)
+
+cc_library(
+    name = "BackendRegistry",
+    srcs = ["BackendRegistry.cpp"],
+    hdrs = ["BackendRegistry.h"],
+)
+
+cc_library(
+    name = "Bitmap",
+    hdrs = ["Bitmap.h"],
+)
+
+cc_library(
+    name = "BitmapPool",
+    srcs = ["BitmapPool.cpp"],
+    hdrs = ["BitmapPool.h"],
+    deps = [
+        ":BackendRegistry",
+        ":Bitmap",
+    ],
 )
 
 cc_library(

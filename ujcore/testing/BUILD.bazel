@@ -10,8 +10,8 @@ cc_library(
     deps = [
         "//ujcore/function:FunctionRegistry",
         "//ujcore/function:FunctionSpec",
-        "//ujcore/function:CommonAttributes",
         "//ujcore/function:ParamAccessors",
+        "//ujcore/functions/attributes:CommonAttributes",
         "@abseil-cpp//absl/log",
         "@abseil-cpp//absl/log:check",
         "@abseil-cpp//absl/status:statusor",

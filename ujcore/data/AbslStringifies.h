@@ -58,7 +58,7 @@ void AbslStringify(Sink& sink, const plinfo::NodeInfo& node) {
     if (node.inouts.size() > 0) {
       absl::StrAppend(&slotsStr, "; inouts:", absl::StrJoin(node.inouts, ","));
     }
-    absl::Format(&sink, "(n#%d:%s; fn:%s%s)", node.rawId.value, node.alnumid, node.fnuri, slotsStr);
+    absl::Format(&sink, "(n#%d:%s; fn:%s%s)", node.rawId.value, node.alnumid, node.uri, slotsStr);
 }
 
 template <typename Sink>

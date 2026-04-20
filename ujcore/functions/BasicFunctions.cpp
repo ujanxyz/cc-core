@@ -2,11 +2,11 @@
 #include "absl/log/log.h"
 #include "absl/status/statusor.h"
 #include "ujcore/function/AttributeDataType.h"
-#include "ujcore/function/CommonAttributes.h"
 #include "ujcore/function/FunctionBase.h"
 #include "ujcore/function/FunctionRegistry.h"
 #include "ujcore/function/FunctionSpec.h"
 #include "ujcore/function/ParamAccessors.h"
+#include "ujcore/functions/attributes/CommonAttributes.h"
 
 namespace {
 

@@ -1,14 +1,51 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
-package(default_visibility = ["//visibility:public"])
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+cc_library(
+    name = "GraphPipeline",
+    # srcs = ["GraphPipeline.cpp"],
+    hdrs = ["GraphPipeline.h"],
+    deps = [
+        ":PipelineFnNode",
+        ":PipelineIONode",
+        "//ujcore/data:IdTypes",
+        "//ujcore/data:plstate",
+        "//ujcore/function:AttributeData",
+    ],
+)
+
+cc_library(
+    name = "PipelineBuilder",
+    srcs = ["PipelineBuilder.cpp"],
+    hdrs = ["PipelineBuilder.h"],
+    deps = [
+        ":GraphPipeline",
+        ":PipelineFnNode",
+        ":PipelineSlot",
+        "//ujcore/data:GraphState",
+        "//ujcore/data:IdTypes",
+        "//ujcore/data:plinfo",
+        "//ujcore/data:plstate",
+        "//ujcore/graph:GraphUtils",
+        "//ujcore/function:FunctionRegistry",
+        "//ujcore/function:AttributeData",
+        "//ujcore/function:AttributeTypeRegistry",
+        "//ujcore/utils:status_macros",
+    ],
+)
 
 cc_library(
     name = "PipelineFnNode",
     srcs = ["PipelineFnNode.cpp"],
     hdrs = ["PipelineFnNode.h"],
     deps = [
+        ":PipelineSlot",
         "//ujcore/data:IdTypes",
         "//ujcore/function:AttributeData",
+        "//ujcore/function:AttributeTypeRegistry",
         "//ujcore/function:FuncParamAccess",
         "//ujcore/function:FunctionBase",
         "//ujcore/function:FunctionContext",
@@ -19,22 +56,48 @@ cc_library(
 )
 
 cc_library(
+    name = "PipelineIONode",
+    srcs = ["PipelineIONode.cpp"],
+    hdrs = ["PipelineIONode.h"],
+    deps = [
+        ":PipelineSlot",
+        "//ujcore/data:IdTypes",
+        "//ujcore/data:plstate",
+        "//ujcore/function:AttributeData",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/status:statusor",
+    ],
+)
+
+cc_library(
     name = "PipelineRunner",
     srcs = ["PipelineRunner.cpp"],
-    hdrs = ["PipelineRunner.h"],
+    hdrs = [
+        "PipelineRunner.h",
+    ],
     deps = [
-        ":PipelineFnNode",
+        ":GraphPipeline",
+        ":PipelineBuilder",
+        ":PipelineIONode",
         "//ujcore/data:GraphState",
         "//ujcore/data:IdTypes",
-        "//ujcore/function:AttributeData",
-        "//ujcore/function:FunctionRegistry",
-        "//ujcore/function:FunctionSpec",
+        "//ujcore/data:plstate",
         "//ujcore/utils:status_macros",
         "@abseil-cpp//absl/log",
         "@abseil-cpp//absl/log:check",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "PipelineSlot",
+    hdrs = ["PipelineSlot.h"],
+    deps = [
+        "//ujcore/function:AttributeData",
+        "//ujcore/function:FuncParamAccess",
     ],
 )
 

@@ -24,7 +24,7 @@ AttributeData* PipelineFnNode::OnGetParam(FuncParamAccess access, const std::str
     if (slotIter == slots_.end()) {
         return nullptr;
     }
-    SlotStorage& slot = slotIter->second;
+    PipelineSlot& slot = slotIter->second;
     if (slot.access != access) {
         LOG(ERROR) << "Access mismatch, at slot: " << name;
     }

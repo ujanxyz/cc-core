@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>  // std::less
 #include <string>
 
 #include "cppschema/common/strong_types.h"

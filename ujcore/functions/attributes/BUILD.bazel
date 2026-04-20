@@ -1,0 +1,15 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+cc_library(
+    name = "CommonAttributes",
+    hdrs = ["CommonAttributes.h"],
+    deps = [
+        "//ujcore/function:AttributeDataType",
+        "//ujcore/base:BitmapPool",
+        "@abseil-cpp//absl/log:check",
+    ],
+)

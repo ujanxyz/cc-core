@@ -7,6 +7,7 @@ enum class AttributeDataType {
     kColor,
     kFloat,
     kPoint2D,
+    kBitmap,
     kGeometry,
 };
 

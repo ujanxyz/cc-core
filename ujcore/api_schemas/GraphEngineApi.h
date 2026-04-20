@@ -42,6 +42,20 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(nodeInfo, nodeState, inInfos, outInfos, inoutInfos, inStates, outStates, inoutStates);
     };
 
+    // API: createIONode
+    struct CreateIONodeRequest {
+        std::string dtype;
+        bool isOutput = false;  // if true, it's an output node.
+        DEFINE_STRUCT_VISITOR_FUNCTION(dtype, isOutput);
+    };
+    struct CreateIONodeResponse {
+        std::optional<plinfo::NodeInfo> nodeInfo;
+        std::optional<plstate::NodeState> nodeState;
+        std::optional<plinfo::SlotInfo> slotInfo;
+        std::optional<plstate::SlotState> slotState;
+        DEFINE_STRUCT_VISITOR_FUNCTION(nodeInfo, nodeState, slotInfo, slotState);
+    };
+
     // API: addEdge
     struct AddEdgeRequest {
         NodeId sourceNode;
@@ -90,18 +104,26 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(infos);
     };
 
+    // API: runPipeline
+    struct RunPipelineResponse {
+        std::optional<plstate::GraphRunResult> runResult;
+        DEFINE_STRUCT_VISITOR_FUNCTION(runResult);
+    };
+
     cppschema::ApiStub<VoidType, GetGraphResponse> getGraph;
     cppschema::ApiStub<CreateNodeRequest, CreateNodeResponse> createNode;
+    cppschema::ApiStub<CreateIONodeRequest, CreateIONodeResponse> createIONode;
     cppschema::ApiStub<AddEdgeRequest, AddEdgeResponse> addEdge;
     cppschema::ApiStub<DeleteElementsRequest, DeleteElementsResponse> deleteElements;
     cppschema::ApiStub<GetSlotStatesRequest, GetSlotStatesResponse> getSlotStates;        
     cppschema::ApiStub<VoidType, VoidType> clearGraph;
     cppschema::ApiStub<VoidType, GetAvailableFuncsResponse> getAvailableFuncs;
-    cppschema::ApiStub<VoidType, VoidType> runPipeline;
+    cppschema::ApiStub<VoidType, RunPipelineResponse> runPipeline;
 
     DEFINE_API_VISITOR_FUNCTION(
         getGraph,
         createNode,
+        createIONode,
         addEdge,
         deleteElements,
         getSlotStates,

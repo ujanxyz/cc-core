@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -19,3 +20,6 @@ struct AttributeData {
         return absl::StrCat(AttributeDataTypeToStr(dtype), "/created:", created);
     }
 };
+
+using AttributeEncodeFn = std::function<std::string(std::shared_ptr<void> data)>;
+using AttributeDecodeFn = std::function<std::shared_ptr<void>(const std::string& encoded)>;

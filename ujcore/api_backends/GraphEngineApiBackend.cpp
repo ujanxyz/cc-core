@@ -16,6 +16,9 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
  public:
     using GetGraphResponse = GraphEngineApi::GetGraphResponse;
     using CreateNodeRequest = GraphEngineApi::CreateNodeRequest;
+    using CreateNodeResponse = GraphEngineApi::CreateNodeResponse;
+    using CreateIONodeRequest = GraphEngineApi::CreateIONodeRequest;
+    using CreateIONodeResponse = GraphEngineApi::CreateIONodeResponse;
     using AddEdgeRequest = GraphEngineApi::AddEdgeRequest;
     using AddEdgeResponse = GraphEngineApi::AddEdgeResponse;
     using DeleteElementsRequest = GraphEngineApi::DeleteElementsRequest;
@@ -23,8 +26,8 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
     using GetSlotStatesRequest = GraphEngineApi::GetSlotStatesRequest;
     using GetSlotStatesResponse = GraphEngineApi::GetSlotStatesResponse;
     using GetAvailableFuncsResponse = GraphEngineApi::GetAvailableFuncsResponse;
+    using RunPipelineResponse = GraphEngineApi::RunPipelineResponse;
 
-    using CreateNodeResponse = GraphEngineApi::CreateNodeResponse;
 
     GraphEngineApiBackend(): topoSorter_(state_.topoSortState), builder_(state_, topoSorter_) {}
 
@@ -77,8 +80,33 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         addNodeSlotStates(nodeInfo.outs, response.outStates);
         addNodeSlotStates(nodeInfo.inouts, response.inoutStates);
         response.nodeInfo = std::move(nodeInfo);
-        response.nodeState = GetNodeState(state_, nodeId);
+        response.nodeState = GraphUtils::CopyNodeState(state_, nodeId);
         return response;
+    }
+
+    CreateIONodeResponse createIONodeImpl(const CreateIONodeRequest& request) {
+        auto nodeSlotInfoOr = builder_.AddIONode(request.dtype, request.isOutput);
+        if (!nodeSlotInfoOr.ok()) {
+            LOG(FATAL) << "Insert IO node error: " << nodeSlotInfoOr.status();
+        }
+        plinfo::NodeInfo nodeInfo;
+        plinfo::SlotInfo slotInfo;
+        std::tie(nodeInfo, slotInfo) = std::move(nodeSlotInfoOr).value();
+
+        const NodeId nodeId = nodeInfo.rawId;
+
+        auto slotStateOr = builder_.LookupSlotStates({ SlotId{nodeId, slotInfo.name} });
+        if (!slotStateOr.ok() || slotStateOr->size() != 1) {
+            LOG(FATAL) << "Lookup IO node slot state error: " << slotStateOr.status();
+        }
+        const plstate::SlotState slotState = std::move(slotStateOr).value()[0].second;
+
+            return CreateIONodeResponse {
+            .nodeInfo = std::move(nodeInfo),
+            .nodeState = GraphUtils::CopyNodeState(state_, nodeId),
+            .slotInfo = std::move(slotInfo),
+            .slotState = std::move(slotState),
+        };
     }
 
     AddEdgeResponse addEdgeImpl(const AddEdgeRequest& request) {
@@ -153,16 +181,18 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         };
     }
 
-    VoidType runPipelineImpl(const VoidType&) {
+    RunPipelineResponse runPipelineImpl(const VoidType&) {
         auto buildResult = runner_.BuildFromState(state_);
         if (!buildResult.ok()) {
             LOG(FATAL) << "Build pipeline error: " << buildResult;
         }
         auto runResult = runner_.RunPipeline();
         if (!runResult.ok()) {
-            LOG(FATAL) << "Run pipeline error: " << runResult;
+            LOG(FATAL) << "Run pipeline error: " << runResult.status();
         }
-        return {};
+        return RunPipelineResponse {
+            .runResult = std::move(runResult).value(),
+        };
     }
 
  private:
@@ -177,6 +207,7 @@ static __attribute__((constructor)) void RegisterPipelineApiBackend() {
     GraphEngineApi::ImplPtrs<GraphEngineApiBackend> ptrs = {
         .getGraph = &GraphEngineApiBackend::getGraphImpl,
         .createNode = &GraphEngineApiBackend::createNodeImpl,
+        .createIONode = &GraphEngineApiBackend::createIONodeImpl,
         .addEdge = &GraphEngineApiBackend::addEdgeImpl,
         .deleteElements = &GraphEngineApiBackend::deleteElementsImpl,
         .getSlotStates = &GraphEngineApiBackend::getSlotStatesImpl,
