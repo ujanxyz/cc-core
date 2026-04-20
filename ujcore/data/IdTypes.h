@@ -11,6 +11,10 @@ namespace ujcore {
 DEFINE_STRONG_UINT_TYPE(NodeId);
 DEFINE_STRONG_UINT_TYPE(EdgeId);
 
+// Sentinel zero values for invalid / uninitialized IDs.
+const NodeId kZeroNodeId = NodeId(0);
+const EdgeId kZeroEdgeId = EdgeId(0);
+
 struct SlotId {
     NodeId parent;  // parent node id
     std::string name;  // slot name

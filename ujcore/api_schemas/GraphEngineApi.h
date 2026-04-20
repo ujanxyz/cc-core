@@ -8,6 +8,7 @@
 #include "cppschema/common/types.h"
 #include "cppschema/common/visitor_macros.h"
 #include "ujcore/data/FunctionInfo.h"
+#include "ujcore/data/IdTypes.h"
 #include "ujcore/data/plinfo.h"
 #include "ujcore/data/plstate.h"
 
@@ -104,9 +105,45 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(infos);
     };
 
+    // API: syncEncodedData
+    struct SyncEncodedDataRequest {
+        // In the following `SlotId` entries, the slot name can be empty, which indicates
+        // that the manual data applies to the entire node rather than a specific slot.
+        std::map<SlotId, std::string /* encoded data */> updateIds;
+
+        // Delete IDs take precedence over update IDs. If an ID appears in both, it will
+        // be deleted and the update will be ignored.
+        std::vector<SlotId> deleteIds;
+
+        // Fetch the current data for these IDs after the run.
+        // Mutations and deletions are applied
+        std::vector<SlotId> fetchIds;
+
+        DEFINE_STRUCT_VISITOR_FUNCTION(updateIds, deleteIds, fetchIds);
+    };
+    struct SyncEncodedDataResponse {
+        std::map<SlotId, std::optional<std::string /* encoded data */>> manualData;
+
+        DEFINE_STRUCT_VISITOR_FUNCTION(manualData);
+    };
+
+    // API: syncGraphInputs
+    struct SyncGraphInputsRequest {
+        std::map<NodeId, std::string /* encoded data */> updateIds;
+        std::vector<NodeId> deleteIds;
+
+        DEFINE_STRUCT_VISITOR_FUNCTION(updateIds, deleteIds);
+    };
+    struct SyncGraphInputsResponse {
+        std::map<NodeId, std::optional<std::string /* encoded data */>> inputData;
+
+        DEFINE_STRUCT_VISITOR_FUNCTION(inputData);
+    };
+
     // API: runPipeline
     struct RunPipelineResponse {
         std::optional<plstate::GraphRunResult> runResult;
+
         DEFINE_STRUCT_VISITOR_FUNCTION(runResult);
     };
 
@@ -118,6 +155,8 @@ struct GraphEngineApi {
     cppschema::ApiStub<GetSlotStatesRequest, GetSlotStatesResponse> getSlotStates;        
     cppschema::ApiStub<VoidType, VoidType> clearGraph;
     cppschema::ApiStub<VoidType, GetAvailableFuncsResponse> getAvailableFuncs;
+    cppschema::ApiStub<SyncEncodedDataRequest, SyncEncodedDataResponse> syncEncodedData;
+    cppschema::ApiStub<SyncGraphInputsRequest, SyncGraphInputsResponse> syncGraphInputs;
     cppschema::ApiStub<VoidType, RunPipelineResponse> runPipeline;
 
     DEFINE_API_VISITOR_FUNCTION(
@@ -129,6 +168,8 @@ struct GraphEngineApi {
         getSlotStates,
         clearGraph,
         getAvailableFuncs,
+        syncEncodedData,
+        syncGraphInputs,
         runPipeline);
 };
 

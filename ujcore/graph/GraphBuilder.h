@@ -60,6 +60,25 @@ class GraphBuilder {
   absl::StatusOr<std::tuple<std::vector<EdgeId> /* edge ids */, std::set<SlotId> /* deleted slot ids*/, std::set<SlotId> /* affected slot ids */ >>
   DeleteElements(const std::vector<NodeId>& nodeIds, const std::vector<EdgeId>& edgeIds);
 
+
+  // Clears the manual input data for the given slots.
+  absl::Status ClearManualInputs(const std::vector<SlotId>& slotIds);
+
+  // Sets the manual input data for the given slots. The input data should be encoded as strings.
+  absl::Status SetManualInputs(const std::map<SlotId, std::string /* encoded data */>& manualInputs);
+
+  // Fetches the manual input data for the given slots. The returned data is encoded as strings.
+  absl::StatusOr<std::map<SlotId, std::optional<std::string> /* encoded data */>>
+  FetchManualInputs(const std::vector<SlotId>& slotIds) const;
+
+
+  // Sets the graph input data for the given input nodes. The input data should be encoded as strings.
+  absl::Status SetGraphInputs(const std::map<NodeId, std::string /* encoded data */>& graphInputs);
+
+  // Clears the graph input data for the given input nodes.
+  absl::Status ClearGraphInputs(const std::vector<NodeId>& nodeIds);
+
+  
   // Returns the total number of deleted nodes + edges.
   absl::StatusOr<int> ClearGraph();
 

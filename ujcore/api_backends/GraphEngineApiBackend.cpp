@@ -26,6 +26,10 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
     using GetSlotStatesRequest = GraphEngineApi::GetSlotStatesRequest;
     using GetSlotStatesResponse = GraphEngineApi::GetSlotStatesResponse;
     using GetAvailableFuncsResponse = GraphEngineApi::GetAvailableFuncsResponse;
+    using SyncEncodedDataRequest = GraphEngineApi::SyncEncodedDataRequest;
+    using SyncEncodedDataResponse = GraphEngineApi::SyncEncodedDataResponse;
+    using SyncGraphInputsRequest = GraphEngineApi::SyncGraphInputsRequest;
+    using SyncGraphInputsResponse = GraphEngineApi::SyncGraphInputsResponse;
     using RunPipelineResponse = GraphEngineApi::RunPipelineResponse;
 
 
@@ -181,6 +185,41 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         };
     }
 
+    SyncEncodedDataResponse syncEncodedDataImpl(const SyncEncodedDataRequest& request) {
+        auto updateStatus = builder_.SetManualInputs(request.updateIds);
+        if (!updateStatus.ok()) {
+            LOG(FATAL) << "Update manual inputs error: " << updateStatus;
+        }
+
+        auto deleteStatus = builder_.ClearManualInputs(request.deleteIds);
+        if (!deleteStatus.ok()) {
+            LOG(FATAL) << "Clear manual inputs error: " << deleteStatus;
+        }
+
+        auto fetchOr = builder_.FetchManualInputs(request.fetchIds);
+        if (!fetchOr.ok()) {
+            LOG(FATAL) << "Fetch manual inputs error: " << fetchOr.status();
+        }
+        
+        return SyncEncodedDataResponse {
+            .manualData = std::move(fetchOr).value(),
+        };
+    }
+
+    SyncGraphInputsResponse syncGraphInputsImpl(const SyncGraphInputsRequest& request) {
+        auto updateStatus = builder_.SetGraphInputs(request.updateIds);
+         if (!updateStatus.ok()) {
+             LOG(FATAL) << "Update graph inputs error: " << updateStatus;
+         }
+
+         auto deleteStatus = builder_.ClearGraphInputs(request.deleteIds);
+         if (!deleteStatus.ok()) {
+             LOG(FATAL) << "Clear graph inputs error: " << deleteStatus;
+         }
+         // TODO: Implement fetch. For now we just return empty data.
+        return {};
+    }
+
     RunPipelineResponse runPipelineImpl(const VoidType&) {
         auto buildResult = runner_.BuildFromState(state_);
         if (!buildResult.ok()) {
@@ -213,6 +252,8 @@ static __attribute__((constructor)) void RegisterPipelineApiBackend() {
         .getSlotStates = &GraphEngineApiBackend::getSlotStatesImpl,
         .clearGraph = &GraphEngineApiBackend::clearGraphImpl,
         .getAvailableFuncs = &GraphEngineApiBackend::getAvailableFuncsImpl,
+        .syncEncodedData = &GraphEngineApiBackend::syncEncodedDataImpl,
+        .syncGraphInputs = &GraphEngineApiBackend::syncGraphInputsImpl,
         .runPipeline = &GraphEngineApiBackend::runPipelineImpl,
     };
     cppschema::RegisterBackend<GraphEngineApi, GraphEngineApiBackend>(impl, ptrs);

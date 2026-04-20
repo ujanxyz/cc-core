@@ -213,6 +213,8 @@ GraphBuilder::AddIONode(const std::string& dtype, bool isOutput) {
     .uri = absl::StrCat(isOutput ? "/$OUT/" : "/$IN/", dtype),
   };
   // Graph input node has an output slot, and graph output node has an input slot.
+  // Since the IO nodes have a single slot, it's name is taken as "$out" for input
+  // node and "$in" for output node.
   const plinfo::SlotInfo slotInfo = {
     .parent = nodeId,
     .name = isOutput ? "$in" : "$out",
@@ -332,6 +334,80 @@ GraphBuilder::DeleteElements(const std::vector<NodeId>& nodeIds, const std::vect
   }
 
   return std::make_tuple(deletedEdgeIds, slotIdsToDelete, affectedSlotIds);
+}
+
+absl::Status GraphBuilder::ClearManualInputs(const std::vector<SlotId>& slotIds) {
+  for (const SlotId& slotId : slotIds) {
+    auto iter = state_.slot_states.find(slotId);
+    if (iter != state_.slot_states.end()) {
+      iter->second.manual.reset();
+    } else {
+      return absl::InternalError(absl::StrCat("Slot state lookup failed: ", slotId));
+    }
+  }
+  return absl::OkStatus();
+}
+
+absl::Status GraphBuilder::SetManualInputs(const std::map<SlotId, std::string /* encoded data */>& manualInputs) {
+  for (const auto& [slotId, encodedData] : manualInputs) {
+    RETURN_IF_NOT_FOUND_IN_MAP(const plinfo::NodeInfo& nodeInfo, state_.node_infos, slotId.parent);
+    RETURN_IF_NOT_FOUND_IN_MAP(const plinfo::SlotInfo& slotInfo, state_.slot_infos, slotId);
+    RETURN_IF_NOT_FOUND_IN_MAP(plstate::SlotState& slotState, state_.slot_states, slotId);
+    
+    if (nodeInfo.ntype == plinfo::NodeInfo::NodeType::FN) {
+      if (slotInfo.access == plinfo::SlotInfo::AccessEnum::O) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("Cannot set manual input for output slot: ", slotId));
+      }
+    } else {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Manual input cannot be set for graph input / output slot: ", slotId));
+    }
+
+    slotState.manual = plstate::EncodedData {
+      .payload = encodedData,
+    };
+  }
+  return absl::OkStatus();
+}
+
+absl::StatusOr<std::map<SlotId, std::optional<std::string> /* encoded data */>>
+GraphBuilder::FetchManualInputs(const std::vector<SlotId>& slotIds) const {
+  std::map<SlotId, std::optional<std::string>> result;
+  for (const SlotId& slotId : slotIds) {
+    RETURN_IF_NOT_FOUND_IN_MAP(const plstate::SlotState& slotState, state_.slot_states, slotId);
+    if (slotState.manual.has_value()) {
+      result[slotId] = slotState.manual->payload;
+    } else {
+      result[slotId] = std::nullopt;
+    }
+  }
+  return result;
+}
+
+absl::Status GraphBuilder::SetGraphInputs(const std::map<NodeId, std::string /* encoded data */>& graphInputs) {
+  for (const auto& [nodeId, encodedData] : graphInputs) {
+    RETURN_IF_NOT_FOUND_IN_MAP(const plinfo::NodeInfo& nodeInfo, state_.node_infos, nodeId);
+    RETURN_IF_NOT_FOUND_IN_MAP(plstate::NodeState& nodeState, state_.node_states, nodeId);
+    
+    if (nodeInfo.ntype != plinfo::NodeInfo::NodeType::IN) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Graph input data can only be set for input nodes. Invalid node id: ", nodeId));
+    }
+
+    nodeState.ioData = plstate::EncodedData {
+      .payload = encodedData,
+    };
+  }
+  return absl::OkStatus();
+}
+
+absl::Status GraphBuilder::ClearGraphInputs(const std::vector<NodeId>& nodeIds) {
+  for (const NodeId& nodeId : nodeIds) {
+    RETURN_IF_NOT_FOUND_IN_MAP(plstate::NodeState& nodeState, state_.node_states, nodeId);
+    nodeState.ioData.reset();
+  }
+  return absl::OkStatus();
 }
 
 absl::StatusOr<int> GraphBuilder::ClearGraph() {
