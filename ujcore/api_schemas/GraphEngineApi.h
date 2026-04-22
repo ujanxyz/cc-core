@@ -89,6 +89,16 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(nodeIds, edgeIds, deletedSlotIds, affectedSlotIds, topoOrder);
     };
 
+    // API: getNodeStates
+    struct GetNodeStatesRequest {
+        std::vector<NodeId> nodeIds;
+        DEFINE_STRUCT_VISITOR_FUNCTION(nodeIds);
+    };
+    struct GetNodeStatesResponse {
+        std::vector<std::pair<NodeId, plstate::NodeState>> nodeStates;
+        DEFINE_STRUCT_VISITOR_FUNCTION(nodeStates);
+    };
+
     // API: getSlotStates
    struct GetSlotStatesRequest {
         std::vector<SlotId> slotIds;
@@ -109,6 +119,7 @@ struct GraphEngineApi {
     struct SyncEncodedDataRequest {
         // In the following `SlotId` entries, the slot name can be empty, which indicates
         // that the manual data applies to the entire node rather than a specific slot.
+        // TODO: Make this vector, and struct map keys are not supported in JS.
         std::map<SlotId, std::string /* encoded data */> updateIds;
 
         // Delete IDs take precedence over update IDs. If an ID appears in both, it will
@@ -119,30 +130,29 @@ struct GraphEngineApi {
         // Mutations and deletions are applied
         std::vector<SlotId> fetchIds;
 
-        DEFINE_STRUCT_VISITOR_FUNCTION(updateIds, deleteIds, fetchIds);
+        //DEFINE_STRUCT_VISITOR_FUNCTION(updateIds, deleteIds, fetchIds);
+        DEFINE_STRUCT_VISITOR_FUNCTION(deleteIds, fetchIds);
     };
     struct SyncEncodedDataResponse {
-        std::map<SlotId, std::optional<std::string /* encoded data */>> manualData;
+        // TODO: Make this vector, and struct map keys are not supported in JS.
+        // std::map<SlotId, std::optional<std::string /* encoded data */>> manualData;
+        int32_t dummy = 0;
 
-        DEFINE_STRUCT_VISITOR_FUNCTION(manualData);
+        //DEFINE_STRUCT_VISITOR_FUNCTION(manualData);
+        DEFINE_STRUCT_VISITOR_FUNCTION(dummy);
     };
 
     // API: syncGraphInputs
     struct SyncGraphInputsRequest {
-        std::map<NodeId, std::string /* encoded data */> updateIds;
+        std::vector<std::tuple<NodeId, std::string /* encoded data */>> updateData;
         std::vector<NodeId> deleteIds;
 
-        DEFINE_STRUCT_VISITOR_FUNCTION(updateIds, deleteIds);
-    };
-    struct SyncGraphInputsResponse {
-        std::map<NodeId, std::optional<std::string /* encoded data */>> inputData;
-
-        DEFINE_STRUCT_VISITOR_FUNCTION(inputData);
+        DEFINE_STRUCT_VISITOR_FUNCTION(updateData, deleteIds);
     };
 
     // API: runPipeline
     struct RunPipelineResponse {
-        std::optional<plstate::GraphRunResult> runResult;
+        plstate::GraphRunResult runResult;
 
         DEFINE_STRUCT_VISITOR_FUNCTION(runResult);
     };
@@ -152,11 +162,12 @@ struct GraphEngineApi {
     cppschema::ApiStub<CreateIONodeRequest, CreateIONodeResponse> createIONode;
     cppschema::ApiStub<AddEdgeRequest, AddEdgeResponse> addEdge;
     cppschema::ApiStub<DeleteElementsRequest, DeleteElementsResponse> deleteElements;
+    cppschema::ApiStub<GetNodeStatesRequest, GetNodeStatesResponse> getNodeStates;
     cppschema::ApiStub<GetSlotStatesRequest, GetSlotStatesResponse> getSlotStates;        
     cppschema::ApiStub<VoidType, VoidType> clearGraph;
     cppschema::ApiStub<VoidType, GetAvailableFuncsResponse> getAvailableFuncs;
     cppschema::ApiStub<SyncEncodedDataRequest, SyncEncodedDataResponse> syncEncodedData;
-    cppschema::ApiStub<SyncGraphInputsRequest, SyncGraphInputsResponse> syncGraphInputs;
+    cppschema::ApiStub<SyncGraphInputsRequest, VoidType> syncGraphInputs;
     cppschema::ApiStub<VoidType, RunPipelineResponse> runPipeline;
 
     DEFINE_API_VISITOR_FUNCTION(
@@ -165,6 +176,7 @@ struct GraphEngineApi {
         createIONode,
         addEdge,
         deleteElements,
+        getNodeStates,
         getSlotStates,
         clearGraph,
         getAvailableFuncs,

@@ -21,13 +21,13 @@ struct GraphState {
     IdGeneratorState idgen_state;
     TopoSortState topoSortState;
 
-    std::map<SlotId, plinfo::SlotInfo> slot_infos;
-    std::map<NodeId, plinfo::NodeInfo> node_infos;
-    std::map<EdgeId, plinfo::EdgeInfo> edge_infos;
+    std::map<SlotId, plinfo::SlotInfo> slotInfos;
+    std::map<NodeId, plinfo::NodeInfo> nodeInfos;
+    std::map<EdgeId, plinfo::EdgeInfo> edgeInfos;
 
     // States (Dynamic data):
-    std::map<SlotId, plstate::SlotState> slot_states;
-    std::map<NodeId, plstate::NodeState> node_states;
+    std::map<SlotId, plstate::SlotState> slotStates;
+    std::map<NodeId, plstate::NodeState> nodeStates;
 };
 
 }  // namespace ujcore

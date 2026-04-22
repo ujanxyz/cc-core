@@ -15,12 +15,12 @@ namespace {
 
 absl::StatusOr<std::tuple<const plinfo::NodeInfo*, plstate::NodeState*>>
 InternalGetNodeInfoAndState(GraphState& state, const NodeId nodeId) {
-  const auto infoIter = state.node_infos.find(nodeId);
-  if (infoIter == state.node_infos.end()) {
+  const auto infoIter = state.nodeInfos.find(nodeId);
+  if (infoIter == state.nodeInfos.end()) {
     return absl::InternalError(absl::StrCat("Node info lookup failed: ", nodeId));
   }
-  const auto stateIter = state.node_states.find(nodeId);
-  if (stateIter == state.node_states.end()) {
+  const auto stateIter = state.nodeStates.find(nodeId);
+  if (stateIter == state.nodeStates.end()) {
     return absl::InternalError(absl::StrCat("Node state lookup failed: ", nodeId));
   }
   return std::make_tuple(&infoIter->second, &stateIter->second);
@@ -29,12 +29,12 @@ InternalGetNodeInfoAndState(GraphState& state, const NodeId nodeId) {
 absl::StatusOr<std::tuple<const plinfo::SlotInfo*, plstate::SlotState*>>
 InternalGetSlotInfoAndState(GraphState& state, const NodeId nodeId, const std::string& slotName) {
   const SlotId slotId = {nodeId, slotName};
-  const auto infoIter = state.slot_infos.find(slotId);
-  if (infoIter == state.slot_infos.end()) {
+  const auto infoIter = state.slotInfos.find(slotId);
+  if (infoIter == state.slotInfos.end()) {
     return absl::InternalError(absl::StrCat("Slot info lookup failed: ", slotId));
   }
-  const auto stateIter = state.slot_states.find(slotId);
-  if (stateIter == state.slot_states.end()) {
+  const auto stateIter = state.slotStates.find(slotId);
+  if (stateIter == state.slotStates.end()) {
     return absl::InternalError(absl::StrCat("Slot state lookup failed: ", slotId));
   }
   return std::make_tuple(&infoIter->second, &stateIter->second);
@@ -79,14 +79,14 @@ std::set<SlotId> InternalDeleteNodesGetOrphanEdges(const std::vector<NodeId>& no
   std::set<NodeId> nodeIdsToDelete;
   for (const NodeId nodeId : nodeIds) {
     nodeIdsToDelete.insert(nodeId);
-    state.node_infos.erase(nodeId);
-    state.node_states.erase(nodeId);
+    state.nodeInfos.erase(nodeId);
+    state.nodeStates.erase(nodeId);
     // TODO: Put the node's adjacent edges in to 'orphan_edges'.
   }
 
   // Delete the slots of the deleted nodes.
   std::set<SlotId> slotIdsToDelete;
-  for (const auto& [slotId, slotInfo] : state.slot_infos) {
+  for (const auto& [slotId, slotInfo] : state.slotInfos) {
     if (nodeIdsToDelete.contains(NodeId(slotId.parent))) {
       slotIdsToDelete.insert(slotId);
     }
@@ -98,23 +98,13 @@ std::set<SlotId> InternalDeleteNodesGetOrphanEdges(const std::vector<NodeId>& no
 std::map<EdgeId, plinfo::EdgeInfo> InternalDeleteEdges(const std::set<EdgeId>& edgeIds, GraphState& state) {
   std::map<EdgeId, plinfo::EdgeInfo> deletedEdges;
   for (const EdgeId edgeId : edgeIds) {
-    const auto iter = state.edge_infos.find(edgeId);
-    if (iter == state.edge_infos.end()) continue;
+    const auto iter = state.edgeInfos.find(edgeId);
+    if (iter == state.edgeInfos.end()) continue;
       // TODO: Queue any post-deletion action following the deletion of this edge.
       deletedEdges[edgeId] = std::move(iter->second);
-      state.edge_infos.erase(iter);
+      state.edgeInfos.erase(iter);
     }
     return deletedEdges;
-}
-
-template<class K, class T>
-std::vector<T> GetValuesFromInfosMap(const std::map<K, T>& infosMap) {
-  std::vector<T> result;
-  result.reserve(infosMap.size());
-  for (const auto& [_, info] : infosMap) {
-    result.push_back(info);
-  }
-  return result;
 }
 
 }  // namespace
@@ -126,18 +116,6 @@ GraphBuilder::GraphBuilder(GraphState& state, TopoSortOrder& topoSorter): state_
   };
 }
 
-std::vector<plinfo::NodeInfo> GraphBuilder::GetNodeInfos() const {
-  return GetValuesFromInfosMap(state_.node_infos);
-}
-
-std::vector<plinfo::EdgeInfo> GraphBuilder::GetEdgeInfos() const {
-  return GetValuesFromInfosMap(state_.edge_infos);
-}
-
-std::vector<plinfo::SlotInfo> GraphBuilder::GetSlotInfos() const {
-  return GetValuesFromInfosMap(state_.slot_infos);
-}
-
 absl::StatusOr<std::vector<plinfo::SlotInfo>> GraphBuilder::LookupNodeSlotInfos(
     const NodeId nodeId,
     const std::vector<std::string>& slotNames) const {
@@ -145,29 +123,14 @@ absl::StatusOr<std::vector<plinfo::SlotInfo>> GraphBuilder::LookupNodeSlotInfos(
   infos.reserve(slotNames.size());
   for (const std::string& slotName : slotNames) {
     const SlotId slotId = {nodeId, slotName}; 
-    const auto iter = state_.slot_infos.find(slotId);
-    if (iter != state_.slot_infos.end()) {
+    const auto iter = state_.slotInfos.find(slotId);
+    if (iter != state_.slotInfos.end()) {
       infos.push_back(iter->second);
     } else {
       return absl::InternalError(absl::StrCat("Slot info lookup failed: ", slotId));
     }
   }
   return infos;
-}
-
-absl::StatusOr<std::vector<std::pair<SlotId, plstate::SlotState>>>
-GraphBuilder::LookupSlotStates(const std::vector<SlotId>& slotIds) {
-  std::vector<std::pair<SlotId, plstate::SlotState>> slotStates;
-  slotStates.reserve(slotIds.size());
-  for (const SlotId& slotId : slotIds) {
-    const auto iter = state_.slot_states.find(slotId);
-    if (iter != state_.slot_states.end()) {
-      slotStates.emplace_back(slotId, iter->second);
-    } else {
-      return absl::InternalError(absl::StrCat("Slot state lookup failed: ", slotId));
-    }
-  }
-  return slotStates;
 }
 
 absl::StatusOr<plinfo::NodeInfo> GraphBuilder::AddFuncNode(const FunctionInfo& fnInfo) {
@@ -187,13 +150,13 @@ absl::StatusOr<plinfo::NodeInfo> GraphBuilder::AddFuncNode(const FunctionInfo& f
   std::vector<plinfo::SlotInfo> slots = AddNodeSlotsInternal(*funcSpec, nodeId, nodeInfo);
   for (auto&& slot : std::move(slots)) {
     const SlotId slot_id = {nodeId, slot.name};
-    state_.slot_states[slot_id] = plstate::SlotState {
+    state_.slotStates[slot_id] = plstate::SlotState {
       .genId = 0,
     };
-    state_.slot_infos[slot_id] = std::move(slot);
+    state_.slotInfos[slot_id] = std::move(slot);
   }
-  state_.node_infos[nodeId] = nodeInfo;
-  state_.node_states[nodeId] = plstate::NodeState {
+  state_.nodeInfos[nodeId] = nodeInfo;
+  state_.nodeStates[nodeId] = plstate::NodeState {
     .label = funcSpec->label,
     .connected = plstate::NodeState::ConnectedState::WAIT,
     .genId = 0,
@@ -222,17 +185,17 @@ GraphBuilder::AddIONode(const std::string& dtype, bool isOutput) {
     .access = isOutput ? plinfo::SlotInfo::AccessEnum::I : plinfo::SlotInfo::AccessEnum::O,
   };
   const SlotId slot_id = {nodeId, slotInfo.name};
-  state_.slot_states[slot_id] = plstate::SlotState {
+  state_.slotStates[slot_id] = plstate::SlotState {
     .genId = 0,
   };
-  state_.slot_infos[slot_id] = slotInfo;
+  state_.slotInfos[slot_id] = slotInfo;
   if (isOutput) {
     nodeInfo.ins.push_back(slotInfo.name);
   } else {
     nodeInfo.outs.push_back(slotInfo.name);
   }
-  state_.node_infos[nodeId] = nodeInfo;
-  state_.node_states[nodeId] = plstate::NodeState {
+  state_.nodeInfos[nodeId] = nodeInfo;
+  state_.nodeStates[nodeId] = plstate::NodeState {
     .label = isOutput ? absl::StrCat("Output: ", dtype) : absl::StrCat("Input: ", dtype),
     .connected = plstate::NodeState::ConnectedState::WAIT,
     .genId = 0,
@@ -273,7 +236,7 @@ absl::StatusOr<plinfo::EdgeInfo> GraphBuilder::AddEdge(const NodeId sourceNode, 
     .slot0 = sourceSlot,
     .slot1 = targetSlot,
   };
-  state_.edge_infos[edgeId] = newEdge;
+  state_.edgeInfos[edgeId] = newEdge;
 
   slotState0->outEdges.insert(edgeId);
   slotState1->inEdges.insert(edgeId);
@@ -294,8 +257,8 @@ GraphBuilder::DeleteElements(const std::vector<NodeId>& nodeIds, const std::vect
   // First delete the slots of the deleted nodes, so their state won't be updated when we update
   // the states of the adjacent slots of the deleted edges.
   for (const SlotId& slotId : slotIdsToDelete) {
-    state_.slot_infos.erase(slotId);
-    state_.slot_states.erase(slotId);
+    state_.slotInfos.erase(slotId);
+    state_.slotStates.erase(slotId);
   }
 
   // Delete the edges and collect the slot ids of those deleted edges.
@@ -307,14 +270,14 @@ GraphBuilder::DeleteElements(const std::vector<NodeId>& nodeIds, const std::vect
     const SlotId sourceSlotId = {edgeInfo.node0, edgeInfo.slot0};
     const SlotId targetSlotId = {edgeInfo.node1, edgeInfo.slot1};
 
-    auto sourceSlotStateIter = state_.slot_states.find(sourceSlotId);
-    if (sourceSlotStateIter != state_.slot_states.end()) {
+    auto sourceSlotStateIter = state_.slotStates.find(sourceSlotId);
+    if (sourceSlotStateIter != state_.slotStates.end()) {
       sourceSlotStateIter->second.outEdges.erase(edgeId);
       affectedSlotIds.insert(sourceSlotId);
     }
 
-    auto targetSlotStateIter = state_.slot_states.find(targetSlotId);
-    if (targetSlotStateIter != state_.slot_states.end()) {
+    auto targetSlotStateIter = state_.slotStates.find(targetSlotId);
+    if (targetSlotStateIter != state_.slotStates.end()) {
       targetSlotStateIter->second.inEdges.erase(edgeId);
       affectedSlotIds.insert(targetSlotId);
     }
@@ -338,8 +301,8 @@ GraphBuilder::DeleteElements(const std::vector<NodeId>& nodeIds, const std::vect
 
 absl::Status GraphBuilder::ClearManualInputs(const std::vector<SlotId>& slotIds) {
   for (const SlotId& slotId : slotIds) {
-    auto iter = state_.slot_states.find(slotId);
-    if (iter != state_.slot_states.end()) {
+    auto iter = state_.slotStates.find(slotId);
+    if (iter != state_.slotStates.end()) {
       iter->second.manual.reset();
     } else {
       return absl::InternalError(absl::StrCat("Slot state lookup failed: ", slotId));
@@ -350,9 +313,9 @@ absl::Status GraphBuilder::ClearManualInputs(const std::vector<SlotId>& slotIds)
 
 absl::Status GraphBuilder::SetManualInputs(const std::map<SlotId, std::string /* encoded data */>& manualInputs) {
   for (const auto& [slotId, encodedData] : manualInputs) {
-    RETURN_IF_NOT_FOUND_IN_MAP(const plinfo::NodeInfo& nodeInfo, state_.node_infos, slotId.parent);
-    RETURN_IF_NOT_FOUND_IN_MAP(const plinfo::SlotInfo& slotInfo, state_.slot_infos, slotId);
-    RETURN_IF_NOT_FOUND_IN_MAP(plstate::SlotState& slotState, state_.slot_states, slotId);
+    RETURN_IF_NOT_FOUND_IN_MAP(const plinfo::NodeInfo& nodeInfo, state_.nodeInfos, slotId.parent);
+    RETURN_IF_NOT_FOUND_IN_MAP(const plinfo::SlotInfo& slotInfo, state_.slotInfos, slotId);
+    RETURN_IF_NOT_FOUND_IN_MAP(plstate::SlotState& slotState, state_.slotStates, slotId);
     
     if (nodeInfo.ntype == plinfo::NodeInfo::NodeType::FN) {
       if (slotInfo.access == plinfo::SlotInfo::AccessEnum::O) {
@@ -375,7 +338,7 @@ absl::StatusOr<std::map<SlotId, std::optional<std::string> /* encoded data */>>
 GraphBuilder::FetchManualInputs(const std::vector<SlotId>& slotIds) const {
   std::map<SlotId, std::optional<std::string>> result;
   for (const SlotId& slotId : slotIds) {
-    RETURN_IF_NOT_FOUND_IN_MAP(const plstate::SlotState& slotState, state_.slot_states, slotId);
+    RETURN_IF_NOT_FOUND_IN_MAP(const plstate::SlotState& slotState, state_.slotStates, slotId);
     if (slotState.manual.has_value()) {
       result[slotId] = slotState.manual->payload;
     } else {
@@ -385,10 +348,11 @@ GraphBuilder::FetchManualInputs(const std::vector<SlotId>& slotIds) const {
   return result;
 }
 
-absl::Status GraphBuilder::SetGraphInputs(const std::map<NodeId, std::string /* encoded data */>& graphInputs) {
+absl::Status GraphBuilder::SetGraphInputs(const std::vector<std::tuple<NodeId, std::string /* encoded data */>>& graphInputs) {
   for (const auto& [nodeId, encodedData] : graphInputs) {
-    RETURN_IF_NOT_FOUND_IN_MAP(const plinfo::NodeInfo& nodeInfo, state_.node_infos, nodeId);
-    RETURN_IF_NOT_FOUND_IN_MAP(plstate::NodeState& nodeState, state_.node_states, nodeId);
+    LOG(INFO) << "Setting graph input for node " << nodeId << " with data: " << encodedData;
+    RETURN_IF_NOT_FOUND_IN_MAP(const plinfo::NodeInfo& nodeInfo, state_.nodeInfos, nodeId);
+    RETURN_IF_NOT_FOUND_IN_MAP(plstate::NodeState& nodeState, state_.nodeStates, nodeId);
     
     if (nodeInfo.ntype != plinfo::NodeInfo::NodeType::IN) {
       return absl::InvalidArgumentError(
@@ -404,7 +368,7 @@ absl::Status GraphBuilder::SetGraphInputs(const std::map<NodeId, std::string /* 
 
 absl::Status GraphBuilder::ClearGraphInputs(const std::vector<NodeId>& nodeIds) {
   for (const NodeId& nodeId : nodeIds) {
-    RETURN_IF_NOT_FOUND_IN_MAP(plstate::NodeState& nodeState, state_.node_states, nodeId);
+    RETURN_IF_NOT_FOUND_IN_MAP(plstate::NodeState& nodeState, state_.nodeStates, nodeId);
     nodeState.ioData.reset();
   }
   return absl::OkStatus();
@@ -416,8 +380,8 @@ absl::StatusOr<int> GraphBuilder::ClearGraph() {
 
   // Remove the edges and collect their ids.
   {
-    decltype(state_.edge_infos) edges_map;
-    edges_map.swap(state_.edge_infos);
+    decltype(state_.edgeInfos) edges_map;
+    edges_map.swap(state_.edgeInfos);
     deletedEdgeIds.reserve(edges_map.size());
     for (const auto& [edgeId, _] : edges_map) {
       deletedEdgeIds.push_back(edgeId);
@@ -425,16 +389,16 @@ absl::StatusOr<int> GraphBuilder::ClearGraph() {
   }
   // Remove the nodes and collect their ids.
   {
-    decltype(state_.node_infos) nodes_map;
-    nodes_map.swap(state_.node_infos);
+    decltype(state_.nodeInfos) nodes_map;
+    nodes_map.swap(state_.nodeInfos);
     deletedNodeIds.reserve(nodes_map.size());
     for (const auto& [id, _] : nodes_map) {
       deletedNodeIds.push_back(id);
     }
   }
 
-  state_.node_states.clear();
-  state_.slot_states.clear();
+  state_.nodeStates.clear();
+  state_.slotStates.clear();
   return deletedNodeIds.size() + deletedEdgeIds.size();
 }
 

@@ -27,8 +27,8 @@ public:
     // Get a list of all registered type names, along with their UI labels.
     std::vector<std::tuple<std::string /* typeName */, std::string /* label */>> GetAllTypesAndLabels() const;
 
-    const AttributeEncodeFn* GetEncodFn(const std::string& dtypeName) const;
-    const AttributeDecodeFn* GetDecodFn(const std::string& dtypeName) const;
+    const AttributeEncodeFn* GetEncodeFn(const std::string& dtypeName) const;
+    const AttributeDecodeFn* GetDecodeFn(const std::string& dtypeName) const;
 
     // Used in tests.
     void ClearRegistry();
@@ -38,5 +38,9 @@ private:
 
     std::map<AttributeDataType /* dtype */, std::unique_ptr<TypeBuilder>> registry_;
 };
+
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+#define FILE_LINE __FILE__ ":" TOSTRING(__LINE__)
 
 }  // namespace ujcore

@@ -40,13 +40,13 @@ TEST_F(AttributeTypeRegistryTest, RegisterEncodeDecodeFloat) {
 
     auto& registry = AttributeTypeRegistry::GetInstance();
 
-    registry.MutableTypeBuilder("float", FILE_LINE)
-        .SetLabel("Float")
+    registry.MutableTypeBuilder("floats", FILE_LINE)
+        .SetLabel("Float List")
         .SetToEncodedFn(std::move(enode))
         .SetFromEncodedFn(std::move(decode));
     
-    const auto* toEncodedFn = registry.GetEncodFn("float");
-    const auto* fromEncodedFn = registry.GetDecodFn("float");
+    const auto* toEncodedFn = registry.GetEncodeFn("floats");
+    const auto* fromEncodedFn = registry.GetDecodeFn("floats");
     ASSERT_NE(toEncodedFn, nullptr);
     ASSERT_NE(fromEncodedFn, nullptr);
 
@@ -77,13 +77,13 @@ TEST_F(AttributeTypeRegistryTest, RegisterEncodeDecodePoint2D) {
 
     auto& registry = AttributeTypeRegistry::GetInstance();
 
-    registry.MutableTypeBuilder("point2d", FILE_LINE)
+    registry.MutableTypeBuilder("points2d", FILE_LINE)
         .SetLabel("2D Point")
         .SetToEncodedFn(std::move(encode))
         .SetFromEncodedFn(std::move(decode));
     
-    const auto* toEncodedFn = registry.GetEncodFn("point2d");
-    const auto* fromEncodedFn = registry.GetDecodFn("point2d");
+    const auto* toEncodedFn = registry.GetEncodeFn("points2d");
+    const auto* fromEncodedFn = registry.GetDecodeFn("points2d");
     ASSERT_NE(toEncodedFn, nullptr);
     ASSERT_NE(fromEncodedFn, nullptr);
 
@@ -98,17 +98,17 @@ TEST_F(AttributeTypeRegistryTest, RegisterEncodeDecodePoint2D) {
 TEST_F(AttributeTypeRegistryTest, GetAllTypesAndLabels) {
     auto& registry = AttributeTypeRegistry::GetInstance();
 
-    registry.MutableTypeBuilder("float", FILE_LINE).SetLabel("Float");
-    registry.MutableTypeBuilder("point2d", FILE_LINE).SetLabel("2D Point");
+    registry.MutableTypeBuilder("floats", FILE_LINE).SetLabel("Float List");
+    registry.MutableTypeBuilder("points2d", FILE_LINE).SetLabel("2D Point");
 
     std::vector<std::tuple<std::string, std::string>> typesAndLabels = registry.GetAllTypesAndLabels();
     ASSERT_EQ(typesAndLabels.size(), 2);
 
     std::sort(typesAndLabels.begin(), typesAndLabels.end(),
         [](const auto& a, const auto& b) { return std::get<0>(a) < std::get<0>(b); });
-    EXPECT_EQ(std::get<0>(typesAndLabels[0]), "float");
-    EXPECT_EQ(std::get<1>(typesAndLabels[0]), "Float");
-    EXPECT_EQ(std::get<0>(typesAndLabels[1]), "point2d");
+    EXPECT_EQ(std::get<0>(typesAndLabels[0]), "floats");
+    EXPECT_EQ(std::get<1>(typesAndLabels[0]), "Float List");
+    EXPECT_EQ(std::get<0>(typesAndLabels[1]), "points2d");
     EXPECT_EQ(std::get<1>(typesAndLabels[1]), "2D Point");
 }
 

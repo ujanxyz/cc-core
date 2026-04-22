@@ -6,7 +6,8 @@
 #include "ujcore/function/FunctionRegistry.h"
 #include "ujcore/function/FunctionSpec.h"
 #include "ujcore/function/ParamAccessors.h"
-#include "ujcore/functions/attributes/CommonAttributes.h"
+#include "ujcore/functions/attributes/FloatListAttr.h"
+#include "ujcore/functions/attributes/Points2DAttr.h"
 
 namespace {
 
@@ -22,7 +23,7 @@ public:
         return FunctionSpecBuilder(uri)
             .WithLabel("Emit a float")
             .WithDesc("Emit a fixed float value.")
-            .WithOutParam("v", AttributeDataType::kFloat)
+            .WithOutParam("v", AttributeDataType::kFloatList)
             .Detach();
     }
 
@@ -35,8 +36,8 @@ public:
     }
 
     absl::StatusOr<bool> OnRun(FunctionContext& ctx) override {
-        auto vOut = GetOutParam<FloatAttr>(ctx, "v");
-        vOut->setFloatValue(3.141596f);
+        auto vOut = GetOutParam<FloatListAttr>(ctx, "v");
+        vOut->setFromFloatSpan(std::vector<float>({3.141596f}));
         return true;
     }
 };
@@ -50,7 +51,7 @@ public:
         return FunctionSpecBuilder(uri)
             .WithLabel("Emit a 2D point")
             .WithDesc("Emit a 2D coordinate point (x,y).")
-            .WithOutParam("p", AttributeDataType::kPoint2D)
+            .WithOutParam("p", AttributeDataType::kPoints2D)
             .Detach();
     }
 
@@ -64,9 +65,8 @@ public:
 
     absl::StatusOr<bool> OnRun(FunctionContext& ctx) override {
         ctx.DumpDebugInfo();
-        auto pOut = GetOutParam<Point2DAttr>(ctx, "p");
-        pOut->setXValue(150.5f);
-        pOut->setYValue(250.5f);
+        auto pOut = GetOutParam<Points2DAttr>(ctx, "p");
+        pOut->appendPoint(150.5f, 250.5f);
         return true;
     }
 };
@@ -80,9 +80,9 @@ public:
         return FunctionSpecBuilder(uri)
             .WithLabel("Displace point")
             .WithDesc("Displace a 2D point along X-axis by a given delta.")
-            .WithInputParam("p", AttributeDataType::kPoint2D)
-            .WithInputParam("dx", AttributeDataType::kFloat)
-            .WithOutParam("fp", AttributeDataType::kPoint2D)
+            .WithInputParam("p", AttributeDataType::kPoints2D)
+            .WithInputParam("dx", AttributeDataType::kFloatList)
+            .WithOutParam("fp", AttributeDataType::kPoints2D)
             .Detach();
     }
 
@@ -95,17 +95,17 @@ public:
     }
 
     absl::StatusOr<bool> OnRun(FunctionContext& ctx) override {
-        auto pIn = GetInParam<Point2DAttr>(ctx, "p");
-        auto dx = GetInParam<FloatAttr>(ctx, "dx");
+        auto pIn = GetInParam<Points2DAttr>(ctx, "p");
+        auto dx = GetInParam<FloatListAttr>(ctx, "dx");
 
-        float dxVal = dx->asFloatValue();
-        LOG(INFO) << "@ Value of dx = " << dx->asFloatValue();
-        LOG(INFO) << "@ Value of p.x = " << pIn->getX();
-        LOG(INFO) << "@ Value of p.y = " << pIn->getY();
+        float dxVal = dx->peekOrDefault(0.f);
+        const Points2DAttr::Point2D p = pIn->peekOrOrigin();
+        LOG(INFO) << "@ Value of dx = " << dxVal;
+        LOG(INFO) << "@ Value of p.x = " << p.x;
+        LOG(INFO) << "@ Value of p.y = " << p.y;
 
-        auto fpOut = GetOutParam<Point2DAttr>(ctx, "fp");
-        fpOut->setXValue(pIn->getX() + dxVal);
-        fpOut->setYValue(pIn->getY());
+        auto fpOut = GetOutParam<Points2DAttr>(ctx, "fp");
+        fpOut->appendPoint(p.x + dxVal, p.y);
         return true;
     }
 };

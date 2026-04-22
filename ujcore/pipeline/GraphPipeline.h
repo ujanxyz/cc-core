@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "ujcore/data/IdTypes.h"
+#include "ujcore/data/plinfo.h"
 #include "ujcore/data/plstate.h"
 #include "ujcore/function/AttributeData.h"
 #include "ujcore/pipeline/PipelineFnNode.h"
@@ -39,11 +40,12 @@ struct GraphPipeline {
         ManualDataStep,
         GraphIOStep>;
 
-    // TODO: Rename function nodes.
-    std::map<NodeId, std::unique_ptr<PipelineFnNode>> nodes;
-    std::vector<std::unique_ptr<PipelineIONode>> graphInputs;
-    std::vector<std::unique_ptr<PipelineIONode>> graphOutputs;
+    struct NodeStage {
+        plinfo::NodeInfo::NodeType ntype = plinfo::NodeInfo::NodeType::FN;
+        std::variant<std::unique_ptr<PipelineFnNode>, std::unique_ptr<PipelineIONode>> node;
+    };
 
+    std::map<NodeId, NodeStage> nodeStages;
     std::vector<ExecutionStep> execSteps;
 };
 

@@ -5,8 +5,8 @@
 enum class AttributeDataType {
     kUnknown = 0,
     kColor,
-    kFloat,
-    kPoint2D,
+    kFloatList,
+    kPoints2D,
     kBitmap,
     kGeometry,
 };

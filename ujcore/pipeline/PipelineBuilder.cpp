@@ -6,6 +6,8 @@
 #include "ujcore/function/AttributeTypeRegistry.h"
 #include "ujcore/function/FunctionRegistry.h"
 #include "ujcore/graph/GraphUtils.h"
+#include "ujcore/pipeline/GraphPipeline.h"
+#include "ujcore/pipeline/PipelineFnNode.h"
 #include "ujcore/pipeline/PipelineSlot.h"
 #include "ujcore/utils/status_macros.h"
 
@@ -26,12 +28,12 @@ PipelineBuilder::PipelineBuilder(const GraphState& graph, GraphPipeline& pipelin
 }
 
 absl::Status PipelineBuilder::Rebuild() {
-    pipeline_.nodes.clear();
+    pipeline_.nodeStages.clear();
     pipeline_.execSteps.clear();
-    pipeline_.graphInputs.clear();
-    pipeline_.graphOutputs.clear();
+    LOG(INFO) << "Rebuilding pipeline from graph state, #nodes: " << graph_.nodeInfos.size()
+              << ", #edges: " << graph_.edgeInfos.size();
 
-    for (const auto& [nodeId, node] : graph_.node_infos) {
+    for (const auto& [nodeId, node] : graph_.nodeInfos) {
         switch (node.ntype) {
             case plinfo::NodeInfo::NodeType::FN:
                 RETURN_IF_ERROR(HandleFunctionNode(nodeId, node));
@@ -45,44 +47,41 @@ absl::Status PipelineBuilder::Rebuild() {
                     absl::StrCat("Unsupported node type: ", static_cast<int>(node.ntype)));
         }
     }
-
     // For each node id, collect the edge steps preceding it.
     std::map<NodeId, std::vector<EdgePropagateStep>> edgeStepsByNode;
 
-    for (const auto& [edgeId, edge] : graph_.edge_infos) {
-        RETURN_IF_NOT_FOUND_IN_MAP(auto& n0, pipeline_.nodes, edge.node0);
-        RETURN_IF_NOT_FOUND_IN_MAP(auto& n1, pipeline_.nodes, edge.node1);
-        RETURN_IF_NOT_FOUND_IN_MAP(auto& slot0, n0->slots_, edge.slot0);
-        RETURN_IF_NOT_FOUND_IN_MAP(auto& slot1, n1->slots_, edge.slot1);
+    for (const auto& [edgeId, edge] : graph_.edgeInfos) {
+        PipelineSlot* srcSlot = LookupPipelineSlot(edge.node0, edge.slot0);
+        if (srcSlot == nullptr) {
+            return absl::NotFoundError(absl::StrCat("Source slot not found for edge: ", edgeId.value));
+        }
+        PipelineSlot* dstSlot = LookupPipelineSlot(edge.node1, edge.slot1);
+        if (dstSlot == nullptr) {
+            return absl::NotFoundError(absl::StrCat("Target slot not found for edge: ", edgeId.value));
+        }
         edgeStepsByNode[edge.node1].push_back(EdgePropagateStep {
-            .srcAttr = &slot0.attribute,
-            .dstAttr = &slot1.attribute,
+            .srcAttr = &srcSlot->attribute,
+            .dstAttr = &dstSlot->attribute,
         });
+    }
+
+    int numEdgeSteps = 0;
+    int numFnStages = 0;
+    int numInStages = 0;
+    int numOutStages = 0;
+
+    const size_t numPipelineNodes = pipeline_.nodeStages.size();
+    const size_t numSortedNodes = graph_.topoSortState.sortOrder.size();
+    if (numSortedNodes != numPipelineNodes) {
+        return absl::InternalError(
+            absl::StrCat("Node count mismatch: ", numSortedNodes, " vs ", numPipelineNodes));
     }
 
     std::vector<GraphPipeline::ExecutionStep> executionSteps;
-    executionSteps.reserve(pipeline_.nodes.size() + graph_.edge_infos.size());
-
-    int numNodeSteps = 0;
-    int numEdgeSteps = 0;
-
-    const size_t numSortedNodes = graph_.topoSortState.sortOrder.size();
-    if (numSortedNodes != pipeline_.nodes.size()) {
-        return absl::InternalError(
-            absl::StrCat("Node count mismatch: ", numSortedNodes, " vs ", pipeline_.nodes.size()));
-    }
-
-    // Start with the graph input stages.
-    for (const auto& ioNode : pipeline_.graphInputs) {
-        executionSteps.push_back(GraphPipeline::GraphIOStep {
-            .ioNode = ioNode.get(),
-        });
-    }
+    executionSteps.reserve(pipeline_.nodeStages.size() + graph_.edgeInfos.size());
 
     // Append the node steps in topological order, preceeded by their incoming edge steps.
     for (const NodeId nodeId : graph_.topoSortState.sortOrder) {
-        RETURN_IF_NOT_FOUND_IN_MAP(auto& plNode, pipeline_.nodes, nodeId);
-
         // Extract (remove) the edge steps preceding this node.
         std::vector<EdgePropagateStep> edgeSteps;
         auto iter = edgeStepsByNode.find(nodeId);
@@ -90,30 +89,38 @@ absl::Status PipelineBuilder::Rebuild() {
             edgeSteps = std::move(iter->second);
             edgeStepsByNode.erase(iter);
         }
-
         // Add the node step preceed by the edge steps (its incoming edges).
         for (auto& entry : edgeSteps) {
             executionSteps.push_back(std::move(entry));
             ++numEdgeSteps;
         }
-        executionSteps.push_back(NodeRunStep {
-            .fnNode = plNode.get(),
-        });
-        ++numNodeSteps;
-    }
 
-    // Finish with the graph output stages.
-    for (const auto& ioNode : pipeline_.graphOutputs) {
-        executionSteps.push_back(GraphPipeline::GraphIOStep {
-            .ioNode = ioNode.get(),
-        });
+        RETURN_IF_NOT_FOUND_IN_MAP(GraphPipeline::NodeStage& nodeStage, pipeline_.nodeStages, nodeId);
+        if (nodeStage.ntype == plinfo::NodeInfo::NodeType::FN) {
+            std::unique_ptr<PipelineFnNode>& fnNode = std::get<std::unique_ptr<PipelineFnNode>>(nodeStage.node);
+            executionSteps.push_back(NodeRunStep {
+                .fnNode = fnNode.get(),
+            });
+            ++numFnStages;
+        } else {
+            std::unique_ptr<PipelineIONode>& ioNode = std::get<std::unique_ptr<PipelineIONode>>(nodeStage.node);
+            executionSteps.push_back(GraphPipeline::GraphIOStep {
+                .ioNode = ioNode.get(),
+            });
+            if (nodeStage.ntype == plinfo::NodeInfo::NodeType::IN) {
+                ++numInStages;
+            } else {
+                ++numOutStages;
+            }
+        }
     }
 
     if (!edgeStepsByNode.empty()) {
         return absl::InternalError("Unprocessed node found");
     }
     pipeline_.execSteps.swap(executionSteps);
-    LOG(INFO) << "Built pipeline, nodes: " << numNodeSteps << ", edges: " << numEdgeSteps;
+    LOG(INFO) << "Built pipeline, #edges: " << numEdgeSteps << ", #fn nodes: " << numFnStages
+              << ", #graph inputs: " << numInStages << ", #graph outputs: " << numOutStages;
     return absl::OkStatus();
 }
 
@@ -129,9 +136,9 @@ absl::Status PipelineBuilder::HandleFunctionNode(const NodeId nodeId, const plin
 
     for (const FuncParamSpec& param : fnSpec->params) {
         const SlotId slotId = {nodeId, param.name};
-        auto slotInfoIter = graph_.slot_infos.find(slotId);
-        auto slotStateIter = graph_.slot_states.find(slotId);
-        if (slotInfoIter == graph_.slot_infos.end() || slotStateIter == graph_.slot_states.end()) {
+        auto slotInfoIter = graph_.slotInfos.find(slotId);
+        auto slotStateIter = graph_.slotStates.find(slotId);
+        if (slotInfoIter == graph_.slotInfos.end() || slotStateIter == graph_.slotStates.end()) {
             return absl::NotFoundError(absl::StrCat("Slot info / state not found: ", param.name));
         }
         const SlotInfo& slotInfo = slotInfoIter->second;
@@ -175,7 +182,10 @@ absl::Status PipelineBuilder::HandleFunctionNode(const NodeId nodeId, const plin
 
         fnNode->slots_[param.name] = std::move(plSlot);
     }
-    pipeline_.nodes[nodeId] = std::move(fnNode);
+    pipeline_.nodeStages[nodeId] = GraphPipeline::NodeStage {
+        .ntype = nodeInfo.ntype,
+        .node = std::move(fnNode),
+    };
     return absl::OkStatus();
 }
 
@@ -203,8 +213,8 @@ absl::Status PipelineBuilder::HandleGraphIONode(const NodeId nodeId, const plinf
             absl::StrCat("Unsupported data type for graph IO node: ", slotInfo.dtype));
     }
 
-    RETURN_IF_NOT_FOUND_IN_MAP(const plstate::SlotState& slotState, graph_.slot_states, slotId);
-    RETURN_IF_NOT_FOUND_IN_MAP(const plstate::NodeState& nodeState, graph_.node_states, nodeId);
+    RETURN_IF_NOT_FOUND_IN_MAP(const plstate::SlotState& slotState, graph_.slotStates, slotId);
+    RETURN_IF_NOT_FOUND_IN_MAP(const plstate::NodeState& nodeState, graph_.nodeStates, nodeId);
 
     if (!isOutput) {
         // It's a graph input. Its slot should not have incoming edges.
@@ -251,23 +261,41 @@ absl::Status PipelineBuilder::HandleGraphIONode(const NodeId nodeId, const plinf
     };
 
     if (isOutput) {
-        const AttributeEncodeFn* encodeFn = registry.GetEncodFn(slotInfo.dtype);
+        const AttributeEncodeFn* encodeFn = registry.GetEncodeFn(slotInfo.dtype);
         if (encodeFn == nullptr) {
             return absl::InvalidArgumentError(
                 absl::StrCat("No encoder function found for graph output data type: ", slotInfo.dtype));
         }
         ioNode->convertFnPtr_ = encodeFn;
-        pipeline_.graphOutputs.push_back(std::move(ioNode));
     } else {
-        const AttributeDecodeFn* decodeFn = registry.GetDecodFn(slotInfo.dtype);
+        const AttributeDecodeFn* decodeFn = registry.GetDecodeFn(slotInfo.dtype);
         if (decodeFn == nullptr) {
             return absl::InvalidArgumentError(
                 absl::StrCat("No decoder function found for graph input data type: ", slotInfo.dtype));
         }
         ioNode->convertFnPtr_ = decodeFn;
-        pipeline_.graphInputs.push_back(std::move(ioNode));
     }
+    pipeline_.nodeStages[nodeId] = GraphPipeline::NodeStage {
+        .ntype = nodeInfo.ntype,
+        .node = std::move(ioNode),
+    };
     return absl::OkStatus();
+}
+
+PipelineSlot* PipelineBuilder::LookupPipelineSlot(NodeId nodeId, const std::string& slotName) {
+    auto stageIter = pipeline_.nodeStages.find(nodeId);
+    if (stageIter == pipeline_.nodeStages.end()) {
+        return nullptr;
+    }
+    GraphPipeline::NodeStage& nodeStage = stageIter->second;
+    if (nodeStage.ntype == plinfo::NodeInfo::NodeType::FN) {
+        const std::unique_ptr<PipelineFnNode>& fnNode = std::get<std::unique_ptr<PipelineFnNode>>(nodeStage.node);
+        return fnNode->LookupSlot(slotName);
+    } else if (nodeStage.ntype == plinfo::NodeInfo::NodeType::IN || nodeStage.ntype == plinfo::NodeInfo::NodeType::OUT) {
+        const std::unique_ptr<PipelineIONode>& ioNode = std::get<std::unique_ptr<PipelineIONode>>(nodeStage.node);
+        return &ioNode->slot_;
+    }
+    return nullptr;
 }
 
 }  // namespace ujcore

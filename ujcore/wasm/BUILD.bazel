@@ -16,6 +16,9 @@ cc_binary(
          "//ujcore/base:BuildInfo",
          # This pulls all the actual function definitions.
          "//ujcore/functions:all_functions",
+         "//ujcore/functions/attributes:all_attributes",
+         "@abseil-cpp//absl/log:flags", # Keep: For controlling Abseil logging related flags.
+         "@abseil-cpp//absl/flags:parse",
          "@cppschema//:js_api_bridge",
     ],
     features = ["emcc_debug_link"],
@@ -31,13 +34,20 @@ cc_binary(
         "-s STANDALONE_WASM",
         # Export the module creation function with a specific name, replacing the default 'Module'.
         "-sEXPORT_NAME=CreateUjWasmModule",
+        # [Debug]: Print C++ exceptions to the console, which can be helpful for debugging.
+        "-s ASSERTIONS=1",
+        "-s EXCEPTION_STACK_TRACES=1",
+        "--profiling-funcs",
+        "-fwasm-exceptions",
     ],
     # This target won't build successfully on its own using system headers, because of missing
     # emscripten headers etc. Therefore, we hide it from wildcards.
     tags = ["manual"],
 
     copts = select({
-        "//conditions:default": ["-Wno-error=unused-command-line-argument"],
+        "//conditions:default": [
+            "-Wno-error=unused-command-line-argument",
+        ],
     })
 )
 

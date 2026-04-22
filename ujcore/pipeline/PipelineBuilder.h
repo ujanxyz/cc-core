@@ -1,8 +1,10 @@
 #pragma once
 
 #include "ujcore/data/GraphState.h"
+#include "ujcore/data/IdTypes.h"
 #include "ujcore/data/plinfo.h"
 #include "ujcore/pipeline/GraphPipeline.h"
+#include "ujcore/pipeline/PipelineSlot.h"
 
 namespace ujcore {
 
@@ -23,6 +25,9 @@ public:
 private:
     absl::Status HandleFunctionNode(const NodeId nodeId, const plinfo::NodeInfo& nodeInfo);
     absl::Status HandleGraphIONode(const NodeId nodeId, const plinfo::NodeInfo& nodeInfo);
+
+    // Helper methods to get the pipeline slot reference.
+    PipelineSlot* LookupPipelineSlot(NodeId nodeId, const std::string& slotName);
 
     const GraphState& graph_;
     GraphPipeline& pipeline_;

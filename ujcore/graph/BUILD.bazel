@@ -33,6 +33,7 @@ cc_library(
         "//ujcore/data:plinfo",
         "//ujcore/data:GraphState",
         "//ujcore/data:IdTypes",
+        "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
     ],
 )

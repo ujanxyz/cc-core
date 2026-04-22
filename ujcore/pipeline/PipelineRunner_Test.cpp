@@ -43,7 +43,7 @@ void SetupGraphState(GraphState& graph) {
         .outs = {"fp"},
         .inouts = {},
     };
-    graph.node_infos = {
+    graph.nodeInfos = {
         {n1.rawId, n1},
         {n2.rawId, n2},
         {n3.rawId, n3},
@@ -53,34 +53,34 @@ void SetupGraphState(GraphState& graph) {
     plinfo::SlotInfo slot1 = {
         .parent = NodeId(1),
         .name = "v",
-        .dtype = "float",
+        .dtype = "floats",
         .access = plinfo::SlotInfo::AccessEnum::O,
     };
     plinfo::SlotInfo slot2 = {
         .parent = NodeId(2),
         .name = "p",
-        .dtype = "point2d",
+        .dtype = "points2d",
         .access = plinfo::SlotInfo::AccessEnum::O,
     };
     plinfo::SlotInfo slot3 = {
         .parent = NodeId(3),
         .name = "p",
-        .dtype = "point2d",
+        .dtype = "points2d",
         .access = plinfo::SlotInfo::AccessEnum::I,
     };
     plinfo::SlotInfo slot4 = {
         .parent = NodeId(3),
         .name = "dx",
-        .dtype = "float",
+        .dtype = "floats",
         .access = plinfo::SlotInfo::AccessEnum::I,
     };
     plinfo::SlotInfo slot5 = {
         .parent = NodeId(3),
         .name = "fp",
-        .dtype = "point2d",
+        .dtype = "points2d",
         .access = plinfo::SlotInfo::AccessEnum::O,
     };
-    graph.slot_infos = {
+    graph.slotInfos = {
         {{slot1.parent, slot1.name}, slot1},
         {{slot2.parent, slot2.name}, slot2},
         {{slot3.parent, slot3.name}, slot3},
@@ -121,7 +121,7 @@ void SetupGraphState(GraphState& graph) {
         .manual = std::nullopt,
     };
 
-    graph.slot_states = {
+    graph.slotStates = {
         {{slot1.parent, slot1.name}, slotState1},
         {{slot2.parent, slot2.name}, slotState2},
         {{slot3.parent, slot3.name}, slotState3},
@@ -145,7 +145,7 @@ void SetupGraphState(GraphState& graph) {
         .slot0 = "p",
         .slot1 = "p",
     };
-    graph.edge_infos = {
+    graph.edgeInfos = {
         {edge1.id, edge1},
         {edge2.id, edge2},
     };

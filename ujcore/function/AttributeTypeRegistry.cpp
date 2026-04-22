@@ -68,7 +68,7 @@ AttributeTypeRegistry::GetAllTypesAndLabels() const {
     return result;
 }
 
-const AttributeEncodeFn* AttributeTypeRegistry::GetEncodFn(const std::string& dtypeName) const {
+const AttributeEncodeFn* AttributeTypeRegistry::GetEncodeFn(const std::string& dtypeName) const {
     AttributeDataType dtype = AttributeDataTypeFromStr(dtypeName);
     auto iter = registry_.find(dtype);
     if (iter == registry_.end()) {
@@ -78,7 +78,7 @@ const AttributeEncodeFn* AttributeTypeRegistry::GetEncodFn(const std::string& dt
     return &builderImpl->toEncodedFn_;
 }
 
-const AttributeDecodeFn* AttributeTypeRegistry::GetDecodFn(const std::string& dtypeName) const {
+const AttributeDecodeFn* AttributeTypeRegistry::GetDecodeFn(const std::string& dtypeName) const {
     AttributeDataType dtype = AttributeDataTypeFromStr(dtypeName);
     auto iter = registry_.find(dtype);
     if (iter == registry_.end()) {

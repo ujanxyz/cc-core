@@ -31,19 +31,21 @@
 #define CAT2(X,Y) X##Y
 #define CAT(X,Y) CAT2(X,Y)
 
-// #define RETURN_IF_NOT_FOUND_IN_MAP(lhs, store, key)                            \
-//     auto CAT(iter, __LINE__) = (store).find(key);                                 \
-//     if (_PREDICT_FALSE(CAT(iter, __LINE__) == (store).end())) {                   \
-//       return absl::NotFoundError("key not found: " + std::string(CAT(iter, __LINE__))    );                    \
-//     }                                                                          \
-//     lhs = CAT(iter, __LINE__)->second;                                            \
-//
 
+
+// Stringize the argument after it has been expanded
+#define STRINGIZE_DETAIL(x) #x
+
+// Force expansion of the argument (e.g., __LINE__) before stringizing
+#define STRINGIZE(x) STRINGIZE_DETAIL(x)
+
+// Concatenate the file name, a separator, and the stringized line number
+#define FILE_LINE __FILE__ ":" STRINGIZE(__LINE__)
 
 #define RETURN_IF_NOT_FOUND_IN_MAP(lhs, store, key)                            \
     auto CAT(iter, __LINE__) = (store).find(key);                              \
     if (_PREDICT_FALSE(CAT(iter, __LINE__) == (store).end())) {                \
-      return absl::NotFoundError("Key not found: " + std::to_string(__LINE__));     \
+      return absl::NotFoundError("Key not found: " + std::string(FILE_LINE));     \
     }                                                                          \
     lhs = CAT(iter, __LINE__)->second;                                         \
 

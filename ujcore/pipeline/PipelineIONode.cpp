@@ -35,9 +35,14 @@ absl::Status PipelineIONode::InternalRunAsInput() {
         return absl::InternalError("Missing encoded payload for graph input");
     }
     const std::string& encoded = encodedInput_->value().payload;
+    VLOG(1) << "Decoding input for node " << selfId_.value << " with dtype " << AttributeDataTypeToStr(dtype_) << ", data: " << encoded;
+    std::shared_ptr<void> decodedData = (*decodeFnPtr)(encoded);
+    if (decodedData == nullptr) {
+        return absl::InternalError("Failed to decode graph input data for node " + std::to_string(selfId_.value));
+    }
     slot_.attribute = AttributeData {
         .dtype = dtype_,
-        .data = (*decodeFnPtr)(encoded),
+        .data = std::move(decodedData),
         .created = true,
     };
     return absl::OkStatus();

@@ -5,11 +5,35 @@ package(
 )
 
 cc_library(
-    name = "CommonAttributes",
-    hdrs = ["CommonAttributes.h"],
+    name = "FloatListAttr",
+    srcs = ["FloatListAttr.cpp"],
+    hdrs = ["FloatListAttr.h"],
     deps = [
         "//ujcore/function:AttributeDataType",
-        "//ujcore/base:BitmapPool",
+        "//ujcore/function:AttributeTypeRegistry",
         "@abseil-cpp//absl/log:check",
+        "@nlohmann_json//:json",
+    ],
+    alwayslink = 1,  # The types register themselves in the AttributeTypeRegistry.
+)
+
+cc_library(
+    name = "Points2DAttr",
+    srcs = ["Points2DAttr.cpp"],
+    hdrs = ["Points2DAttr.h"],
+    deps = [
+        "//ujcore/function:AttributeDataType",
+        "//ujcore/function:AttributeTypeRegistry",
+        "@abseil-cpp//absl/log:check",
+        "@nlohmann_json//:json",
+    ],
+    alwayslink = 1,  # The types register themselves in the AttributeTypeRegistry.
+)
+
+cc_library(
+    name = "all_attributes",
+    deps = [
+        ":FloatListAttr",
+        ":Points2DAttr",
     ],
 )

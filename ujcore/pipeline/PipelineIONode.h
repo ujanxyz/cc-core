@@ -19,6 +19,8 @@ public:
 
   NodeId GetNodeId() const { return selfId_; }
 
+  bool isOutputStage() const { return isOutput_; }
+
   absl::StatusOr<std::string> GetEncodedOutput() const;
 
   absl::Status RunAsIO();

@@ -22,6 +22,8 @@ public:
       const FunctionSpec& funcSpec,
       std::unique_ptr<FunctionBase> funcInstance);
 
+  PipelineSlot* LookupSlot(const std::string& slotName);
+
   // Execute the function stage in the pipeline.
   absl::StatusOr<bool> RunFunction();
   

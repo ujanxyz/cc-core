@@ -42,16 +42,6 @@ cc_test(
 )
 
 cc_library(
-    name = "CommonAttributes",
-    hdrs = ["CommonAttributes.h"],
-    deps = [
-        ":AttributeDataType",
-        "@abseil-cpp//absl/log:check",
-    ],
-)
-
-
-cc_library(
     name = "FuncParamAccess",
     hdrs = ["FuncParamAccess.h"],
 )

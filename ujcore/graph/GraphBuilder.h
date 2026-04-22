@@ -38,16 +38,8 @@ class GraphBuilder {
     return &state_;
   }
 
-  std::vector<plinfo::NodeInfo> GetNodeInfos() const;
-  std::vector<plinfo::EdgeInfo> GetEdgeInfos() const;
-  std::vector<plinfo::SlotInfo> GetSlotInfos() const;
-
   // Upon success returns the same number of SlotInfos
   absl::StatusOr<std::vector<plinfo::SlotInfo>> LookupNodeSlotInfos(NodeId nodeId, const std::vector<std::string>& slotNames) const;
-
-  // Upon success returns the same number of SlotStates
-  absl::StatusOr<std::vector<std::pair<SlotId, plstate::SlotState>>>
-  LookupSlotStates(const std::vector<SlotId>& slotIds);
 
   absl::StatusOr<plinfo::NodeInfo> AddFuncNode(const FunctionInfo& fnInfo);
 
@@ -73,12 +65,12 @@ class GraphBuilder {
 
 
   // Sets the graph input data for the given input nodes. The input data should be encoded as strings.
-  absl::Status SetGraphInputs(const std::map<NodeId, std::string /* encoded data */>& graphInputs);
+  absl::Status SetGraphInputs(const std::vector<std::tuple<NodeId, std::string /* encoded data */>>& graphInputs);
 
   // Clears the graph input data for the given input nodes.
   absl::Status ClearGraphInputs(const std::vector<NodeId>& nodeIds);
 
-  
+
   // Returns the total number of deleted nodes + edges.
   absl::StatusOr<int> ClearGraph();
 

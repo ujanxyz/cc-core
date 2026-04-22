@@ -15,7 +15,24 @@ PipelineFnNode::PipelineFnNode(
     functionCtx_ = std::make_unique<FunctionContext>(this);
 }
 
+PipelineSlot* PipelineFnNode::LookupSlot(const std::string& slotName) {
+    auto slotIter = slots_.find(slotName);
+    if (slotIter == slots_.end()) {
+        return nullptr;
+    }
+    return &slotIter->second;
+}
+
 absl::StatusOr<bool> PipelineFnNode::RunFunction() {
+    // Debug the attribute slot contents.
+    for (auto& [slotName, slot] : slots_) {
+        LOG(INFO) << "Running node " << selfId_.value << ", slot = " << slotName << " : "
+            << static_cast<int>(slot.access) << ", dtype: "
+            << AttributeDataTypeToStr(slot.attribute.dtype)
+            << ", has_data: " << (slot.attribute.data != nullptr)
+            << ", overridden: " << slot.overridden;
+    }
+
     return funcInstance_->OnRun(*functionCtx_);
 }
 
