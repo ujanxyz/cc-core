@@ -80,6 +80,7 @@ cc_library(
         ":GraphPipeline",
         ":PipelineBuilder",
         ":PipelineIONode",
+        "//ujcore/base:BitmapPool",
         "//ujcore/data:GraphState",
         "//ujcore/data:IdTypes",
         "//ujcore/data:plstate",

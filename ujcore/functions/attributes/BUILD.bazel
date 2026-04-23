@@ -5,6 +5,22 @@ package(
 )
 
 cc_library(
+    name = "BitmapAttr",
+    srcs = ["BitmapAttr.cpp"],
+    hdrs = ["BitmapAttr.h"],
+    deps = [
+        "//ujcore/base:Bitmap",
+        "//ujcore/base:BitmapPool",
+        "//ujcore/function:AttributeDataType",
+        "//ujcore/function:AttributeTypeRegistry",
+        "//ujcore/function:ResourceContext",
+        "@abseil-cpp//absl/log:check",
+        "@nlohmann_json//:json",
+    ],
+    alwayslink = 1,  # The types register themselves in the AttributeTypeRegistry.
+)
+
+cc_library(
     name = "FloatListAttr",
     srcs = ["FloatListAttr.cpp"],
     hdrs = ["FloatListAttr.h"],
@@ -33,6 +49,7 @@ cc_library(
 cc_library(
     name = "all_attributes",
     deps = [
+        ":BitmapAttr",
         ":FloatListAttr",
         ":Points2DAttr",
     ],

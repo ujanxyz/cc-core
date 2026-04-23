@@ -1,7 +1,10 @@
 #pragma once
 
+#include <memory>
+
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "ujcore/base/BitmapPool.h"
 #include "ujcore/data/GraphState.h"
 #include "ujcore/data/plstate.h"
 #include "ujcore/pipeline/GraphPipeline.h"
@@ -18,6 +21,7 @@ public:
 
 private:
     GraphPipeline pipeline_;
+    std::unique_ptr<BitmapPool> bitmapPool_;
 };
 
 }  // namespace ujcore

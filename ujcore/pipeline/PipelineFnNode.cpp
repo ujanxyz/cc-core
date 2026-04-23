@@ -13,6 +13,7 @@ PipelineFnNode::PipelineFnNode(
         : selfId_(nodeId),
         funcInstance_(std::move(funcInstance)) {
     functionCtx_ = std::make_unique<FunctionContext>(this);
+    resourceCtx_ = std::make_unique<ResourceContext>();
 }
 
 PipelineSlot* PipelineFnNode::LookupSlot(const std::string& slotName) {
@@ -64,6 +65,10 @@ void PipelineFnNode::DumpDebugInfoFromFunc() {
             << AttributeDataTypeToStr(slot.attribute.dtype)
             << ", overridden: " << slot.overridden;
     }
+}
+
+ResourceContext* PipelineFnNode::GetResourceContext() {
+    return resourceCtx_.get();
 }
 
 }  // namespace ujcore

@@ -63,6 +63,7 @@ cc_library(
     deps = [
         ":AttributeData",
         ":FuncParamAccess",
+        ":ResourceContext",
     ],
 )
 
@@ -95,3 +96,10 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "ResourceContext",
+    hdrs = ["ResourceContext.h"],
+    deps = [
+        "@abseil-cpp//absl/log",
+    ],
+)

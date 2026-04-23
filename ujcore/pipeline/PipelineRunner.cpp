@@ -9,16 +9,30 @@ namespace ujcore {
 namespace {
 
 using NodeRunStep = GraphPipeline::NodeRunStep;
+using NodeStage = GraphPipeline::NodeStage;
 using EdgePropagateStep = GraphPipeline::EdgePropagateStep;
 using GraphIOStep = GraphPipeline::GraphIOStep;
 using ManualDataStep = GraphPipeline::ManualDataStep;
 
+// Iterate over the function nodes (PipelineFnNode) in the pipeline, and populate the resource
+// context with the bitmap pool.
+void InternalAssignBitmapPool(std::map<NodeId, NodeStage>& nodeStages, BitmapPool* bitmapPool) {
+    for (auto& [nodeId, stage] : nodeStages) {
+        if (stage.ntype == plinfo::NodeInfo::NodeType::FN) {
+            PipelineFnNode* fnNode = std::get<std::unique_ptr<PipelineFnNode>>(stage.node).get();
+            fnNode->GetResourceContext()->setBitmapPool(bitmapPool);
+        }
+    }
+}
+
 }  // namespace
 
 absl::Status PipelineRunner::BuildFromState(const GraphState& state) {
-
     PipelineBuilder builder(state, pipeline_);
     RETURN_IF_ERROR(builder.Rebuild());
+    bitmapPool_ = CreateNewBitmapPool();
+
+    InternalAssignBitmapPool(pipeline_.nodeStages, bitmapPool_.get());
     return absl::OkStatus();
 }
 

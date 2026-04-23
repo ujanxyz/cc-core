@@ -5,6 +5,18 @@
 #include "ujcore/function/AttributeDataType.h"
 #include "ujcore/function/FunctionContext.h"
 
+namespace internal {
+
+// Trait to check if a param type uses resource context (i.e. has a field named 'resourceCtx'
+// of type ResourceContext*).
+template <typename T>
+concept HasResourceCtxPtrField = requires(T t) {
+    // Checks if t.resourceCtx exists and the type is ResourceContext*
+    { t.resourceCtx } -> std::same_as<ResourceContext*&>;
+};
+
+}  // namespace internal
+
 template <class T>
 auto GetInParam(FunctionContext& ctx, const std::string& name) -> std::unique_ptr<typename T::InParam> {
     using StorageType = typename T::Storage;
@@ -26,6 +38,9 @@ auto GetInParam(FunctionContext& ctx, const std::string& name) -> std::unique_pt
 
     auto param = std::make_unique<InParamType>();
     param->storage = std::static_pointer_cast<StorageType>(attr->data);
+    if constexpr (internal::HasResourceCtxPtrField<InParamType>) {
+        param->resourceCtx = ctx.GetResourceContext();
+    }
     return param;
 }
 
@@ -46,5 +61,9 @@ auto GetOutParam(FunctionContext& ctx, const std::string& name) -> std::unique_p
 
     auto param = std::make_unique<OutParamType>();
     param->storage = std::static_pointer_cast<StorageType>(attr->data);
+    if constexpr (internal::HasResourceCtxPtrField<OutParamType>) {
+        param->resourceCtx = ctx.GetResourceContext();
+    }
+
     return param;
 }

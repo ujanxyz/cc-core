@@ -18,6 +18,7 @@ struct PipelineSlot {
 
     // Tracks if the slot was accessed during the node execution.
     // Used to track progressive execution.
+    // TODO: Re-visit the necessity and correctness of this field.
     bool accessed = false;
 };
 

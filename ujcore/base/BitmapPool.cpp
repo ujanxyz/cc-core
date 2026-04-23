@@ -1,5 +1,7 @@
 #include "ujcore/base/BitmapPool.h"
 
+#include <iostream>
+
 #include "ujcore/base/BackendRegistry.h"
 
 namespace {
@@ -10,6 +12,14 @@ public:
     : width_(width), height_(height), bytesPerPixel_(bytesPerPixel) {
         const int32_t totalBytes = byteSize();
         ownedBytes_ = std::unique_ptr<uint8_t[]>(new uint8_t[totalBytes]);
+  }
+
+  ~NativeBitmap() {
+    std::cout << "Destroying NativeBitmap with id: " << id() << std::endl;
+  }
+
+  int32_t id() override {
+    return reinterpret_cast<intptr_t>(this);
   }
 
   int32_t width() override {
@@ -47,14 +57,11 @@ public:
 
 }  // namespace
 
-BitmapPool& GetBitmapPool() {
-  static BitmapPool* kInstance = ([]-> BitmapPool* {
-    auto pool = BackendRegistry::Create<BitmapPool>();
-    if (pool == nullptr) {
-      return new NativeBitmapPool();
-    } else {
-      return pool.release();
-    }
-  })();
-  return *kInstance;
+std::unique_ptr<BitmapPool> CreateNewBitmapPool() {
+  auto pool = BackendRegistry::Create<BitmapPool>();
+  if (pool == nullptr) {
+      return std::make_unique<NativeBitmapPool>();
+  } else {
+      return std::unique_ptr<BitmapPool>(pool.release());
+  }
 }

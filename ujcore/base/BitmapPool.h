@@ -12,5 +12,5 @@ public:
         int32_t width, int32_t height, int32_t bytesPerPixel) = 0;
 };
 
-// Get an instance of BitmapPool implementation based on the registered impl.
-BitmapPool& GetBitmapPool();
+// Create a new pool using the registered implementation.
+std::unique_ptr<BitmapPool> CreateNewBitmapPool();

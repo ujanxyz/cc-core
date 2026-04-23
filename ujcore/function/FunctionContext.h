@@ -4,6 +4,7 @@
 
 #include "ujcore/function/AttributeData.h"
 #include "ujcore/function/FuncParamAccess.h"
+#include "ujcore/function/ResourceContext.h"
 
 class FunctionContextParent {
 public:
@@ -12,6 +13,7 @@ public:
     virtual AttributeData* OnGetParam(FuncParamAccess access, const std::string& name) = 0;
     virtual void LogFromFunc(std::string_view message) = 0;
     virtual void DumpDebugInfoFromFunc() = 0;
+    virtual ResourceContext* GetResourceContext() = 0;
 };
 
 class FunctionContext {
@@ -36,6 +38,10 @@ public:
 
     void DumpDebugInfo() {
         parent_->DumpDebugInfoFromFunc();
+    }
+
+    ResourceContext* GetResourceContext() {
+        return parent_->GetResourceContext();
     }
 
 private:

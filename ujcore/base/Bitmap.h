@@ -16,6 +16,7 @@ class Bitmap {
 public:
     virtual ~Bitmap() = default;
 
+    virtual int32_t id() = 0;
     virtual int32_t width() = 0;
     virtual int32_t height() = 0;
     virtual int32_t byteSize() = 0;

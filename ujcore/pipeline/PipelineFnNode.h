@@ -33,10 +33,13 @@ public:
   void LogFromFunc(std::string_view message) override;
   void DumpDebugInfoFromFunc() override;
 
+  ResourceContext* GetResourceContext() override;
+
 private:
     const NodeId selfId_;
     std::unique_ptr<FunctionBase> funcInstance_;
     std::unique_ptr<FunctionContext> functionCtx_;
+    std::unique_ptr<ResourceContext> resourceCtx_;
     std::map<std::string /* slot name */, PipelineSlot> slots_;
 
     bool executed_ = false;
