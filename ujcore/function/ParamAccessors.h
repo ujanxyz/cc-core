@@ -1,6 +1,7 @@
 #pragma once
 
 #include "absl/log/log.h"
+#include "absl/strings/str_cat.h"
 #include "ujcore/function/AttributeData.h"
 #include "ujcore/function/AttributeDataType.h"
 #include "ujcore/function/FunctionContext.h"
@@ -13,6 +14,12 @@ template <typename T>
 concept HasResourceCtxPtrField = requires(T t) {
     // Checks if t.resourceCtx exists and the type is ResourceContext*
     { t.resourceCtx } -> std::same_as<ResourceContext*&>;
+};
+
+template <typename T>
+concept HasEncodedSlotId = requires(T t) {
+    // Checks if t.encodedSlotId exists and the type is std::string
+    { t.encodedSlotId } -> std::same_as<std::string&>;
 };
 
 }  // namespace internal
@@ -38,6 +45,9 @@ auto GetInParam(FunctionContext& ctx, const std::string& name) -> std::unique_pt
 
     auto param = std::make_unique<InParamType>();
     param->storage = std::static_pointer_cast<StorageType>(attr->data);
+    if constexpr (internal::HasEncodedSlotId<InParamType>) {
+        param->encodedSlotId = absl::StrCat(ctx.GetNodeId().value, ":", name);
+    }
     if constexpr (internal::HasResourceCtxPtrField<InParamType>) {
         param->resourceCtx = ctx.GetResourceContext();
     }
@@ -61,9 +71,13 @@ auto GetOutParam(FunctionContext& ctx, const std::string& name) -> std::unique_p
 
     auto param = std::make_unique<OutParamType>();
     param->storage = std::static_pointer_cast<StorageType>(attr->data);
+    if constexpr (internal::HasEncodedSlotId<OutParamType>) {
+        param->encodedSlotId = absl::StrCat(ctx.GetNodeId().value, ":", name);
+    }
     if constexpr (internal::HasResourceCtxPtrField<OutParamType>) {
         param->resourceCtx = ctx.GetResourceContext();
     }
 
     return param;
 }
+

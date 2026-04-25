@@ -40,9 +40,36 @@ public:
     absl::StatusOr<bool> OnRun(FunctionContext& ctx) override {
         auto vOut = GetOutParam<BitmapAttr>(ctx, "pic");
         vOut->setFromUri("/bmpuri-001");
-        std::shared_ptr<Bitmap> bmp = vOut->createBitmap();
+        Bitmap* bmp = vOut->createBitmap();
         LOG(INFO) << "EmitBitmapFn created bitmap with id: " << bmp->id() << ", width: " << bmp->width() << ", height: " << bmp->height();
+        drawOnBitmap(bmp);
+        bmp->flush();
         return true;
+    }
+
+private:
+    // Given a bitmap, draw an opaque cyan rectangle in it, modifying raw rgba pixels.
+    void drawOnBitmap(Bitmap* bmp) {
+            uint8_t* pixels = bmp->bytes();
+            int32_t width = bmp->width();
+            int32_t height = bmp->height();
+            int32_t bytesPerPixel = bmp->bytesPerPixel();
+    
+            // Draw a cyan rectangle in the center of the bitmap.
+            int32_t rectWidth = width / 2;
+            int32_t rectHeight = height / 2;
+            int32_t startX = (width - rectWidth) / 2;
+            int32_t startY = (height - rectHeight) / 2;
+    
+            for (int y = startY; y < startY + rectHeight; ++y) {
+                for (int x = startX; x < startX + rectWidth; ++x) {
+                    int idx = (y * width + x) * bytesPerPixel;
+                    pixels[idx] = 0;        // R
+                    pixels[idx + 1] = 255;  // G
+                    pixels[idx + 2] = 255;  // B
+                    pixels[idx + 3] = 255;  // A
+                }
+            }
     }
 };
 

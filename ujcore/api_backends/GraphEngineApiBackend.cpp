@@ -31,8 +31,9 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
     using SyncEncodedDataRequest = GraphEngineApi::SyncEncodedDataRequest;
     using SyncEncodedDataResponse = GraphEngineApi::SyncEncodedDataResponse;
     using SyncGraphInputsRequest = GraphEngineApi::SyncGraphInputsRequest;
+    using RunPipelineRequest = GraphEngineApi::RunPipelineRequest;
     using RunPipelineResponse = GraphEngineApi::RunPipelineResponse;
-
+    using GetResourcesResponse = GraphEngineApi::GetResourcesResponse;
 
     GraphEngineApiBackend(): topoSorter_(state_.topoSortState), builder_(state_, topoSorter_) {}
 
@@ -240,17 +241,31 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         return VoidType {};
     }
 
-    RunPipelineResponse runPipelineImpl(const VoidType&) {
-        auto buildResult = runner_.BuildFromState(state_);
-        if (!buildResult.ok()) {
-            LOG(FATAL) << "Build pipeline error: " << buildResult;
+    RunPipelineResponse runPipelineImpl(const RunPipelineRequest& request) {
+        if (request.build) {
+            auto buildResult = runner_.BuildFromState(state_);
+            if (!buildResult.ok()) {
+                LOG(FATAL) << "Build pipeline error: " << buildResult;
+            }
         }
-        auto runResult = runner_.RunPipeline();
-        if (!runResult.ok()) {
-            LOG(FATAL) << "Run pipeline error: " << runResult.status();
+        RunPipelineResponse response;
+        if (request.execute) {
+            auto runResult = runner_.RunPipeline();
+            if (!runResult.ok()) {
+                LOG(FATAL) << "Run pipeline error: " << runResult.status();
+            }
+            response.runResult = std::move(runResult).value();
         }
-        return RunPipelineResponse {
-            .runResult = std::move(runResult).value(),
+        return response;
+    }
+
+    GetResourcesResponse getResourcesImpl(const VoidType&) {
+        auto resourcesOr = runner_.GetPipelineResources();
+        if (!resourcesOr.ok()) {
+            LOG(FATAL) << "Get pipeline resources error: " << resourcesOr.status();
+        }
+        return GetResourcesResponse {
+            .resources = std::move(resourcesOr).value(),
         };
     }
 
@@ -276,6 +291,7 @@ static __attribute__((constructor)) void RegisterPipelineApiBackend() {
         .syncEncodedData = &GraphEngineApiBackend::syncEncodedDataImpl,
         .syncGraphInputs = &GraphEngineApiBackend::syncGraphInputsImpl,
         .runPipeline = &GraphEngineApiBackend::runPipelineImpl,
+        .getResources = &GraphEngineApiBackend::getResourcesImpl,
     };
     cppschema::RegisterBackend<GraphEngineApi, GraphEngineApiBackend>(impl, ptrs);
 }

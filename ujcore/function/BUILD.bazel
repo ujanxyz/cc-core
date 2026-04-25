@@ -64,6 +64,7 @@ cc_library(
         ":AttributeData",
         ":FuncParamAccess",
         ":ResourceContext",
+        "//ujcore/data:IdTypes",
     ],
 )
 
@@ -93,6 +94,7 @@ cc_library(
         ":AttributeData",
         ":FunctionContext",
         "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/strings",
     ],
 )
 

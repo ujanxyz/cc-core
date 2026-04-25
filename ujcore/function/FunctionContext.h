@@ -2,6 +2,7 @@
 
 #include <string_view>
 
+#include "ujcore/data/IdTypes.h"
 #include "ujcore/function/AttributeData.h"
 #include "ujcore/function/FuncParamAccess.h"
 #include "ujcore/function/ResourceContext.h"
@@ -10,6 +11,7 @@ class FunctionContextParent {
 public:
     virtual ~FunctionContextParent() = default;
 
+    virtual ujcore::NodeId GetFunctiontNodeId() const = 0;
     virtual AttributeData* OnGetParam(FuncParamAccess access, const std::string& name) = 0;
     virtual void LogFromFunc(std::string_view message) = 0;
     virtual void DumpDebugInfoFromFunc() = 0;
@@ -19,6 +21,10 @@ public:
 class FunctionContext {
 public:
     FunctionContext(FunctionContextParent* parent): parent_(parent) {}
+
+    ujcore::NodeId GetNodeId() const {
+        return parent_->GetFunctiontNodeId();
+    }
 
     const AttributeData* GetInParam(const std::string& name) {
         return parent_->OnGetParam(FuncParamAccess::kInput, name);

@@ -1,6 +1,30 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 load("@aspect_rules_js//js:defs.bzl", "js_binary")
 load("@emsdk//emscripten_toolchain:wasm_rules.bzl", "wasm_cc_binary")
+
+cc_library(
+    name = "JsBitmapPool",
+    srcs = ["JsBitmapPool.cpp"],
+    hdrs = ["JsBitmapPool.h"],
+    deps = [
+        "//ujcore/base:BackendRegistry",
+        "//ujcore/base:BitmapPool",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:check",
+    ],
+)
+
+filegroup(
+    name = "wasm-post-js",
+    srcs = ["post_steps.js"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "wasm-pre-js",
+    srcs = ["pre_steps.js"],
+    visibility = ["//visibility:private"],
+)
 
 # This is a binary with no `main` function, which is ok as this will never be build into a
 # standalone system binary, always converted into a wasm binary before using.
@@ -11,6 +35,7 @@ cc_binary(
         "entrypoint.cpp",
     ],
     deps = [
+        ":JsBitmapPool",
          "//ujcore/api_schemas:GraphEngineApi",
          "//ujcore/api_backends:GraphEngineApiBackend",
          "//ujcore/base:BuildInfo",
@@ -23,23 +48,37 @@ cc_binary(
     ],
     features = ["emcc_debug_link"],
     linkopts = [
-        "--bind",  # Enable embind
-        "--closure=0",  # Do not use closure
-        "--clear-cache=1",
-        "--no-entry",
+        "-s MODULARIZE=1",
         "-s EXPORT_ES6=1",
         "-s USE_ES6_IMPORT_META=1",
         "-s ENVIRONMENT=node,worker",
-        "-s MODULARIZE=1",
         "-s STANDALONE_WASM",
+        "-sJSPI",
+        "-s ALLOW_MEMORY_GROWTH=1",
+        "-s EXPORTED_FUNCTIONS=\"['_malloc','_free']\"",
+        "-s EXPORTED_RUNTIME_METHODS=['HEAPU8']",
         # Export the module creation function with a specific name, replacing the default 'Module'.
         "-sEXPORT_NAME=CreateUjWasmModule",
         # [Debug]: Print C++ exceptions to the console, which can be helpful for debugging.
         "-s ASSERTIONS=1",
         "-s EXCEPTION_STACK_TRACES=1",
+
+        "--bind",  # Enable embind
+        "--closure=0",  # Do not use closure
+        "--clear-cache=1",
+        "--no-entry",
+
+        "--pre-js $(location :wasm-pre-js)",
+        "--post-js $(location :wasm-post-js)",
+
         "--profiling-funcs",
         "-fwasm-exceptions",
     ],
+    additional_linker_inputs = [
+        ":wasm-post-js",
+        ":wasm-pre-js",
+    ],
+
     # This target won't build successfully on its own using system headers, because of missing
     # emscripten headers etc. Therefore, we hide it from wildcards.
     tags = ["manual"],

@@ -83,6 +83,8 @@ cc_library(
         "//ujcore/base:BitmapPool",
         "//ujcore/data:GraphState",
         "//ujcore/data:IdTypes",
+        "//ujcore/data:ResourceInfo",
+        "//ujcore/data:plinfo",
         "//ujcore/data:plstate",
         "//ujcore/utils:status_macros",
         "@abseil-cpp//absl/log",

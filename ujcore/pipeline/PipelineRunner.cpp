@@ -30,7 +30,7 @@ void InternalAssignBitmapPool(std::map<NodeId, NodeStage>& nodeStages, BitmapPoo
 absl::Status PipelineRunner::BuildFromState(const GraphState& state) {
     PipelineBuilder builder(state, pipeline_);
     RETURN_IF_ERROR(builder.Rebuild());
-    bitmapPool_ = CreateNewBitmapPool();
+    bitmapPool_ = CreateNewBitmapPoolFromRegistry();
 
     InternalAssignBitmapPool(pipeline_.nodeStages, bitmapPool_.get());
     return absl::OkStatus();
@@ -40,7 +40,6 @@ absl::StatusOr<plstate::GraphRunResult> PipelineRunner::RunPipeline() {
     plstate::GraphRunResult result;
     for (auto& step : pipeline_.execSteps) {
         if (std::holds_alternative<EdgePropagateStep>(step)) {
-            VLOG(1) << "Running EdgePropagateStep";
             const auto& edgeStep = std::get<EdgePropagateStep>(step);
             edgeStep.dstAttr->dtype = edgeStep.srcAttr->dtype;
             edgeStep.dstAttr->data = edgeStep.srcAttr->data;
@@ -49,7 +48,6 @@ absl::StatusOr<plstate::GraphRunResult> PipelineRunner::RunPipeline() {
             }
         }
         else if (std::holds_alternative<NodeRunStep>(step)) {
-            VLOG(1) << "Running NodeRunStep";
             const NodeRunStep& nodeStep = std::get<NodeRunStep>(step);
             ASSIGN_OR_RETURN(bool runStatus, nodeStep.fnNode->RunFunction());
             if (!runStatus) {
@@ -57,7 +55,6 @@ absl::StatusOr<plstate::GraphRunResult> PipelineRunner::RunPipeline() {
             }
         }
         else if (std::holds_alternative<GraphIOStep>(step)) {
-            VLOG(1) << "Running GraphIOStep";
             const GraphIOStep& ioStep = std::get<GraphIOStep>(step);
             PipelineIONode& ioNode = *ioStep.ioNode;
             RETURN_IF_ERROR(ioNode.RunAsIO());
@@ -73,7 +70,6 @@ absl::StatusOr<plstate::GraphRunResult> PipelineRunner::RunPipeline() {
             }
         }
         else if (std::holds_alternative<ManualDataStep>(step)) {
-            VLOG(1) << "Running ManualDataStep";
             return absl::UnimplementedError("TODO: Implement ManualDataStep in PipelineRunner::RunPipeline()");
         }
         else {
@@ -82,5 +78,28 @@ absl::StatusOr<plstate::GraphRunResult> PipelineRunner::RunPipeline() {
     }
     return result;
 }
+
+absl::StatusOr<std::vector<ResourceInfo>> PipelineRunner::GetPipelineResources() const {
+    std::vector<ResourceInfo> resources;
+    if (bitmapPool_ == nullptr) {
+        return resources;
+    }
+    const std::vector<const Bitmap*> activeBitmaps = bitmapPool_->GetActiveBitmaps();
+    for (const Bitmap* bitmap : activeBitmaps) {
+        BitmapInfo bitmapInfo = {
+            .id = std::string(bitmap->id()),
+            .backend = "wasm_heap",
+            .width = bitmap->width(),
+            .height = bitmap->height(),
+            .bytesPerPixel = bitmap->bytesPerPixel(),
+        };
+        ResourceInfo info;
+        info.type = ResourceInfo::Type::BITMAP;
+        info.bitmap = std::move(bitmapInfo);
+        resources.push_back(info);
+    }
+    return resources;
+}
+
 
 }  // namespace ujcore

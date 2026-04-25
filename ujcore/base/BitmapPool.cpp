@@ -6,36 +6,40 @@
 
 namespace {
 
-class NativeBitmap final : public Bitmap {
+class DummyBitmap final : public Bitmap {
 public:
-  NativeBitmap(int32_t width, int32_t height, int32_t bytesPerPixel)
+  DummyBitmap(int32_t width, int32_t height, int32_t bytesPerPixel)
     : width_(width), height_(height), bytesPerPixel_(bytesPerPixel) {
         const int32_t totalBytes = byteSize();
         ownedBytes_ = std::unique_ptr<uint8_t[]>(new uint8_t[totalBytes]);
   }
 
-  ~NativeBitmap() {
-    std::cout << "Destroying NativeBitmap with id: " << id() << std::endl;
+  ~DummyBitmap() {
+    std::cout << "Destroying DummyBitmap with id: " << id() << std::endl;
   }
 
-  int32_t id() override {
-    return reinterpret_cast<intptr_t>(this);
+  std::string_view id() const override {
+    return "n/a";
   }
 
-  int32_t width() override {
+  int32_t width() const override {
     return width_;
   }
 
-  int32_t height() override {
+  int32_t height() const override {
     return height_;
   }
 
-  int32_t byteSize() override {
-    return width_ * height_ * bytesPerPixel_;
+  int32_t bytesPerPixel() const override {
+    return bytesPerPixel_;
   }
 
   uint8_t *bytes() override {
     return ownedBytes_.get();
+  }
+
+  void flush() override {
+    // No-op for DummyBitmap
   }
 
 private:
@@ -46,21 +50,28 @@ private:
   std::unique_ptr<uint8_t[]> ownedBytes_;
 };
 
-class NativeBitmapPool final : public BitmapPool {
+// The fallback implementation, used if no other BitmapPool implementation is registered.
+class FallbackBitmapPool final : public BitmapPool {
 public:
-  std::shared_ptr<Bitmap> CreateNewBitmap(int32_t width, int32_t height,
-                                               int32_t bytesPerPixel) override {
-    auto bitmap = std::make_unique<NativeBitmap>(width, height, bytesPerPixel);
+  std::shared_ptr<Bitmap> CreateNewBitmap(
+      const std::string& resourceId,
+      int32_t width, int32_t height, int32_t bytesPerPixel) override {
+    auto bitmap = std::make_unique<DummyBitmap>(width, height, bytesPerPixel);
     return bitmap;
+  }
+
+  std::vector<const Bitmap*> GetActiveBitmaps() const override {
+    // The fallback version does not implement this logic.
+    return {};
   }
 };
 
 }  // namespace
 
-std::unique_ptr<BitmapPool> CreateNewBitmapPool() {
+std::unique_ptr<BitmapPool> CreateNewBitmapPoolFromRegistry() {
   auto pool = BackendRegistry::Create<BitmapPool>();
   if (pool == nullptr) {
-      return std::make_unique<NativeBitmapPool>();
+      return std::make_unique<FallbackBitmapPool>();
   } else {
       return std::unique_ptr<BitmapPool>(pool.release());
   }

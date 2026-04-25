@@ -9,6 +9,7 @@
 #include "cppschema/common/visitor_macros.h"
 #include "ujcore/data/FunctionInfo.h"
 #include "ujcore/data/IdTypes.h"
+#include "ujcore/data/ResourceInfo.h"
 #include "ujcore/data/plinfo.h"
 #include "ujcore/data/plstate.h"
 
@@ -151,10 +152,26 @@ struct GraphEngineApi {
     };
 
     // API: runPipeline
+    struct RunPipelineRequest {
+        // If true, the pipeline will be built.
+        bool build = false;
+
+        // If true, the pipeline will be executed.
+        bool execute = false;
+
+        DEFINE_STRUCT_VISITOR_FUNCTION(build, execute);
+    };
     struct RunPipelineResponse {
         plstate::GraphRunResult runResult;
 
         DEFINE_STRUCT_VISITOR_FUNCTION(runResult);
+    };
+
+    // API: getResources
+    struct GetResourcesResponse {
+        std::vector<ResourceInfo> resources;
+
+        DEFINE_STRUCT_VISITOR_FUNCTION(resources);
     };
 
     cppschema::ApiStub<VoidType, GetGraphResponse> getGraph;
@@ -168,7 +185,8 @@ struct GraphEngineApi {
     cppschema::ApiStub<VoidType, GetAvailableFuncsResponse> getAvailableFuncs;
     cppschema::ApiStub<SyncEncodedDataRequest, SyncEncodedDataResponse> syncEncodedData;
     cppschema::ApiStub<SyncGraphInputsRequest, VoidType> syncGraphInputs;
-    cppschema::ApiStub<VoidType, RunPipelineResponse> runPipeline;
+    cppschema::ApiStub<RunPipelineRequest, RunPipelineResponse> runPipeline;
+    cppschema::ApiStub<VoidType, GetResourcesResponse> getResources;
 
     DEFINE_API_VISITOR_FUNCTION(
         getGraph,
@@ -182,7 +200,8 @@ struct GraphEngineApi {
         getAvailableFuncs,
         syncEncodedData,
         syncGraphInputs,
-        runPipeline);
+        runPipeline,
+        getResources);
 };
 
 }  // namespace ujcore

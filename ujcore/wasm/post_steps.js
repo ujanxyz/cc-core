@@ -1,0 +1,1 @@
+// Nothing nfor now, but this file is reserved for any JS code that needs to run after the wasm module is loaded.

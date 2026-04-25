@@ -12,6 +12,9 @@
 #include "ujcore/api_schemas/GraphEngineApi.h"
 #include "ujcore/base/BuildInfo.h"
 
+#include "ujcore/wasm/JsBitmapPool.h"
+
+
 ABSL_FLAG(int32_t, test_flag, 10765, "test flag 05");
 
 emscripten::val get_build_info() {
@@ -60,6 +63,8 @@ private:
 };
 
 EMSCRIPTEN_BINDINGS(EntrypointModule) {
+    RegisterJsBitmapPool();
+
     emscripten::function("getBuildInfo", &get_build_info);
     emscripten::function("parseAbseilFlags", &parse_abseil_flags);
     cppschema::jsbridge::CreateJsApiMethods<ujcore::GraphEngineApi>("GraphEngineApi");

@@ -29,6 +29,7 @@ public:
   
   // Methods implementing `FunctionContextParent`.
 
+  NodeId GetFunctiontNodeId() const override;
   AttributeData* OnGetParam(FuncParamAccess access, const std::string& name) override;
   void LogFromFunc(std::string_view message) override;
   void DumpDebugInfoFromFunc() override;

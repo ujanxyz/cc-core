@@ -37,6 +37,10 @@ absl::StatusOr<bool> PipelineFnNode::RunFunction() {
     return funcInstance_->OnRun(*functionCtx_);
 }
 
+NodeId PipelineFnNode::GetFunctiontNodeId() const {
+    return selfId_;
+}
+
 AttributeData* PipelineFnNode::OnGetParam(FuncParamAccess access, const std::string& name) {
     auto slotIter = slots_.find(name);
     if (slotIter == slots_.end()) {

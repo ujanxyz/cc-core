@@ -11,6 +11,7 @@ cc_library(
         "//ujcore/data:plinfo",
         "//ujcore/data:plstate",
         "//ujcore/data:FunctionInfo",
+        "//ujcore/data:ResourceInfo",
         "@cppschema//:apispec",
         "@cppschema//:js_converter",
     ],
