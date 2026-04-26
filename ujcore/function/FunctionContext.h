@@ -11,7 +11,7 @@ class FunctionContextParent {
 public:
     virtual ~FunctionContextParent() = default;
 
-    virtual ujcore::NodeId GetFunctiontNodeId() const = 0;
+    virtual ujcore::NodeId GetFunctionNodeId() const = 0;
     virtual AttributeData* OnGetParam(FuncParamAccess access, const std::string& name) = 0;
     virtual void LogFromFunc(std::string_view message) = 0;
     virtual void DumpDebugInfoFromFunc() = 0;
@@ -23,7 +23,7 @@ public:
     FunctionContext(FunctionContextParent* parent): parent_(parent) {}
 
     ujcore::NodeId GetNodeId() const {
-        return parent_->GetFunctiontNodeId();
+        return parent_->GetFunctionNodeId();
     }
 
     const AttributeData* GetInParam(const std::string& name) {

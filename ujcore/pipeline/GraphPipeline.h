@@ -15,18 +15,19 @@
 
 namespace ujcore {
 
+// A graph pipeline is a linearized and execution-ready representation of the execution graph.
+// It is generated from the graph state and run with the inputs and produce outputs.
 struct GraphPipeline {
+    // The following step descriptors define the various types of execution steps in a pipeline.
+
+    // A node step represents the execution of a function node.
     struct NodeRunStep {
         PipelineFnNode* fnNode = nullptr;
     };
 
+    // An edge propagate step represents the data propagation along an edge.
     struct EdgePropagateStep {
         AttributeData* srcAttr = nullptr;
-        AttributeData* dstAttr = nullptr;
-    };
-
-    struct ManualDataStep {
-        std::optional<const plstate::EncodedData>* manual = nullptr;
         AttributeData* dstAttr = nullptr;
     };
 
@@ -37,7 +38,6 @@ struct GraphPipeline {
     using ExecutionStep = std::variant<
         NodeRunStep,
         EdgePropagateStep,
-        ManualDataStep,
         GraphIOStep>;
 
     struct NodeStage {
@@ -46,6 +46,8 @@ struct GraphPipeline {
     };
 
     std::map<NodeId, NodeStage> nodeStages;
+
+    // Linear (order-sensitive) sequence of execution steps.
     std::vector<ExecutionStep> execSteps;
 };
 

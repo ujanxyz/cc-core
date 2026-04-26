@@ -5,6 +5,7 @@
 #include "absl/log/check.h"
 #include "ujcore/function/AttributeDataType.h"
 
+// This attribute represents a list of floating-point values.
 class FloatListAttr {
 public:
     static constexpr std::array<AttributeDataType, 1> acceptsTypes() {

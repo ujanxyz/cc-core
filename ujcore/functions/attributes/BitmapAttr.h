@@ -6,6 +6,8 @@
 #include "ujcore/function/AttributeDataType.h"
 #include "ujcore/function/ResourceContext.h"
 
+// This attribute represents a bitmap resource, where the storage holds a reference to the bitmap
+// and the actual Bitmap object is managed in the resource context's bitmap pool.
 class BitmapAttr {
 public:
     static constexpr std::array<AttributeDataType, 1> acceptsTypes() {

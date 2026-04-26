@@ -29,12 +29,12 @@ struct SlotState {
 
     // Manual override data.
     // Applies only to input and inout slot.
-    std::optional<EncodedData> manual;
+    std::optional<EncodedData> encodedData;
 
     // Generation id to keep track of changes.
     int32_t genId {0LL};
 
-    DEFINE_STRUCT_VISITOR_FUNCTION(inEdges, outEdges, manual, genId);
+    DEFINE_STRUCT_VISITOR_FUNCTION(inEdges, outEdges, encodedData, genId);
 };
 
 struct NodeState {
@@ -49,7 +49,7 @@ struct NodeState {
     std::string label;
 
     // Only for graph IO nodes, this holds the data for the graph inputs and outputs.
-    std::optional<EncodedData> ioData;
+    std::optional<EncodedData> encodedData;
 
     ConnectedState connected = ConnectedState::WAIT;
 
@@ -57,14 +57,15 @@ struct NodeState {
     int32_t genId {0LL};
 
     DEFINE_ENUM_CONVERSION_FUNCTION(ConnectedState, WAIT, RUN, ERR);
-    DEFINE_STRUCT_VISITOR_FUNCTION(label, ioData, connected, genId);
+    DEFINE_STRUCT_VISITOR_FUNCTION(label, encodedData, connected, genId);
 };
 
-struct GraphRunResult {
-    // Encoded output data for each output node. Keyed by node raw id.
-    std::map<NodeId, std::optional<std::string>> outputs;
+struct GraphRunOutput {
+    NodeId nodeId;
+    std::string dtype;
+    std::optional<EncodedData> encodedData;
 
-    DEFINE_STRUCT_VISITOR_FUNCTION(outputs);
+    DEFINE_STRUCT_VISITOR_FUNCTION(nodeId, dtype, encodedData);
 };
 
 }  // namespace ujcore::plstate

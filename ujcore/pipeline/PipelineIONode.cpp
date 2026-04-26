@@ -2,6 +2,7 @@
 
 #include "absl/log/log.h"
 #include "ujcore/data/IdTypes.h"
+#include "ujcore/data/plstate.h"
 #include "ujcore/function/AttributeData.h"
 #include "ujcore/function/AttributeDataType.h"
 
@@ -11,19 +12,24 @@ PipelineIONode::PipelineIONode(const NodeId nodeId, const bool isOutput)
     : selfId_(nodeId), isOutput_(isOutput) {
 }
 
-absl::StatusOr<std::string> PipelineIONode::GetEncodedOutput() const {
-    if (!encodedOutput_.has_value()) {
-        return absl::InternalError("Output not available");
-    }
-    return encodedOutput_.value();
-}
-
 absl::Status PipelineIONode::RunAsIO() {
     if (isOutput_) {
         return InternalRunAsOutput();
     } else {
         return InternalRunAsInput();
     }
+}
+
+absl::StatusOr<plstate::GraphRunOutput> PipelineIONode::GetRunResult() const {
+    std::optional<plstate::EncodedData> encodedData = std::nullopt;
+    if (encodedOutput_.has_value()) {
+        encodedData = plstate::EncodedData{.payload = encodedOutput_.value()};
+    }
+    return plstate::GraphRunOutput{
+        .nodeId = selfId_,
+        .dtype = AttributeDataTypeToStr(dtype_),
+        .encodedData = std::move(encodedData),
+    };
 }
 
 absl::Status PipelineIONode::InternalRunAsInput() {

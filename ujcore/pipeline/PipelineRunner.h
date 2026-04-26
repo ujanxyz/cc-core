@@ -25,7 +25,7 @@ public:
     absl::Status BuildFromState(const GraphState& state);
 
     // Executes the pipeline and returns the graph outputs.
-    absl::StatusOr<plstate::GraphRunResult> RunPipeline();
+    absl::StatusOr<std::vector<plstate::GraphRunOutput>> RunPipeline();
 
     // Gets information about the resources created / used in the graph pipeline.
     absl::StatusOr<std::vector<ResourceInfo>> GetPipelineResources() const;

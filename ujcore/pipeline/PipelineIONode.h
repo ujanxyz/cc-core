@@ -21,9 +21,9 @@ public:
 
   bool isOutputStage() const { return isOutput_; }
 
-  absl::StatusOr<std::string> GetEncodedOutput() const;
-
   absl::Status RunAsIO();
+
+  absl::StatusOr<plstate::GraphRunOutput> GetRunResult() const;
 
 private:
     // Decodes from string to attribute (for graph input) or encodes from attribute to string

@@ -4,8 +4,8 @@
 
 std::string AttributeDataTypeToStr(AttributeDataType enumVal) {
     switch (enumVal) {
-        case AttributeDataType::kColor:
-            return "color";
+        case AttributeDataType::kColors:
+            return "colors";
         case AttributeDataType::kFloatList:
             return "floats";
         case AttributeDataType::kPoints2D:
@@ -21,7 +21,7 @@ std::string AttributeDataTypeToStr(AttributeDataType enumVal) {
 
 AttributeDataType AttributeDataTypeFromStr(const std::string& name) {
     static const auto* const lookupTable = new std::unordered_map<std::string, AttributeDataType>({
-        {"color", AttributeDataType::kColor},
+        {"colors", AttributeDataType::kColors},
         {"floats", AttributeDataType::kFloatList},
         {"points2d", AttributeDataType::kPoints2D},
         {"bitmap", AttributeDataType::kBitmap},

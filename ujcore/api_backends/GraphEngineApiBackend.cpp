@@ -28,9 +28,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
     using GetSlotStatesRequest = GraphEngineApi::GetSlotStatesRequest;
     using GetSlotStatesResponse = GraphEngineApi::GetSlotStatesResponse;
     using GetAvailableFuncsResponse = GraphEngineApi::GetAvailableFuncsResponse;
-    using SyncEncodedDataRequest = GraphEngineApi::SyncEncodedDataRequest;
-    using SyncEncodedDataResponse = GraphEngineApi::SyncEncodedDataResponse;
-    using SyncGraphInputsRequest = GraphEngineApi::SyncGraphInputsRequest;
+    using SetEncodedDataRequest = GraphEngineApi::SetEncodedDataRequest;
     using RunPipelineRequest = GraphEngineApi::RunPipelineRequest;
     using RunPipelineResponse = GraphEngineApi::RunPipelineResponse;
     using GetResourcesResponse = GraphEngineApi::GetResourcesResponse;
@@ -206,39 +204,27 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         };
     }
 
-    SyncEncodedDataResponse syncEncodedDataImpl(const SyncEncodedDataRequest& request) {
-        auto updateStatus = builder_.SetManualInputs(request.updateIds);
-        if (!updateStatus.ok()) {
-            LOG(FATAL) << "Update manual inputs error: " << updateStatus;
+    VoidType setEncodedDataImpl(const SetEncodedDataRequest& request) {
+        if (request.isNode) {
+            if (request.nodeId.has_value() == false) {
+                LOG(FATAL) << "Node id must be set for node encoded data.";
+            }
+            const NodeId nodeId = request.nodeId.value();
+            auto status = builder_.SetNodeEncodedData(nodeId, request.encodedData);
+            if (!status.ok()) {
+                LOG(FATAL) << "Set node encoded data error: " << status;
+            }
+        } else {
+            if (request.slotId.has_value() == false) {
+                LOG(FATAL) << "Slot id must be set for slot encoded data.";
+            }
+            const SlotId slotId = request.slotId.value();
+            auto status = builder_.SetSlotEncodedData(slotId, request.encodedData);
+            if (!status.ok()) {
+                LOG(FATAL) << "Set slot encoded data error: " << status;
+            }
         }
-
-        auto deleteStatus = builder_.ClearManualInputs(request.deleteIds);
-        if (!deleteStatus.ok()) {
-            LOG(FATAL) << "Clear manual inputs error: " << deleteStatus;
-        }
-
-        auto fetchOr = builder_.FetchManualInputs(request.fetchIds);
-        if (!fetchOr.ok()) {
-            LOG(FATAL) << "Fetch manual inputs error: " << fetchOr.status();
-        }
-        
-        return SyncEncodedDataResponse {
-            // .manualData = std::move(fetchOr).value(),
-        };
-    }
-
-    VoidType syncGraphInputsImpl(const SyncGraphInputsRequest& request) {
-        auto updateStatus = builder_.SetGraphInputs(request.updateData);
-         if (!updateStatus.ok()) {
-             LOG(FATAL) << "Update graph inputs error: " << updateStatus;
-         }
-
-         auto deleteStatus = builder_.ClearGraphInputs(request.deleteIds);
-         if (!deleteStatus.ok()) {
-             LOG(FATAL) << "Clear graph inputs error: " << deleteStatus;
-         }
-
-        return VoidType {};
+        return {};
     }
 
     RunPipelineResponse runPipelineImpl(const RunPipelineRequest& request) {
@@ -254,7 +240,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
             if (!runResult.ok()) {
                 LOG(FATAL) << "Run pipeline error: " << runResult.status();
             }
-            response.runResult = std::move(runResult).value();
+            response.outputs = std::move(runResult).value();
         }
         return response;
     }
@@ -288,8 +274,7 @@ static __attribute__((constructor)) void RegisterPipelineApiBackend() {
         .getSlotStates = &GraphEngineApiBackend::getSlotStatesImpl,
         .clearGraph = &GraphEngineApiBackend::clearGraphImpl,
         .getAvailableFuncs = &GraphEngineApiBackend::getAvailableFuncsImpl,
-        .syncEncodedData = &GraphEngineApiBackend::syncEncodedDataImpl,
-        .syncGraphInputs = &GraphEngineApiBackend::syncGraphInputsImpl,
+        .setEncodedData = &GraphEngineApiBackend::setEncodedDataImpl,
         .runPipeline = &GraphEngineApiBackend::runPipelineImpl,
         .getResources = &GraphEngineApiBackend::getResourcesImpl,
     };

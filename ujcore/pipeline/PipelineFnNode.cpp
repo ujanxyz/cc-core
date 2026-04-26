@@ -17,36 +17,46 @@ PipelineFnNode::PipelineFnNode(
 }
 
 PipelineSlot* PipelineFnNode::LookupSlot(const std::string& slotName) {
-    auto slotIter = slots_.find(slotName);
-    if (slotIter == slots_.end()) {
+    auto slotIter = slotEntries_.find(slotName);
+    if (slotIter == slotEntries_.end()) {
         return nullptr;
     }
-    return &slotIter->second;
+    return slotIter->second.plSlot.get();
 }
 
 absl::StatusOr<bool> PipelineFnNode::RunFunction() {
-    // Debug the attribute slot contents.
-    for (auto& [slotName, slot] : slots_) {
-        LOG(INFO) << "Running node " << selfId_.value << ", slot = " << slotName << " : "
-            << static_cast<int>(slot.access) << ", dtype: "
-            << AttributeDataTypeToStr(slot.attribute.dtype)
-            << ", has_data: " << (slot.attribute.data != nullptr)
-            << ", overridden: " << slot.overridden;
+    // Prior to execution, for input slots with manually overridden data, decode the encoded data to internal attribute.
+    for (auto& [slotName, slotEntry] : slotEntries_) {
+        if (slotEntry.decodeFnPtr != nullptr && slotEntry.encodedInput->has_value()) {
+            const plstate::EncodedData& encodedData = slotEntry.encodedInput->value();
+            std::shared_ptr<void> parsedData = (*slotEntry.decodeFnPtr)(encodedData.payload);
+            if (parsedData == nullptr) {
+                return absl::InternalError(absl::StrCat("Failed to decode manual override data for node ", selfId_.value, ", slot ", slotName));
+            }
+            auto& plSlot = *slotEntry.plSlot;
+            plSlot.attribute = AttributeData {
+                .dtype = slotEntry.dtype,
+                .data = std::move(parsedData),
+                .created = true,
+            };
+            plSlot.overridden = true;
+        }
     }
 
-    return funcInstance_->OnRun(*functionCtx_);
+    auto result = funcInstance_->OnRun(*functionCtx_);
+    return result;
 }
 
-NodeId PipelineFnNode::GetFunctiontNodeId() const {
+NodeId PipelineFnNode::GetFunctionNodeId() const {
     return selfId_;
 }
 
 AttributeData* PipelineFnNode::OnGetParam(FuncParamAccess access, const std::string& name) {
-    auto slotIter = slots_.find(name);
-    if (slotIter == slots_.end()) {
+    auto slotIter = slotEntries_.find(name);
+    if (slotIter == slotEntries_.end()) {
         return nullptr;
     }
-    PipelineSlot& slot = slotIter->second;
+    PipelineSlot& slot = *slotIter->second.plSlot;
     if (slot.access != access) {
         LOG(ERROR) << "Access mismatch, at slot: " << name;
     }
@@ -63,11 +73,12 @@ void PipelineFnNode::LogFromFunc(std::string_view message) {
 }
 
 void PipelineFnNode::DumpDebugInfoFromFunc() {
-    for (auto& [slotName, slot] : slots_) {
+    for (auto& [slotName, slotEntry] : slotEntries_) {
+        auto& slot = *slotEntry.plSlot;
         LOG(INFO) << "    slot = " << slotName << " : "
             << static_cast<int>(slot.access) << ", dtype: "
             << AttributeDataTypeToStr(slot.attribute.dtype)
-            << ", overridden: " << slot.overridden;
+            << ", hasManual: " << slotEntry.encodedInput->has_value();
     }
 }
 

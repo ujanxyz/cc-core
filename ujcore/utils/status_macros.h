@@ -50,6 +50,13 @@
     lhs = CAT(iter, __LINE__)->second;                                         \
 
 
+
+#define RETURN_IF_NOT_SET(lhs)                               \
+    if (_PREDICT_FALSE(!(lhs).has_value())) {                \
+      return absl::InvalidArgumentError("Value not set: " + std::string(FILE_LINE));     \
+    }
+
+
 // =================================================================
 // == Implementation details, do not rely on anything below here. ==
 // =================================================================

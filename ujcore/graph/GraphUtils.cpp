@@ -62,7 +62,7 @@ std::optional<plstate::EncodedData> GraphUtils::GetNodeIoData(const GraphState& 
         return std::nullopt;
     }
     const plstate::NodeState& nodeState = iter->second;
-    return nodeState.ioData;    
+    return nodeState.encodedData;    
 }
 
 std::optional<plstate::NodeState> GraphUtils::CopyNodeState(const GraphState& state, NodeId nodeId) {

@@ -19,7 +19,6 @@ using ::ujcore::plstate::SlotState;
 
 using NodeRunStep = GraphPipeline::NodeRunStep;
 using EdgePropagateStep = GraphPipeline::EdgePropagateStep;
-using ManualDataStep = GraphPipeline::ManualDataStep;
 
 }  // namespace
 
@@ -126,6 +125,7 @@ absl::Status PipelineBuilder::Rebuild() {
 
 absl::Status PipelineBuilder::HandleFunctionNode(const NodeId nodeId, const plinfo::NodeInfo& nodeInfo) {
     auto& registry = FunctionRegistry::GetInstance();
+    const AttributeTypeRegistry& attrRegistry = AttributeTypeRegistry::GetInstance();
 
     std::unique_ptr<FunctionSpec> fnSpec = registry.GetSpecFromUri(nodeInfo.uri);
     std::unique_ptr<FunctionBase> fnInstance = registry.CreateFromUri(nodeInfo.uri);
@@ -145,13 +145,11 @@ absl::Status PipelineBuilder::HandleFunctionNode(const NodeId nodeId, const plin
         const SlotState& slotState = slotStateIter->second;
 
         if (slotInfo.access == SlotInfo::AccessEnum::I || slotInfo.access == SlotInfo::AccessEnum::M) {
-            if (!slotState.manual.has_value() && slotState.inEdges.empty()) {
+            if (!slotState.encodedData.has_value() && slotState.inEdges.empty()) {
                 return absl::InvalidArgumentError(
                     absl::StrCat("Slot has no data source: ", nodeId.value, " : ", param.name));
             }
         }
-
-        // TODO: Create `ManualDataStep` entry from `slotState.manual`
 
         // TODO: Create a SlotStorage from `plinfo::SlotInfo` and add to the node.
         FuncParamAccess access = FuncParamAccess::kUnknown;
@@ -166,21 +164,26 @@ absl::Status PipelineBuilder::HandleFunctionNode(const NodeId nodeId, const plin
                 access = FuncParamAccess::kInOut;
                 break;
         }
-
         PipelineSlot plSlot = {
             .access = access,
             .attribute = AttributeData {},
         };
 
-        if (slotState.manual.has_value()) {
-            //const EncodedData& manual = slotState.manual.value();
-            //plSlot.overridden = true;
-            //plSlot.attribute.dtype = AttributeDataTypeFromStr(slotInfo.dtype);
-            // TODO: Populate plSlot.attribute.data
-            return absl::UnimplementedError("TODO: not implemented");
+        const AttributeDecodeFn* decodeFnPtr = nullptr;
+        if (slotInfo.access == SlotInfo::AccessEnum::I || slotInfo.access == SlotInfo::AccessEnum::M) {
+          decodeFnPtr = attrRegistry.GetDecodeFn(slotInfo.dtype);
+            if (decodeFnPtr == nullptr) {
+                return absl::InvalidArgumentError(
+                    absl::StrCat("No decoder function found for graph input data type: ", slotInfo.dtype));
+            }
         }
-
-        fnNode->slots_[param.name] = std::move(plSlot);
+        
+        fnNode->slotEntries_[param.name] = PipelineFnNode::PerSlotEntry {
+            .dtype = AttributeDataTypeFromStr(slotInfo.dtype),
+            .encodedInput = &slotState.encodedData,
+            .decodeFnPtr = decodeFnPtr,
+            .plSlot = std::make_unique<PipelineSlot>(std::move(plSlot)),
+        };
     }
     pipeline_.nodeStages[nodeId] = GraphPipeline::NodeStage {
         .ntype = nodeInfo.ntype,
@@ -222,7 +225,7 @@ absl::Status PipelineBuilder::HandleGraphIONode(const NodeId nodeId, const plinf
             return absl::InvalidArgumentError(
                 absl::StrCat("Graph input node slot should not have incoming edges"));
         }        
-        if (!nodeState.ioData.has_value()) {
+        if (!nodeState.encodedData.has_value()) {
             return absl::InvalidArgumentError(
                 absl::StrCat("Graph input node should have input data"));
         }
@@ -237,7 +240,7 @@ absl::Status PipelineBuilder::HandleGraphIONode(const NodeId nodeId, const plinf
             return absl::InvalidArgumentError(
                 absl::StrCat("Graph output node slot should not have outgoing edges"));
         }
-        if (nodeState.ioData.has_value()) {
+        if (nodeState.encodedData.has_value()) {
             return absl::InvalidArgumentError(
                 absl::StrCat("Graph output node should not have input data"));
         }
@@ -247,12 +250,12 @@ absl::Status PipelineBuilder::HandleGraphIONode(const NodeId nodeId, const plinf
         }
     }
 
-    const AttributeTypeRegistry& registry = AttributeTypeRegistry::GetInstance();
+    const AttributeTypeRegistry& attrRegistry = AttributeTypeRegistry::GetInstance();
 
     std::unique_ptr<PipelineIONode> ioNode = std::make_unique<PipelineIONode>(nodeId, isOutput);
     ioNode->dtype_ = dtype;
     if (!isOutput) {
-        ioNode->encodedInput_ = &nodeState.ioData;
+        ioNode->encodedInput_ = &nodeState.encodedData;
     }
     ioNode->slot_ = PipelineSlot {
         .access = isOutput ? FuncParamAccess::kInput : FuncParamAccess::kOutput,
@@ -261,14 +264,14 @@ absl::Status PipelineBuilder::HandleGraphIONode(const NodeId nodeId, const plinf
     };
 
     if (isOutput) {
-        const AttributeEncodeFn* encodeFn = registry.GetEncodeFn(slotInfo.dtype);
+        const AttributeEncodeFn* encodeFn = attrRegistry.GetEncodeFn(slotInfo.dtype);
         if (encodeFn == nullptr) {
             return absl::InvalidArgumentError(
                 absl::StrCat("No encoder function found for graph output data type: ", slotInfo.dtype));
         }
         ioNode->convertFnPtr_ = encodeFn;
     } else {
-        const AttributeDecodeFn* decodeFn = registry.GetDecodeFn(slotInfo.dtype);
+        const AttributeDecodeFn* decodeFn = attrRegistry.GetDecodeFn(slotInfo.dtype);
         if (decodeFn == nullptr) {
             return absl::InvalidArgumentError(
                 absl::StrCat("No decoder function found for graph input data type: ", slotInfo.dtype));

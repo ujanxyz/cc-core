@@ -92,7 +92,7 @@ void SetupGraphState(GraphState& graph) {
         // Node 1, Slot "v"
         .inEdges = {},
         .outEdges = {},
-        .manual = EncodedData {
+        .encodedData = EncodedData {
             .payload = "2.12f,5.75f",
         },
     };
@@ -100,25 +100,25 @@ void SetupGraphState(GraphState& graph) {
         // Node 2, Slot "p"
         .inEdges = {},
         .outEdges = {},
-        .manual = std::nullopt,
+        .encodedData = std::nullopt,
     };
     SlotState slotState3 = {
         // Node 3, Slot "p"
         .inEdges = {},
         .outEdges = {},
-        .manual = std::nullopt,
+        .encodedData = std::nullopt,
     };
     SlotState slotState4 = {
         // Node 3, Slot "dx"
         .inEdges = {},
         .outEdges = {},
-        .manual = std::nullopt,
+        .encodedData = std::nullopt,
     };
     SlotState slotState5 = {
         // Node 3, Slot "fp"
         .inEdges = {},
         .outEdges = {},
-        .manual = std::nullopt,
+        .encodedData = std::nullopt,
     };
 
     graph.slotStates = {

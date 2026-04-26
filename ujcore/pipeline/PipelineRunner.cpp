@@ -1,5 +1,8 @@
 #include "ujcore/pipeline/PipelineRunner.h"
 
+#include <memory>
+#include <utility>
+
 #include "absl/log/log.h"
 #include "ujcore/function/AttributeDataType.h"
 #include "ujcore/pipeline/PipelineBuilder.h"
@@ -12,7 +15,6 @@ using NodeRunStep = GraphPipeline::NodeRunStep;
 using NodeStage = GraphPipeline::NodeStage;
 using EdgePropagateStep = GraphPipeline::EdgePropagateStep;
 using GraphIOStep = GraphPipeline::GraphIOStep;
-using ManualDataStep = GraphPipeline::ManualDataStep;
 
 // Iterate over the function nodes (PipelineFnNode) in the pipeline, and populate the resource
 // context with the bitmap pool.
@@ -36,15 +38,16 @@ absl::Status PipelineRunner::BuildFromState(const GraphState& state) {
     return absl::OkStatus();
 }
 
-absl::StatusOr<plstate::GraphRunResult> PipelineRunner::RunPipeline() {
-    plstate::GraphRunResult result;
+absl::StatusOr<std::vector<plstate::GraphRunOutput>> PipelineRunner::RunPipeline() {
+    std::vector<plstate::GraphRunOutput> result;
     for (auto& step : pipeline_.execSteps) {
         if (std::holds_alternative<EdgePropagateStep>(step)) {
             const auto& edgeStep = std::get<EdgePropagateStep>(step);
             edgeStep.dstAttr->dtype = edgeStep.srcAttr->dtype;
             edgeStep.dstAttr->data = edgeStep.srcAttr->data;
             if (edgeStep.dstAttr->data == nullptr) {
-                LOG(WARNING) << "Propagating null data for dtype: " << AttributeDataTypeToStr(edgeStep.dstAttr->dtype);
+                LOG(WARNING) << "Propagating null data for dtype: "
+                    << AttributeDataTypeToStr(edgeStep.dstAttr->dtype);
             }
         }
         else if (std::holds_alternative<NodeRunStep>(step)) {
@@ -60,17 +63,9 @@ absl::StatusOr<plstate::GraphRunResult> PipelineRunner::RunPipeline() {
             RETURN_IF_ERROR(ioNode.RunAsIO());
             if (ioNode.isOutputStage()) {
                 // Collect the output values from the graph output nodes.
-                const NodeId nodeId = ioNode.GetNodeId();
-                auto encodedOutput = ioNode.GetEncodedOutput();
-                if (encodedOutput.ok()) {
-                    result.outputs[nodeId] = encodedOutput.value();
-                } else {
-                    result.outputs[nodeId] = std::nullopt;
-                }
+                ASSIGN_OR_RETURN(auto runEntry, ioNode.GetRunResult());
+                result.push_back(std::move(runEntry));
             }
-        }
-        else if (std::holds_alternative<ManualDataStep>(step)) {
-            return absl::UnimplementedError("TODO: Implement ManualDataStep in PipelineRunner::RunPipeline()");
         }
         else {
             LOG(FATAL) << "Invalid step";
