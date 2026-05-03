@@ -170,7 +170,7 @@ protected:
 
 TEST_F(PipelineRunnerTest, Basic) {
     PipelineRunner subject;
-    ABSL_ASSERT_OK(subject.BuildFromState(graph_));
+    ABSL_ASSERT_OK(subject.RebuildFromState(graph_));
     ABSL_EXPECT_OK(subject.RunPipeline());
     FAIL();
 }

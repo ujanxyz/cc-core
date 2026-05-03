@@ -1,8 +1,10 @@
 #include "ujcore/pipeline/PipelineBuilder.h"
 
+#include "ujcore/data/IdTypes.h"
 #include "ujcore/data/plinfo.h"
 #include "ujcore/data/plstate.h"
 #include "ujcore/function/AttributeData.h"
+#include "ujcore/function/AttributeDataType.h"
 #include "ujcore/function/AttributeTypeRegistry.h"
 #include "ujcore/function/FunctionRegistry.h"
 #include "ujcore/graph/GraphUtils.h"
@@ -17,113 +19,12 @@ namespace {
 using ::ujcore::plinfo::SlotInfo;
 using ::ujcore::plstate::SlotState;
 
+using GraphIOStep = GraphPipeline::GraphIOStep;
 using NodeRunStep = GraphPipeline::NodeRunStep;
 using EdgePropagateStep = GraphPipeline::EdgePropagateStep;
+using NodeStage = GraphPipeline::NodeStage;
 
-}  // namespace
-
-PipelineBuilder::PipelineBuilder(const GraphState& graph, GraphPipeline& pipeline)
-    : graph_(graph), pipeline_(pipeline) {
-}
-
-absl::Status PipelineBuilder::Rebuild() {
-    pipeline_.nodeStages.clear();
-    pipeline_.execSteps.clear();
-    LOG(INFO) << "Rebuilding pipeline from graph state, #nodes: " << graph_.nodeInfos.size()
-              << ", #edges: " << graph_.edgeInfos.size();
-
-    for (const auto& [nodeId, node] : graph_.nodeInfos) {
-        switch (node.ntype) {
-            case plinfo::NodeInfo::NodeType::FN:
-                RETURN_IF_ERROR(HandleFunctionNode(nodeId, node));
-                break;
-            case plinfo::NodeInfo::NodeType::IN:
-            case plinfo::NodeInfo::NodeType::OUT:
-                RETURN_IF_ERROR(HandleGraphIONode(nodeId, node));
-                break;
-            default:
-                return absl::InvalidArgumentError(
-                    absl::StrCat("Unsupported node type: ", static_cast<int>(node.ntype)));
-        }
-    }
-    // For each node id, collect the edge steps preceding it.
-    std::map<NodeId, std::vector<EdgePropagateStep>> edgeStepsByNode;
-
-    for (const auto& [edgeId, edge] : graph_.edgeInfos) {
-        PipelineSlot* srcSlot = LookupPipelineSlot(edge.node0, edge.slot0);
-        if (srcSlot == nullptr) {
-            return absl::NotFoundError(absl::StrCat("Source slot not found for edge: ", edgeId.value));
-        }
-        PipelineSlot* dstSlot = LookupPipelineSlot(edge.node1, edge.slot1);
-        if (dstSlot == nullptr) {
-            return absl::NotFoundError(absl::StrCat("Target slot not found for edge: ", edgeId.value));
-        }
-        edgeStepsByNode[edge.node1].push_back(EdgePropagateStep {
-            .srcAttr = &srcSlot->attribute,
-            .dstAttr = &dstSlot->attribute,
-        });
-    }
-
-    int numEdgeSteps = 0;
-    int numFnStages = 0;
-    int numInStages = 0;
-    int numOutStages = 0;
-
-    const size_t numPipelineNodes = pipeline_.nodeStages.size();
-    const size_t numSortedNodes = graph_.topoSortState.sortOrder.size();
-    if (numSortedNodes != numPipelineNodes) {
-        return absl::InternalError(
-            absl::StrCat("Node count mismatch: ", numSortedNodes, " vs ", numPipelineNodes));
-    }
-
-    std::vector<GraphPipeline::ExecutionStep> executionSteps;
-    executionSteps.reserve(pipeline_.nodeStages.size() + graph_.edgeInfos.size());
-
-    // Append the node steps in topological order, preceeded by their incoming edge steps.
-    for (const NodeId nodeId : graph_.topoSortState.sortOrder) {
-        // Extract (remove) the edge steps preceding this node.
-        std::vector<EdgePropagateStep> edgeSteps;
-        auto iter = edgeStepsByNode.find(nodeId);
-        if (iter != edgeStepsByNode.end()) {
-            edgeSteps = std::move(iter->second);
-            edgeStepsByNode.erase(iter);
-        }
-        // Add the node step preceed by the edge steps (its incoming edges).
-        for (auto& entry : edgeSteps) {
-            executionSteps.push_back(std::move(entry));
-            ++numEdgeSteps;
-        }
-
-        RETURN_IF_NOT_FOUND_IN_MAP(GraphPipeline::NodeStage& nodeStage, pipeline_.nodeStages, nodeId);
-        if (nodeStage.ntype == plinfo::NodeInfo::NodeType::FN) {
-            std::unique_ptr<PipelineFnNode>& fnNode = std::get<std::unique_ptr<PipelineFnNode>>(nodeStage.node);
-            executionSteps.push_back(NodeRunStep {
-                .fnNode = fnNode.get(),
-            });
-            ++numFnStages;
-        } else {
-            std::unique_ptr<PipelineIONode>& ioNode = std::get<std::unique_ptr<PipelineIONode>>(nodeStage.node);
-            executionSteps.push_back(GraphPipeline::GraphIOStep {
-                .ioNode = ioNode.get(),
-            });
-            if (nodeStage.ntype == plinfo::NodeInfo::NodeType::IN) {
-                ++numInStages;
-            } else {
-                ++numOutStages;
-            }
-        }
-    }
-
-    if (!edgeStepsByNode.empty()) {
-        return absl::InternalError("Unprocessed node found");
-    }
-    pipeline_.execSteps.swap(executionSteps);
-    LOG(INFO) << "Built pipeline, #edges: " << numEdgeSteps << ", #fn nodes: " << numFnStages
-              << ", #graph inputs: " << numInStages << ", #graph outputs: " << numOutStages;
-    return absl::OkStatus();
-}
-
-absl::Status PipelineBuilder::HandleFunctionNode(const NodeId nodeId, const plinfo::NodeInfo& nodeInfo) {
+absl::StatusOr<NodeStage> InternalHandleFunctionNode(const GraphState& graph_, const NodeId nodeId, const plinfo::NodeInfo& nodeInfo) {
     auto& registry = FunctionRegistry::GetInstance();
     const AttributeTypeRegistry& attrRegistry = AttributeTypeRegistry::GetInstance();
 
@@ -143,6 +44,11 @@ absl::Status PipelineBuilder::HandleFunctionNode(const NodeId nodeId, const plin
         }
         const SlotInfo& slotInfo = slotInfoIter->second;
         const SlotState& slotState = slotStateIter->second;
+        const AttributeDataType dtype = AttributeDataTypeFromStr(slotInfo.dtype);
+        if (dtype == AttributeDataType::kUnknown) {
+            return absl::InvalidArgumentError(
+                absl::StrCat("Unsupported data type for slot: ", slotInfo.dtype));
+        }
 
         if (slotInfo.access == SlotInfo::AccessEnum::I || slotInfo.access == SlotInfo::AccessEnum::M) {
             if (!slotState.encodedData.has_value() && slotState.inEdges.empty()) {
@@ -185,14 +91,28 @@ absl::Status PipelineBuilder::HandleFunctionNode(const NodeId nodeId, const plin
             .plSlot = std::make_unique<PipelineSlot>(std::move(plSlot)),
         };
     }
-    pipeline_.nodeStages[nodeId] = GraphPipeline::NodeStage {
+    return NodeStage {
         .ntype = nodeInfo.ntype,
         .node = std::move(fnNode),
     };
-    return absl::OkStatus();
+    // NodeStage nodeStage = NodeStage {
+    //     .ntype = nodeInfo.ntype,
+    //     .node = std::move(fnNode),
+    // };
+    // pipeline_.nodeStages[nodeId] = std::move(nodeStage);
+    // return absl::OkStatus();
 }
 
-absl::Status PipelineBuilder::HandleGraphIONode(const NodeId nodeId, const plinfo::NodeInfo& nodeInfo) {
+absl::StatusOr<NodeStage> InternalHandleGraphIONode(const GraphState& graph_, const NodeId nodeId, const plinfo::NodeInfo& nodeInfo) {
+    // if (!nodeInfo.ioDtype.has_value()) {
+    //     return absl::InvalidArgumentError("Graph IO node must have ioDtype");
+    // }
+    // const AttributeDataType dtype = AttributeDataTypeFromStr(nodeInfo.ioDtype.value());
+    // if (dtype == AttributeDataType::kUnknown) {
+    //     return absl::InvalidArgumentError(
+    //         absl::StrCat("Unsupported data type for graph IO node: ", nodeInfo.ioDtype.value()));
+    // }
+
     const auto slotInfos = GraphUtils::CopyAllSlotInfos(graph_, nodeId);
     if (slotInfos.size() != 1) {
         return absl::InvalidArgumentError(
@@ -210,6 +130,7 @@ absl::Status PipelineBuilder::HandleGraphIONode(const NodeId nodeId, const plinf
     const bool isOutput = (nodeInfo.ntype == plinfo::NodeInfo::NodeType::OUT);
     const SlotId slotId = {.parent = nodeId, .name = slotInfo.name};
 
+    // TODO: Use nodeinfo's ioDtype directly after we ensure the graph state is correctly populated with it, instead of looking up from slot info.
     const AttributeDataType dtype = AttributeDataTypeFromStr(slotInfo.dtype);
     if (dtype == AttributeDataType::kUnknown) {
         return absl::InvalidArgumentError(
@@ -278,14 +199,15 @@ absl::Status PipelineBuilder::HandleGraphIONode(const NodeId nodeId, const plinf
         }
         ioNode->convertFnPtr_ = decodeFn;
     }
-    pipeline_.nodeStages[nodeId] = GraphPipeline::NodeStage {
+
+    return NodeStage {
         .ntype = nodeInfo.ntype,
         .node = std::move(ioNode),
     };
-    return absl::OkStatus();
 }
 
-PipelineSlot* PipelineBuilder::LookupPipelineSlot(NodeId nodeId, const std::string& slotName) {
+// Helper methods to get the pipeline slot reference.
+PipelineSlot* LookupPipelineSlot(GraphPipeline& pipeline_, NodeId nodeId, const std::string& slotName) {
     auto stageIter = pipeline_.nodeStages.find(nodeId);
     if (stageIter == pipeline_.nodeStages.end()) {
         return nullptr;
@@ -299,6 +221,193 @@ PipelineSlot* PipelineBuilder::LookupPipelineSlot(NodeId nodeId, const std::stri
         return &ioNode->slot_;
     }
     return nullptr;
+}
+
+}  // namespace
+
+//------------------------------ PipelineBuilder Implementation ----------------------------------
+
+absl::Status PipelineBuilder::Rebuild(const GraphState& graph, GraphPipeline& pipeline) {
+    pipeline.nodeStages.clear();
+    pipeline.execSteps.clear();
+    LOG(INFO) << "Rebuilding pipeline from graph state, #nodes: " << graph.nodeInfos.size()
+              << ", #edges: " << graph.edgeInfos.size();
+
+    for (const auto& [nodeId, node] : graph.nodeInfos) {
+        switch (node.ntype) {
+            case plinfo::NodeInfo::NodeType::FN: {
+                ASSIGN_OR_RETURN(pipeline.nodeStages[nodeId], InternalHandleFunctionNode(graph, nodeId, node));
+                break;
+            }
+            case plinfo::NodeInfo::NodeType::IN:
+            case plinfo::NodeInfo::NodeType::OUT: {
+                ASSIGN_OR_RETURN(pipeline.nodeStages[nodeId], InternalHandleGraphIONode(graph, nodeId, node));
+                break;
+            }
+            default:
+                return absl::InvalidArgumentError(
+                    absl::StrCat("Unsupported node type: ", static_cast<int>(node.ntype)));
+        }
+    }
+    // For each node id, collect the edge steps preceding it.
+    std::map<NodeId, std::vector<EdgePropagateStep>> edgeStepsByNode;
+
+    // Build the edge propagation steps, stage them grouped by their target node id.
+    for (const auto& [edgeId, edge] : graph.edgeInfos) {
+        PipelineSlot* srcSlot = LookupPipelineSlot(pipeline, edge.node0, edge.slot0);
+        if (srcSlot == nullptr) {
+            return absl::NotFoundError(absl::StrCat("Source slot not found for edge: ", edgeId.value));
+        }
+        PipelineSlot* dstSlot = LookupPipelineSlot(pipeline, edge.node1, edge.slot1);
+        if (dstSlot == nullptr) {
+            return absl::NotFoundError(absl::StrCat("Target slot not found for edge: ", edgeId.value));
+        }
+        edgeStepsByNode[edge.node1].push_back(EdgePropagateStep {
+            .srcAttr = &srcSlot->attribute,
+            .dstAttr = &dstSlot->attribute,
+        });
+    }
+
+    int numEdgeSteps = 0;
+    int numFnStages = 0;
+    int numInStages = 0;
+    int numOutStages = 0;
+
+    const size_t numPipelineNodes = pipeline.nodeStages.size();
+    const size_t numSortedNodes = graph.topoSortState.sortOrder.size();
+    if (numSortedNodes != numPipelineNodes) {
+        return absl::InternalError(
+            absl::StrCat("Node count mismatch: ", numSortedNodes, " vs ", numPipelineNodes));
+    }
+
+    std::vector<GraphPipeline::ExecutionStep> executionSteps;
+    executionSteps.reserve(pipeline.nodeStages.size() + graph.edgeInfos.size());
+
+    // Append the node steps in topological order, preceeded by their incoming edge steps.
+    for (const NodeId nodeId : graph.topoSortState.sortOrder) {
+        // Extract (remove) the edge steps preceding this node.
+        std::vector<EdgePropagateStep> edgeSteps;
+        auto iter = edgeStepsByNode.find(nodeId);
+        if (iter != edgeStepsByNode.end()) {
+            edgeSteps = std::move(iter->second);
+            edgeStepsByNode.erase(iter);
+        }
+        // Add the node step preceed by the edge steps (its incoming edges).
+        for (auto& entry : edgeSteps) {
+            executionSteps.push_back(std::move(entry));
+            ++numEdgeSteps;
+        }
+
+        RETURN_IF_NOT_FOUND_IN_MAP(GraphPipeline::NodeStage& nodeStage, pipeline.nodeStages, nodeId);
+        if (nodeStage.ntype == plinfo::NodeInfo::NodeType::FN) {
+            std::unique_ptr<PipelineFnNode>& fnNode = std::get<std::unique_ptr<PipelineFnNode>>(nodeStage.node);
+            executionSteps.push_back(NodeRunStep {
+                .fnNode = fnNode.get(),
+            });
+            ++numFnStages;
+        } else {
+            std::unique_ptr<PipelineIONode>& ioNode = std::get<std::unique_ptr<PipelineIONode>>(nodeStage.node);
+            executionSteps.push_back(GraphIOStep {
+                .ioNode = ioNode.get(),
+            });
+            if (nodeStage.ntype == plinfo::NodeInfo::NodeType::IN) {
+                ++numInStages;
+            } else {
+                ++numOutStages;
+            }
+        }
+    }
+
+    if (!edgeStepsByNode.empty()) {
+        return absl::InternalError("Unprocessed node found");
+    }
+
+    pipeline.execSteps.swap(executionSteps);
+    LOG(INFO) << "Built pipeline, #edges: " << numEdgeSteps << ", #fn nodes: " << numFnStages
+              << ", #graph inputs: " << numInStages << ", #graph outputs: " << numOutStages;
+    return absl::OkStatus();
+}
+
+absl::StatusOr<std::vector<AssetInfo>> PipelineBuilder::GetAssetInfos(const GraphState& graph, const GraphPipeline& pipeline) {
+    std::vector<AssetInfo> assetInfos;
+    // Iterate over the steps and process based on step type.
+    for (const auto& step : pipeline.execSteps) {
+        if (std::holds_alternative<NodeRunStep>(step)) {
+            const NodeRunStep& nodeStep = std::get<NodeRunStep>(step);
+            const PipelineFnNode* const fnNode = nodeStep.fnNode;
+            if (fnNode == nullptr) {
+                continue;
+            }
+            const NodeId nodeId = fnNode->GetFunctionNodeId();
+            // For function nodes, we look at:
+            // (1) The input slots which have manually entered encoded data.
+            // (2) The output slots which create new assets.
+            for (const auto& [slotName, slotEntry] : nodeStep.fnNode->slotEntries_) {
+                // const PipelineSlot* plSlot = slotEntry.plSlot.get();
+                // We only support bitmaps as asset types.
+                if (slotEntry.dtype != AttributeDataType::kBitmap) {
+                    continue;
+                }
+
+                const SlotId slotId = SlotId { .parent = nodeId, .name = slotName };
+                RETURN_IF_NOT_FOUND_IN_MAP(const plinfo::SlotInfo& slotInfo, graph.slotInfos, slotId);
+                if (slotInfo.access == SlotInfo::AccessEnum::I) {
+                    // It is a function input slot of type asset.
+                    if (slotEntry.encodedInput != nullptr && slotEntry.encodedInput->has_value()) {
+                        // This input slot actually has an encoded data at the time of execution.
+                        assetInfos.push_back(AssetInfo {
+                            .slotId = slotId,
+                            .assetType = AssetInfo::AssetType::MANUAL,
+                            .dtype = AttributeDataTypeToStr(slotEntry.dtype),
+                        });
+                    }
+                }
+                else if (slotInfo.access == SlotInfo::AccessEnum::O) {
+                    // It is a function output slot of type asset, i.e. it will create the asset.
+                    assetInfos.push_back(AssetInfo {
+                        .slotId = slotId,
+                        .assetType = AssetInfo::AssetType::ARTIFACT,
+                        .dtype = AttributeDataTypeToStr(slotEntry.dtype),
+                    });
+                }
+                else if (slotInfo.access == SlotInfo::AccessEnum::M) {
+                    // Not yet implemented.
+                    return absl::UnimplementedError("Asset slots with read-write access are not yet supported");
+                }
+            } // end for slotEntries
+        } // if NodeRunStep
+        else if (std::holds_alternative<GraphIOStep>(step)) {
+            const GraphIOStep& ioStep = std::get<GraphIOStep>(step);
+            const PipelineIONode* const ioNode = ioStep.ioNode;
+            if (ioNode == nullptr) {
+                continue;
+            }
+            if (ioNode->dtype_ != AttributeDataType::kBitmap) {
+                // Only process asset IO nodes.
+                continue;
+            }
+            const NodeId nodeId = ioNode->GetNodeId();
+            if (ioNode->isOutputStage()) {
+                // A graph output node only has one input slot.
+                const SlotId slotId = SlotId { .parent = nodeId, .name = "$in" };
+                assetInfos.push_back(AssetInfo {
+                    .slotId = slotId,
+                    .assetType = AssetInfo::AssetType::GRAPHOUT,
+                    .dtype = AttributeDataTypeToStr(ioNode->dtype_),
+                });
+            } else {
+                // A graph input node only has one output slot.
+                const SlotId slotId = SlotId { .parent = nodeId, .name = "$out" };
+                assetInfos.push_back(AssetInfo {
+                    .slotId = slotId,
+                    .assetType = AssetInfo::AssetType::GRAPHIN,
+                    .dtype = AttributeDataTypeToStr(ioNode->dtype_),
+                });
+            }
+        } // if GraphIOStep
+    }
+
+    return assetInfos;
 }
 
 }  // namespace ujcore

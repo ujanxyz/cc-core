@@ -29,13 +29,11 @@ void InternalAssignBitmapPool(std::map<NodeId, NodeStage>& nodeStages, BitmapPoo
 
 }  // namespace
 
-absl::Status PipelineRunner::BuildFromState(const GraphState& state) {
-    PipelineBuilder builder(state, pipeline_);
-    RETURN_IF_ERROR(builder.Rebuild());
+absl::StatusOr<std::vector<AssetInfo>> PipelineRunner::RebuildFromState(const GraphState& state) {
+    RETURN_IF_ERROR(PipelineBuilder::Rebuild(state, pipeline_));
     bitmapPool_ = CreateNewBitmapPoolFromRegistry();
-
     InternalAssignBitmapPool(pipeline_.nodeStages, bitmapPool_.get());
-    return absl::OkStatus();
+    return PipelineBuilder::GetAssetInfos(state, pipeline_);
 }
 
 absl::StatusOr<std::vector<plstate::GraphRunOutput>> PipelineRunner::RunPipeline() {
@@ -72,6 +70,14 @@ absl::StatusOr<std::vector<plstate::GraphRunOutput>> PipelineRunner::RunPipeline
         }
     }
     return result;
+}
+
+absl::Status PipelineRunner::AddInputBitmap(const NodeId nodeId, const BitmapInfo& bitmapInfo, uint8_t* data) {
+    if (bitmapPool_ == nullptr) {
+        return absl::InternalError("Bitmap pool is not initialized");
+    }
+    // return bitmapPool_->AddInputBitmap(nodeId, bitmapInfo, data);
+    return absl::OkStatus();
 }
 
 absl::StatusOr<std::vector<ResourceInfo>> PipelineRunner::GetPipelineResources() const {

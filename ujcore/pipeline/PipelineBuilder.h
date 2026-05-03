@@ -1,10 +1,8 @@
 #pragma once
 
+#include "ujcore/data/AssetInfo.h"
 #include "ujcore/data/GraphState.h"
-#include "ujcore/data/IdTypes.h"
-#include "ujcore/data/plinfo.h"
 #include "ujcore/pipeline/GraphPipeline.h"
-#include "ujcore/pipeline/PipelineSlot.h"
 
 namespace ujcore {
 
@@ -16,21 +14,16 @@ namespace ujcore {
 // the graph.
 class PipelineBuilder final {
 public:
-    explicit PipelineBuilder(const GraphState& graph, GraphPipeline& pipeline);
-
     // Clear any previously built state, and build the entire pipeline from the
     // current state of the graph (`graph_`).
-    absl::Status Rebuild();
+    static absl::Status Rebuild(const GraphState& graph, GraphPipeline& pipeline);
+
+    // Assets are the associated externally communicated data consumed or produced by the
+    // pipeline, e.g. media files.
+    static absl::StatusOr<std::vector<AssetInfo>> GetAssetInfos(const GraphState& graph, const GraphPipeline& pipeline);
 
 private:
-    absl::Status HandleFunctionNode(const NodeId nodeId, const plinfo::NodeInfo& nodeInfo);
-    absl::Status HandleGraphIONode(const NodeId nodeId, const plinfo::NodeInfo& nodeInfo);
-
-    // Helper methods to get the pipeline slot reference.
-    PipelineSlot* LookupPipelineSlot(NodeId nodeId, const std::string& slotName);
-
-    const GraphState& graph_;
-    GraphPipeline& pipeline_;
+    PipelineBuilder() = delete;
 };
 
 }  // namespace ujcore

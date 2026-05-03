@@ -65,6 +65,9 @@ class GraphBuilder {
   // Returns the total number of deleted nodes + edges.
   absl::StatusOr<int> ClearGraph();
 
+  // Validates whether an edge can be added between the given source and target slots, and returns the validation result.
+  absl::StatusOr<plstate::SlotState::Validity> ValidateEdge(const SlotId sourceSlotId, const SlotId targetSlotId) const;
+
   absl::StatusOr<std::vector<FunctionInfo>> GetAvailableFuncInfos() const;
 
  private:

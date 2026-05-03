@@ -4,6 +4,7 @@
 #include <emscripten/val.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/bind.h>
+#include <iostream>
 
 #include "absl/log/check.h"
 #include "ujcore/base/BackendRegistry.h"
@@ -28,10 +29,25 @@ EM_JS(void, JsOnFlushBitmap, (const char* idStr), {
     globalThis.pipelineEvents.dispatchEvent(new CustomEvent("BITMAP_FLUSHED", { detail: { id: UTF8ToString(idStr) } }));
 });
 
+// EM_JS(emscripten::EM_VAL, JsTestAwait, (), {
+//     console.log("JsTestAwait called, will resolve after 2 second");
+//     const p = new Promise(resolve => setTimeout(resolve, 2000));
+//     return Emval.toHandle(p);
+// });
+
+
 class JsHeapBackedBitmap final : public Bitmap {
 public:
   JsHeapBackedBitmap(const std::string& id, int32_t width, int32_t height, int32_t bytesPerPixel, JsBitmapPool* const parent)
     : id_(id), width_(width), height_(height), bytesPerPixel_(bytesPerPixel), parent_(parent) {
+
+
+        // std::cout << "# JsHeapBackedBitmap enter ..." << std::endl;
+        // emscripten::val promise1 = emscripten::val::take_ownership(JsTestAwait());
+        // std::cout << "# JsHeapBackedBitmap returned ..." << std::endl;
+        // promise1.await();
+        // std::cout << "# JsHeapBackedBitmap await done ..." << std::endl;
+
         emscripten::val target = emscripten::val::object();
         target.set("id", id_);
         target.set("width", width);

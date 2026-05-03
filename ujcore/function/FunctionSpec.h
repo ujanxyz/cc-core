@@ -18,7 +18,7 @@ struct FuncParamSpec {
   // The data type. Left as free string for implementation. "[]T" denotes array of type T.
   // Common values are:
   // int, int[], float, []float.
-  // The qualifier "T"
+  // The qualifier "T":
   // Geometric types like: 2D coordinates (pair of x,y), intervals are represented as "float2" (2 floats).
   // Rectangles are represented as "float4".
   // Colors are represented as "float3" (for RGB).

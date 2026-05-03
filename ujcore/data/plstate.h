@@ -23,6 +23,13 @@ struct EncodedData {
 };
 
 struct SlotState {
+    enum class Validity {
+        VALID = 0,
+        WARN_DATA,
+        ERR_TYPE,
+        ERR_EDGE,
+    };
+
     // Edge connections: Raw ids of edges.
     std::set<EdgeId> inEdges;
     std::set<EdgeId> outEdges;
@@ -34,6 +41,7 @@ struct SlotState {
     // Generation id to keep track of changes.
     int32_t genId {0LL};
 
+    DEFINE_ENUM_CONVERSION_FUNCTION(Validity, VALID, WARN_DATA, ERR_TYPE, ERR_EDGE);
     DEFINE_STRUCT_VISITOR_FUNCTION(inEdges, outEdges, encodedData, genId);
 };
 

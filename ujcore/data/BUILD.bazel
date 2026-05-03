@@ -18,6 +18,16 @@ cc_library(
 )
 
 cc_library(
+    name = "AssetInfo",
+    hdrs = ["AssetInfo.h"],
+    deps = [
+        ":IdTypes",
+        "@cppschema//:enum_registry",
+        "@cppschema//:visitor_macros",
+    ],
+)
+
+cc_library(
     name = "plinfo",
     hdrs = ["plinfo.h"],
     deps = [

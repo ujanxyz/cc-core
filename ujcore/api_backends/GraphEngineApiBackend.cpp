@@ -23,13 +23,15 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
     using AddEdgeResponse = GraphEngineApi::AddEdgeResponse;
     using DeleteElementsRequest = GraphEngineApi::DeleteElementsRequest;
     using DeleteElementsResponse = GraphEngineApi::DeleteElementsResponse;
+    using ValidateEdgeRequest = GraphEngineApi::ValidateEdgeRequest;
+    using ValidateEdgeResponse = GraphEngineApi::ValidateEdgeResponse;
     using GetNodeStatesRequest = GraphEngineApi::GetNodeStatesRequest;
     using GetNodeStatesResponse = GraphEngineApi::GetNodeStatesResponse;
     using GetSlotStatesRequest = GraphEngineApi::GetSlotStatesRequest;
     using GetSlotStatesResponse = GraphEngineApi::GetSlotStatesResponse;
     using GetAvailableFuncsResponse = GraphEngineApi::GetAvailableFuncsResponse;
     using SetEncodedDataRequest = GraphEngineApi::SetEncodedDataRequest;
-    using RunPipelineRequest = GraphEngineApi::RunPipelineRequest;
+    using BuildPipelineResponse = GraphEngineApi::BuildPipelineResponse;
     using RunPipelineResponse = GraphEngineApi::RunPipelineResponse;
     using GetResourcesResponse = GraphEngineApi::GetResourcesResponse;
 
@@ -158,6 +160,19 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         };
     }
 
+    ValidateEdgeResponse validateEdgeImpl(const ValidateEdgeRequest& request) {
+        SlotId sourceSlotId{request.sourceNode, request.sourceSlot};
+        SlotId targetSlotId{request.targetNode, request.targetSlot};
+        auto validateResultOr = builder_.ValidateEdge(sourceSlotId, targetSlotId);
+        if (!validateResultOr.ok()) {
+            LOG(FATAL) << "Validate edge error: " << validateResultOr.status();
+        }
+        plstate::SlotState::Validity validity = std::move(validateResultOr).value();
+        return ValidateEdgeResponse {
+            .validity = validity,
+        };
+    }
+
     GetNodeStatesResponse getNodeStatesImpl(const GetNodeStatesRequest& request) {
         auto nodeStates = GraphUtils::LookupNodeStates(state_, request.nodeIds);
         if (!nodeStates.ok()) {
@@ -227,21 +242,23 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         return {};
     }
 
-    RunPipelineResponse runPipelineImpl(const RunPipelineRequest& request) {
-        if (request.build) {
-            auto buildResult = runner_.BuildFromState(state_);
-            if (!buildResult.ok()) {
-                LOG(FATAL) << "Build pipeline error: " << buildResult;
-            }
+    BuildPipelineResponse buildPipelineImpl(const VoidType&) {
+        auto assetInfosOr = runner_.RebuildFromState(state_);
+        if (!assetInfosOr.ok()) {
+            LOG(FATAL) << "Build pipeline error: " << assetInfosOr.status();
         }
+        return BuildPipelineResponse {
+            .assetInfos = std::move(assetInfosOr).value(),
+        };
+    }
+
+    RunPipelineResponse runPipelineImpl(const VoidType& request) {
         RunPipelineResponse response;
-        if (request.execute) {
-            auto runResult = runner_.RunPipeline();
-            if (!runResult.ok()) {
-                LOG(FATAL) << "Run pipeline error: " << runResult.status();
-            }
-            response.outputs = std::move(runResult).value();
+        auto runResult = runner_.RunPipeline();
+        if (!runResult.ok()) {
+            LOG(FATAL) << "Run pipeline error: " << runResult.status();
         }
+        response.outputs = std::move(runResult).value();
         return response;
     }
 
@@ -270,11 +287,13 @@ static __attribute__((constructor)) void RegisterPipelineApiBackend() {
         .createIONode = &GraphEngineApiBackend::createIONodeImpl,
         .addEdge = &GraphEngineApiBackend::addEdgeImpl,
         .deleteElements = &GraphEngineApiBackend::deleteElementsImpl,
+        .validateEdge = &GraphEngineApiBackend::validateEdgeImpl,
         .getNodeStates = &GraphEngineApiBackend::getNodeStatesImpl,
         .getSlotStates = &GraphEngineApiBackend::getSlotStatesImpl,
         .clearGraph = &GraphEngineApiBackend::clearGraphImpl,
         .getAvailableFuncs = &GraphEngineApiBackend::getAvailableFuncsImpl,
         .setEncodedData = &GraphEngineApiBackend::setEncodedDataImpl,
+        .buildPipeline = &GraphEngineApiBackend::buildPipelineImpl,
         .runPipeline = &GraphEngineApiBackend::runPipelineImpl,
         .getResources = &GraphEngineApiBackend::getResourcesImpl,
     };

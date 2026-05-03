@@ -7,6 +7,7 @@
 #include "cppschema/apispec/api_framework.h"
 #include "cppschema/common/types.h"
 #include "cppschema/common/visitor_macros.h"
+#include "ujcore/data/AssetInfo.h"
 #include "ujcore/data/FunctionInfo.h"
 #include "ujcore/data/IdTypes.h"
 #include "ujcore/data/ResourceInfo.h"
@@ -90,6 +91,21 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(nodeIds, edgeIds, deletedSlotIds, affectedSlotIds, topoOrder);
     };
 
+    // API: validateEdge
+    struct ValidateEdgeRequest {
+        NodeId sourceNode;
+        std::string sourceSlot;
+        NodeId targetNode;
+        std::string targetSlot;
+
+        DEFINE_STRUCT_VISITOR_FUNCTION(sourceNode, sourceSlot, targetNode, targetSlot);
+    };
+    struct ValidateEdgeResponse {
+        plstate::SlotState::Validity validity = plstate::SlotState::Validity::VALID;
+    
+        DEFINE_STRUCT_VISITOR_FUNCTION(validity);
+    };
+
     // API: getNodeStates
     struct GetNodeStatesRequest {
         std::vector<NodeId> nodeIds;
@@ -131,16 +147,13 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(isNode, nodeId, slotId, encodedData);
     };
 
-    // API: runPipeline
-    struct RunPipelineRequest {
-        // If true, the pipeline will be built.
-        bool build = false;
-
-        // If true, the pipeline will be executed.
-        bool execute = false;
-
-        DEFINE_STRUCT_VISITOR_FUNCTION(build, execute);
+    // API: buildPipeline
+    struct BuildPipelineResponse {
+        std::vector<AssetInfo> assetInfos;
+        DEFINE_STRUCT_VISITOR_FUNCTION(assetInfos);
     };
+
+    // API: runPipeline
     struct RunPipelineResponse {
         std::vector<plstate::GraphRunOutput> outputs;
 
@@ -159,12 +172,14 @@ struct GraphEngineApi {
     cppschema::ApiStub<CreateIONodeRequest, CreateIONodeResponse> createIONode;
     cppschema::ApiStub<AddEdgeRequest, AddEdgeResponse> addEdge;
     cppschema::ApiStub<DeleteElementsRequest, DeleteElementsResponse> deleteElements;
+    cppschema::ApiStub<ValidateEdgeRequest, ValidateEdgeResponse> validateEdge;
     cppschema::ApiStub<GetNodeStatesRequest, GetNodeStatesResponse> getNodeStates;
     cppschema::ApiStub<GetSlotStatesRequest, GetSlotStatesResponse> getSlotStates;
     cppschema::ApiStub<VoidType, VoidType> clearGraph;
     cppschema::ApiStub<VoidType, GetAvailableFuncsResponse> getAvailableFuncs;
     cppschema::ApiStub<SetEncodedDataRequest, VoidType> setEncodedData;
-    cppschema::ApiStub<RunPipelineRequest, RunPipelineResponse> runPipeline;
+    cppschema::ApiStub<VoidType, BuildPipelineResponse> buildPipeline;
+    cppschema::ApiStub<VoidType, RunPipelineResponse> runPipeline;
     cppschema::ApiStub<VoidType, GetResourcesResponse> getResources;
 
     DEFINE_API_VISITOR_FUNCTION(
@@ -173,11 +188,13 @@ struct GraphEngineApi {
         createIONode,
         addEdge,
         deleteElements,
+        validateEdge,
         getNodeStates,
         getSlotStates,
         clearGraph,
         getAvailableFuncs,
         setEncodedData,
+        buildPipeline,
         runPipeline,
         getResources);
 };

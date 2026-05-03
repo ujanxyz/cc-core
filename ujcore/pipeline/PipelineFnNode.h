@@ -39,6 +39,8 @@ public:
   ResourceContext* GetResourceContext() override;
 
 private:
+public:
+
     // Holds data and references for a single slot.
     struct PerSlotEntry {
         // The data type specified in the slot info. This is used to decode the manually overridden
@@ -62,7 +64,7 @@ private:
     std::unique_ptr<FunctionContext> functionCtx_;
     std::unique_ptr<ResourceContext> resourceCtx_;
     std::map<std::string /* slot name */, PerSlotEntry> slotEntries_;
-    std::map<std::string /* slot name */, PipelineSlot> slots_;
+    // std::map<std::string /* slot name */, PipelineSlot> slots_;
 
     bool executed_ = false;
 

@@ -13,6 +13,8 @@
 namespace ujcore {
 namespace {
 
+using ::ujcore::plstate::SlotState;
+
 absl::StatusOr<std::tuple<const plinfo::NodeInfo*, plstate::NodeState*>>
 InternalGetNodeInfoAndState(GraphState& state, const NodeId nodeId) {
   const auto infoIter = state.nodeInfos.find(nodeId);
@@ -371,6 +373,41 @@ absl::StatusOr<int> GraphBuilder::ClearGraph() {
   state_.nodeStates.clear();
   state_.slotStates.clear();
   return deletedNodeIds.size() + deletedEdgeIds.size();
+}
+
+absl::StatusOr<SlotState::Validity> GraphBuilder::ValidateEdge(const SlotId sourceSlotId, const SlotId targetSlotId) const {
+  auto sourceSlotInfoIter = state_.slotInfos.find(sourceSlotId);
+  if (sourceSlotInfoIter == state_.slotInfos.end()) {
+    return absl::InternalError(absl::StrCat("Source slot info lookup failed: ", sourceSlotId));
+  }
+  auto targetSlotInfoIter = state_.slotInfos.find(targetSlotId);
+  if (targetSlotInfoIter == state_.slotInfos.end()) {
+    return absl::InternalError(absl::StrCat("Target slot info lookup failed: ", targetSlotId));
+  }
+  const plinfo::SlotInfo& sourceSlotInfo = sourceSlotInfoIter->second;
+  const plinfo::SlotInfo& targetSlotInfo = targetSlotInfoIter->second;
+
+  // Check type compatibility.
+  if (sourceSlotInfo.dtype != targetSlotInfo.dtype) {
+    return SlotState::Validity::ERR_TYPE;
+  }
+
+  // Check target slot does not have any incoming edge.
+  auto targetSlotStateIter = state_.slotStates.find(targetSlotId);
+  if (targetSlotStateIter == state_.slotStates.end()) {
+    return absl::InternalError(absl::StrCat("Target slot state lookup failed: ", targetSlotId));
+  }
+  const SlotState& targetSlotState = targetSlotStateIter->second;
+  if (!targetSlotState.inEdges.empty()) {
+    return SlotState::Validity::ERR_EDGE;
+  }
+
+  // Check target slot does not have encoded data.
+  if (targetSlotState.encodedData.has_value()) {
+    return SlotState::Validity::WARN_DATA;
+  }
+
+  return SlotState::Validity::VALID;
 }
 
 absl::StatusOr<std::vector<FunctionInfo>>

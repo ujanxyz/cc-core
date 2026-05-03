@@ -19,6 +19,10 @@ public:
 
   NodeId GetNodeId() const { return selfId_; }
 
+  // Returns true if it is a graph output node, else it's a graph input node.
+  // An input node will consume external data into the pipeline,
+  // and an output node will produce data to be consumed by the
+  // external environment.
   bool isOutputStage() const { return isOutput_; }
 
   absl::Status RunAsIO();
@@ -26,6 +30,7 @@ public:
   absl::StatusOr<plstate::GraphRunOutput> GetRunResult() const;
 
 private:
+public:
     // Decodes from string to attribute (for graph input) or encodes from attribute to string
     // (for graph output).
     using ConvertFnPtr = std::variant<const AttributeEncodeFn*, const AttributeDecodeFn*>;
