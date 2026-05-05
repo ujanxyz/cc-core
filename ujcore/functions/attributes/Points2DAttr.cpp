@@ -9,7 +9,7 @@ using json = ::nlohmann::json;
 using Point2D = Points2DAttr::Point2D;
 
 __attribute__((constructor)) void RegisterPoints2DAttr() {
-    auto enode = [](std::shared_ptr<void> data) -> std::string {
+    auto enode = [](std::shared_ptr<void> data, ResourceContext* resourceCtx) -> std::string {
         auto* floatStore = static_cast<Points2DAttr::Storage*>(data.get());
         const std::vector<Point2D>& points = floatStore->points;
 
@@ -24,7 +24,7 @@ __attribute__((constructor)) void RegisterPoints2DAttr() {
         return jsonArray.dump();
     };
 
-    auto decode = [](const std::string& encoded) -> std::shared_ptr<void> {
+    auto decode = [](const std::string& encoded, ResourceContext* resourceCtx) -> std::shared_ptr<void> {
         auto floatStore = std::make_shared<Points2DAttr::Storage>();
 
         // Parse JSON string to get points.

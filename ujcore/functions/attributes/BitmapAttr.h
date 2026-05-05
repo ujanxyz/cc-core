@@ -1,10 +1,13 @@
 #pragma once
 
 #include "absl/log/check.h"
+#include "absl/status/statusor.h"
 #include "ujcore/base/Bitmap.h"
 #include "ujcore/base/BitmapPool.h"
 #include "ujcore/function/AttributeDataType.h"
 #include "ujcore/function/ResourceContext.h"
+
+absl::StatusOr<std::string> GetBitmapAssetUriFromEncoded(const std::string& encoded);
 
 // This attribute represents a bitmap resource, where the storage holds a reference to the bitmap
 // and the actual Bitmap object is managed in the resource context's bitmap pool.
@@ -19,7 +22,10 @@ public:
     }
 
     struct Storage {
-        std::string ref;
+        // A URI that references the bitmap resource, e.g. "idb:/media/lake-12345.png" (for IndexedDb)
+        std::optional<std::string> assetUri;
+
+        // The bitmap object is stored in the resource context's bitmap pool.
         std::shared_ptr<Bitmap> bitmap;
     };
 
@@ -27,10 +33,16 @@ public:
         std::shared_ptr<Storage> storage;
         ResourceContext* resourceCtx = nullptr;
 
-
-        std::string getUri() const {
+        std::optional<std::string> getUri() const {
             CHECK(storage != nullptr);
-            return storage->ref;
+            return storage->assetUri;
+        }
+
+        absl::StatusOr<Bitmap*> readBitmap() const {
+            if (storage == nullptr || storage->bitmap == nullptr) {
+                return absl::NotFoundError("Bitmap not found");
+            }
+            return storage->bitmap.get();
         }
     };
 
@@ -41,7 +53,7 @@ public:
 
         void setFromUri(const std::string& uri) {
             CHECK(storage != nullptr);
-            storage->ref = uri;
+            storage->assetUri = uri;
         }
 
         Bitmap* createBitmap() {
@@ -49,21 +61,17 @@ public:
             CHECK(resourceCtx != nullptr);
             CHECK(storage->bitmap == nullptr) << "Bitmap already set for this attribute.";
             BitmapPool* bitmapPool = resourceCtx->GetBitmapPool();
-            CHECK(bitmapPool != nullptr);
-            storage->bitmap = bitmapPool->CreateNewBitmap(encodedSlotId, 60 /* width */, 60 /* height */, 4 /* bytesPerPixel */);
+            storage->bitmap = bitmapPool->CreateNewBitmap(encodedSlotId, 1024 /* width */, 1024 /* height */, 4 /* bytesPerPixel */);
             CHECK(storage->bitmap != nullptr);
             return storage->bitmap.get();
-
-            // Here you would create a bitmap and store it in the resource context's bitmap pool,
-            // then set the storage->ref to a URI that can be used to retrieve the bitmap later.
-            // For example:
-            // Bitmap* bmp = resourceCtx->GetBitmapPool()->CreateBitmap(...);
-            // storage->ref = resourceCtx->GetBitmapPool()->GetUriForBitmap(bmp);
         }
 
-        void DoneBitmapEditing() {
-            // If there are any finalization steps needed after editing the bitmap, they can be done here.
-            // For example, if you need to mark the bitmap as ready for use or trigger any events, you can do that here.
+        void Capture() {
+            if (storage->bitmap != nullptr) {
+                const std::string slotIdStr = resourceCtx->GetSlotIdStr();
+                std::cout << "[BitmapAttr] Capturing bitmap for slot: " << slotIdStr << std::endl;
+                storage->bitmap->onCapture(slotIdStr);
+            }
         }
     };
 };

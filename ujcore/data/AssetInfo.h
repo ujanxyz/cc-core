@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 
 #include "cppschema/common/enum_registry.h"
@@ -30,8 +31,13 @@ struct AssetInfo {
   // The data type within the pipeline that this asset maps into, e.g. "bitmap"
   std::string dtype;
 
+  // A URI that references the asset, e.g. "idb:/media/lake-12345.png" (for IndexedDb).
+  // It is populated for graph input assets and manually entered assets, and is generated
+  // after pipeline execution for artifact assets.
+  std::optional<std::string> assetUri;
+
   DEFINE_ENUM_CONVERSION_FUNCTION(AssetType, UNKNOWN, GRAPHIN, MANUAL, ARTIFACT, GRAPHOUT);
-  DEFINE_STRUCT_VISITOR_FUNCTION(slotId, assetType, dtype);
+  DEFINE_STRUCT_VISITOR_FUNCTION(slotId, assetType, dtype, assetUri);
 };
 
 } // namespace ujcore

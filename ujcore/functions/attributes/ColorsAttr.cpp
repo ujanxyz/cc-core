@@ -67,7 +67,7 @@ std::optional<PackedRGBA> HexStringToPackedRGBA(const std::string& hexStr) {
 __attribute__((constructor)) void RegisterColorsAttr() {
     // The JSON representation is an array of strings, like: ["#E0F08880", "#FF0000FF"]
 
-    auto enode = [](std::shared_ptr<void> data) -> std::string {
+    auto enode = [](std::shared_ptr<void> data, ResourceContext* resourceCtx) -> std::string {
         auto* floatStore = static_cast<ColorsAttr::Storage*>(data.get());
         const std::vector<PackedRGBA>& colors = floatStore->packedRGBAs;
 
@@ -79,7 +79,7 @@ __attribute__((constructor)) void RegisterColorsAttr() {
         return jsonArray.dump();
     };
 
-    auto decode = [](const std::string& encoded) -> std::shared_ptr<void> {
+    auto decode = [](const std::string& encoded, ResourceContext* resourceCtx) -> std::shared_ptr<void> {
         auto colorsStore = std::make_shared<ColorsAttr::Storage>();
 
         // Parse JSON string to get colors.

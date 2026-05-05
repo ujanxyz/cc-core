@@ -13,6 +13,7 @@
 #include "ujcore/function/FunctionBase.h"
 #include "ujcore/function/FunctionContext.h"
 #include "ujcore/function/FunctionSpec.h"
+#include "ujcore/function/ResourceContext.h"
 #include "ujcore/pipeline/PipelineSlot.h"
 
 namespace ujcore {
@@ -26,9 +27,14 @@ public:
 
   PipelineSlot* LookupSlot(const std::string& slotName);
 
+  // This should be called before execution.
+  void SetResourceContext(ResourceContext* resourceCtx) {
+      resourceCtx_ = resourceCtx;
+  }
+
   // Execute the function stage in the pipeline.
   absl::StatusOr<bool> RunFunction();
-  
+
   // Methods implementing `FunctionContextParent`.
 
   NodeId GetFunctionNodeId() const override;
@@ -39,7 +45,7 @@ public:
   ResourceContext* GetResourceContext() override;
 
 private:
-public:
+public: // TODO: change to private after pipeline builder is implemented.
 
     // Holds data and references for a single slot.
     struct PerSlotEntry {
@@ -62,9 +68,11 @@ public:
     const NodeId selfId_;
     std::unique_ptr<FunctionBase> funcInstance_;
     std::unique_ptr<FunctionContext> functionCtx_;
-    std::unique_ptr<ResourceContext> resourceCtx_;
     std::map<std::string /* slot name */, PerSlotEntry> slotEntries_;
-    // std::map<std::string /* slot name */, PipelineSlot> slots_;
+
+    // This is a non-owning raw pointer to the resource context in the pipeline runner.
+    // This is shared by all nodes in the same pipeline.
+    ResourceContext* resourceCtx_ = nullptr;
 
     bool executed_ = false;
 

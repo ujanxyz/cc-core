@@ -21,5 +21,6 @@ struct AttributeData {
     }
 };
 
-using AttributeEncodeFn = std::function<std::string(std::shared_ptr<void> data)>;
-using AttributeDecodeFn = std::function<std::shared_ptr<void>(const std::string& encoded)>;
+class ResourceContext;
+using AttributeEncodeFn = std::function<std::string(std::shared_ptr<void> data, ResourceContext* resourceCtx)>;
+using AttributeDecodeFn = std::function<std::shared_ptr<void>(const std::string& encoded, ResourceContext* resourceCtx)>;

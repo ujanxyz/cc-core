@@ -7,11 +7,13 @@
 #include "ujcore/function/AttributeDataType.h"
 #include "ujcore/function/AttributeTypeRegistry.h"
 #include "ujcore/function/FunctionRegistry.h"
+#include "ujcore/functions/attributes/BitmapAttr.h"
 #include "ujcore/graph/GraphUtils.h"
 #include "ujcore/pipeline/GraphPipeline.h"
 #include "ujcore/pipeline/PipelineFnNode.h"
 #include "ujcore/pipeline/PipelineSlot.h"
 #include "ujcore/utils/status_macros.h"
+#include <string>
 
 namespace ujcore {
 namespace {
@@ -343,7 +345,6 @@ absl::StatusOr<std::vector<AssetInfo>> PipelineBuilder::GetAssetInfos(const Grap
             // (1) The input slots which have manually entered encoded data.
             // (2) The output slots which create new assets.
             for (const auto& [slotName, slotEntry] : nodeStep.fnNode->slotEntries_) {
-                // const PipelineSlot* plSlot = slotEntry.plSlot.get();
                 // We only support bitmaps as asset types.
                 if (slotEntry.dtype != AttributeDataType::kBitmap) {
                     continue;
@@ -355,10 +356,13 @@ absl::StatusOr<std::vector<AssetInfo>> PipelineBuilder::GetAssetInfos(const Grap
                     // It is a function input slot of type asset.
                     if (slotEntry.encodedInput != nullptr && slotEntry.encodedInput->has_value()) {
                         // This input slot actually has an encoded data at the time of execution.
+                        const std::optional<plstate::EncodedData>& encodedDataOpt = *slotEntry.encodedInput;
+                        ASSIGN_OR_RETURN(const std::string assetUri, GetBitmapAssetUriFromEncoded(encodedDataOpt->payload));
                         assetInfos.push_back(AssetInfo {
                             .slotId = slotId,
                             .assetType = AssetInfo::AssetType::MANUAL,
                             .dtype = AttributeDataTypeToStr(slotEntry.dtype),
+                            .assetUri = assetUri,
                         });
                     }
                 }
@@ -396,12 +400,23 @@ absl::StatusOr<std::vector<AssetInfo>> PipelineBuilder::GetAssetInfos(const Grap
                     .dtype = AttributeDataTypeToStr(ioNode->dtype_),
                 });
             } else {
-                // A graph input node only has one output slot.
+                RETURN_IF_NOT_FOUND_IN_MAP(const plstate::NodeState& nodeState, graph.nodeStates, nodeId);
+                std::optional<std::string> assetUriOpt;
+                if (nodeState.encodedData.has_value()) {
+                    const std::optional<plstate::EncodedData>& encodedDataOpt = *nodeState.encodedData;
+                    ASSIGN_OR_RETURN(const std::string assetUri, GetBitmapAssetUriFromEncoded(encodedDataOpt->payload));
+                    assetUriOpt = assetUri;
+                } else {
+                    return absl::InvalidArgumentError(
+                        absl::StrCat("Graph input node (bitmap) should have encoded input data"));
+                }
+                // A graph input node only has one output slot.                
                 const SlotId slotId = SlotId { .parent = nodeId, .name = "$out" };
                 assetInfos.push_back(AssetInfo {
                     .slotId = slotId,
                     .assetType = AssetInfo::AssetType::GRAPHIN,
                     .dtype = AttributeDataTypeToStr(ioNode->dtype_),
+                    .assetUri = std::move(assetUriOpt),
                 });
             }
         } // if GraphIOStep

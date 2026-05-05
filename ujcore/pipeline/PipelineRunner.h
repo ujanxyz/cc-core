@@ -10,8 +10,8 @@
 #include "ujcore/data/GraphState.h"
 #include "ujcore/data/ResourceInfo.h"
 #include "ujcore/data/plstate.h"
+#include "ujcore/function/ResourceContext.h"
 #include "ujcore/pipeline/GraphPipeline.h"
-#include "ujcore/pipeline/PipelineBuilder.h"
 
 namespace ujcore {
 
@@ -37,6 +37,7 @@ public:
 private:
     GraphPipeline pipeline_;
     std::unique_ptr<BitmapPool> bitmapPool_;
+    std::unique_ptr<ResourceContext> resourceContext_;
 };
 
 }  // namespace ujcore

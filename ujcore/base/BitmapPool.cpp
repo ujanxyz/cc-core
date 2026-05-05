@@ -38,7 +38,15 @@ public:
     return ownedBytes_.get();
   }
 
+  const uint8_t* bytes() const override {
+    return ownedBytes_.get();
+  }
+
   void flush() override {
+    // No-op for DummyBitmap
+  }
+
+  void onCapture(const std::string& slotIdStr) override {
     // No-op for DummyBitmap
   }
 
@@ -57,6 +65,13 @@ public:
       const std::string& resourceId,
       int32_t width, int32_t height, int32_t bytesPerPixel) override {
     auto bitmap = std::make_unique<DummyBitmap>(width, height, bytesPerPixel);
+    return bitmap;
+  }
+
+  std::shared_ptr<Bitmap> ReleaseStagedBitmap(
+        const std::string& reqSlotIdStr,
+        const std::string& assetUri) override {
+    auto bitmap = std::make_unique<DummyBitmap>(1, 1, 4);
     return bitmap;
   }
 

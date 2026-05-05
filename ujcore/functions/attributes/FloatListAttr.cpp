@@ -8,7 +8,7 @@ namespace {
 using json = ::nlohmann::json;
 
 __attribute__((constructor)) void RegisterFloatListAttr() {
-    auto enode = [](std::shared_ptr<void> data) -> std::string {
+    auto enode = [](std::shared_ptr<void> data, ResourceContext* resourceCtx) -> std::string {
         auto* floatStore = static_cast<FloatListAttr::Storage*>(data.get());
         const std::vector<float>& fValues = floatStore->fValues;
 
@@ -20,7 +20,7 @@ __attribute__((constructor)) void RegisterFloatListAttr() {
         return jsonArray.dump();
     };
 
-    auto decode = [](const std::string& encoded) -> std::shared_ptr<void> {
+    auto decode = [](const std::string& encoded, ResourceContext* resourceCtx) -> std::shared_ptr<void> {
         auto floatStore = std::make_shared<FloatListAttr::Storage>();
 
         // Parse JSON string to get fValues.

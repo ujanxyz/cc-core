@@ -15,6 +15,7 @@ cc_library(
         "//ujcore/function:AttributeTypeRegistry",
         "//ujcore/function:ResourceContext",
         "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/status:statusor",
         "@nlohmann_json//:json",
     ],
     alwayslink = 1,  # The types register themselves in the AttributeTypeRegistry.

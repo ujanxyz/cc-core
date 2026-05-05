@@ -16,13 +16,16 @@ using NodeStage = GraphPipeline::NodeStage;
 using EdgePropagateStep = GraphPipeline::EdgePropagateStep;
 using GraphIOStep = GraphPipeline::GraphIOStep;
 
-// Iterate over the function nodes (PipelineFnNode) in the pipeline, and populate the resource
-// context with the bitmap pool.
-void InternalAssignBitmapPool(std::map<NodeId, NodeStage>& nodeStages, BitmapPool* bitmapPool) {
+// Iterate over the nodes in the pipeline, and assign the resource context.
+void InternalAssignResourceCtx(std::map<NodeId, NodeStage>& nodeStages, ResourceContext* resourceCtx) {
     for (auto& [nodeId, stage] : nodeStages) {
         if (stage.ntype == plinfo::NodeInfo::NodeType::FN) {
             PipelineFnNode* fnNode = std::get<std::unique_ptr<PipelineFnNode>>(stage.node).get();
-            fnNode->GetResourceContext()->setBitmapPool(bitmapPool);
+            fnNode->SetResourceContext(resourceCtx);
+        }
+        else if (stage.ntype == plinfo::NodeInfo::NodeType::IN || stage.ntype == plinfo::NodeInfo::NodeType::OUT) {
+            PipelineIONode* ioNode = std::get<std::unique_ptr<PipelineIONode>>(stage.node).get();
+            ioNode->SetResourceContext(resourceCtx);
         }
     }
 }
@@ -32,12 +35,17 @@ void InternalAssignBitmapPool(std::map<NodeId, NodeStage>& nodeStages, BitmapPoo
 absl::StatusOr<std::vector<AssetInfo>> PipelineRunner::RebuildFromState(const GraphState& state) {
     RETURN_IF_ERROR(PipelineBuilder::Rebuild(state, pipeline_));
     bitmapPool_ = CreateNewBitmapPoolFromRegistry();
-    InternalAssignBitmapPool(pipeline_.nodeStages, bitmapPool_.get());
+
+    resourceContext_ = std::make_unique<ResourceContext>();
+    resourceContext_->setBitmapPool(bitmapPool_.get());
+
+    InternalAssignResourceCtx(pipeline_.nodeStages, resourceContext_.get());
     return PipelineBuilder::GetAssetInfos(state, pipeline_);
 }
 
 absl::StatusOr<std::vector<plstate::GraphRunOutput>> PipelineRunner::RunPipeline() {
     std::vector<plstate::GraphRunOutput> result;
+
     for (auto& step : pipeline_.execSteps) {
         if (std::holds_alternative<EdgePropagateStep>(step)) {
             const auto& edgeStep = std::get<EdgePropagateStep>(step);

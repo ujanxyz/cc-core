@@ -13,7 +13,6 @@ PipelineFnNode::PipelineFnNode(
         : selfId_(nodeId),
         funcInstance_(std::move(funcInstance)) {
     functionCtx_ = std::make_unique<FunctionContext>(this);
-    resourceCtx_ = std::make_unique<ResourceContext>();
 }
 
 PipelineSlot* PipelineFnNode::LookupSlot(const std::string& slotName) {
@@ -29,7 +28,7 @@ absl::StatusOr<bool> PipelineFnNode::RunFunction() {
     for (auto& [slotName, slotEntry] : slotEntries_) {
         if (slotEntry.decodeFnPtr != nullptr && slotEntry.encodedInput->has_value()) {
             const plstate::EncodedData& encodedData = slotEntry.encodedInput->value();
-            std::shared_ptr<void> parsedData = (*slotEntry.decodeFnPtr)(encodedData.payload);
+            std::shared_ptr<void> parsedData = (*slotEntry.decodeFnPtr)(encodedData.payload, resourceCtx_);
             if (parsedData == nullptr) {
                 return absl::InternalError(absl::StrCat("Failed to decode manual override data for node ", selfId_.value, ", slot ", slotName));
             }
@@ -83,7 +82,7 @@ void PipelineFnNode::DumpDebugInfoFromFunc() {
 }
 
 ResourceContext* PipelineFnNode::GetResourceContext() {
-    return resourceCtx_.get();
+    return resourceCtx_;
 }
 
 }  // namespace ujcore

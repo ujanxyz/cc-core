@@ -17,6 +17,10 @@ public:
         const std::string& resourceId,
         int32_t width, int32_t height, int32_t bytesPerPixel) override;
 
+    std::shared_ptr<Bitmap> ReleaseStagedBitmap(
+        const std::string& reqSlotIdStr,
+        const std::string& assetUri) override;
+
     // Returns a list of active bitmaps that are currently in use.
     std::vector<const Bitmap*> GetActiveBitmaps() const override;
 

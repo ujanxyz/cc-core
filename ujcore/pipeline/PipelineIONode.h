@@ -9,6 +9,7 @@
 #include "ujcore/data/plstate.h"
 #include "ujcore/function/AttributeData.h"
 #include "ujcore/function/AttributeDataType.h"
+#include "ujcore/function/ResourceContext.h"
 #include "ujcore/pipeline/PipelineSlot.h"
 
 namespace ujcore {
@@ -25,12 +26,18 @@ public:
   // external environment.
   bool isOutputStage() const { return isOutput_; }
 
+  // This should be called before execution.
+  void SetResourceContext(ResourceContext* resourceCtx) {
+      resourceCtx_ = resourceCtx;
+  }
+
   absl::Status RunAsIO();
 
   absl::StatusOr<plstate::GraphRunOutput> GetRunResult() const;
 
 private:
-public:
+public: // TODO: change to private after pipeline builder is implemented.
+
     // Decodes from string to attribute (for graph input) or encodes from attribute to string
     // (for graph output).
     using ConvertFnPtr = std::variant<const AttributeEncodeFn*, const AttributeDecodeFn*>;
@@ -64,6 +71,10 @@ public:
     // In which direction the conversion occurs depends on `isOutput_`, i.e., whether this is an
     // input or output node.
     ConvertFnPtr convertFnPtr_ = static_cast<const AttributeEncodeFn*>(nullptr);
+
+    // This is a non-owning raw pointer to the resource context in the pipeline runner.
+    // This is shared by all nodes in the same pipeline.
+    ResourceContext* resourceCtx_ = nullptr;
 
     friend class PipelineBuilder;
 };

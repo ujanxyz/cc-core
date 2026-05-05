@@ -22,9 +22,11 @@ public:
     virtual int32_t height() const = 0;
     virtual int32_t bytesPerPixel() const = 0;
     virtual uint8_t* bytes() = 0;
+    virtual const uint8_t* bytes() const = 0;
 
     // Invoked after one stage has done modifying the content.
     virtual void flush() = 0;
+    virtual void onCapture(const std::string& slotIdStr) = 0;
 
     // Helper function to calculate the total byte size of the bitmap.
     int32_t byteSize() const {

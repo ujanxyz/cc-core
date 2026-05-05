@@ -11,6 +11,8 @@
 #include "ujcore/functions/attributes/FloatListAttr.h"
 #include "ujcore/functions/attributes/Points2DAttr.h"
 #include "ujcore/base/Bitmap.h"
+#include "ujcore/utils/status_macros.h"
+#include <cstdint>
 
 namespace {
 
@@ -143,11 +145,84 @@ private:
 };
 
 //------------------------------------------------------------------------------
+// Function: InvertBitmapFn - Takes an input bitmap and emit a new bitmap where
+// the colors are inverted (e.g. rgb(255,0,0) becomes rgb(0,255,255)).
+
+class InvertBitmapFn final : public FunctionBase {
+public:
+    static inline const char* uri = "/basic/invert-bitmap";
+
+    static std::unique_ptr<FunctionSpec> spec() {
+        return FunctionSpecBuilder(uri)
+            .WithLabel("Invert bitmap")
+            .WithDesc("Invert the colors of a bitmap.")
+            .WithInputParam("bmpIn", AttributeDataType::kBitmap)
+            .WithOutParam("bmpOut", AttributeDataType::kBitmap)
+            .Detach();
+    }
+
+    static FunctionBase* newInstance() {
+        return new InvertBitmapFn();
+    }
+
+    bool OnInit(FunctionContext& ctx) override {
+        return true;
+    }
+
+    absl::StatusOr<bool> OnRun(FunctionContext& ctx) override {
+        auto bmpIn = GetInParam<BitmapAttr>(ctx, "bmpIn");
+        auto bmpOut = GetOutParam<BitmapAttr>(ctx, "bmpOut");
+
+        ASSIGN_OR_RETURN(const Bitmap* bmpInPtr, bmpIn->readBitmap());
+        Bitmap* bmpOutPtr = bmpOut->createBitmap();
+
+        const uint8_t* inPixels = bmpInPtr->bytes();
+        uint8_t* outPixels = bmpOutPtr->bytes();
+
+        const int32_t width0 = bmpInPtr->width();
+        const int32_t height0 = bmpInPtr->height();
+        const int32_t width1 = bmpOutPtr->width();
+        const int32_t height1 = bmpOutPtr->height();
+
+        const int32_t minWidth = std::min(width0, width1);
+        const int32_t minHeight = std::min(height0, height1);
+        LOG(INFO) << "Inverting bitmap, input size: (" << width0 << "x" << height0 << "), output size: (" << width1 << "x" << height1 << "), processing area: (" << minWidth << "x" << minHeight << ")";
+
+        // First clear the output bitmap to yellow.
+        for (int y = 0; y < height1; ++y) {
+            for (int x = 0; x < width1; ++x) {
+                int idx = (y * width1 + x) * 4;  // Assuming 4 bytes per pixel (RGBA)
+                outPixels[idx] = 255;      // R
+                outPixels[idx + 1] = 255;  // G
+                outPixels[idx + 2] = 0;    // B
+                outPixels[idx + 3] = 255;  // A
+            }
+        }
+
+        // Invert pixels from bmpIn and copy to bmpOut, only the overlapping rect (top-left).
+        for (int y = 0; y < minHeight; ++y) {
+            for (int x = 0; x < minWidth; ++x) {
+                int srcIdx = (y * width0 + x) * 4;  // stride = source bitmap width
+                int dstIdx = (y * width1 + x) * 4;  // stride = destination bitmap width
+                outPixels[dstIdx] = 255 - inPixels[srcIdx];       // R
+                outPixels[dstIdx + 1] = 255 - inPixels[srcIdx + 1]; // G
+                outPixels[dstIdx + 2] = 255 - inPixels[srcIdx + 2]; // B
+                outPixels[dstIdx + 3] = inPixels[srcIdx + 3];     // A (keep alpha unchanged)
+            }
+        }
+        return true;
+    }
+private:
+};
+
+//------------------------------------------------------------------------------
 __attribute__((constructor)) void RegisterBasicFunctions() {
     FunctionRegistry::GetInstance().RegisterFunction(
         EmitBitmapFn::uri, EmitBitmapFn::spec, EmitBitmapFn::newInstance, __FILE__);
     FunctionRegistry::GetInstance().RegisterFunction(
         DrawColorBandsFn::uri, DrawColorBandsFn::spec, DrawColorBandsFn::newInstance, __FILE__);
+    FunctionRegistry::GetInstance().RegisterFunction(
+        InvertBitmapFn::uri, InvertBitmapFn::spec, InvertBitmapFn::newInstance, __FILE__);
 }
 
 }  // namespace
