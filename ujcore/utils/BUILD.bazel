@@ -1,7 +1,22 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 package(
     default_visibility = ["//:__subpackages__"],
+)
+
+cc_library(
+    name = "IdUtils",
+    srcs = ["IdUtils.cpp"],
+    hdrs = ["IdUtils.h"],
+)
+
+cc_test(
+    name = "IdUtils_Test",
+    srcs = ["IdUtils_Test.cpp"],
+    deps = [
+        ":IdUtils",
+        "@googletest//:gtest_main",
+    ],
 )
 
 cc_library(

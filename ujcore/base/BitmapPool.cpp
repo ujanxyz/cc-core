@@ -46,7 +46,7 @@ public:
     // No-op for DummyBitmap
   }
 
-  void onCapture(const std::string& slotIdStr) override {
+  void onCapture(const CaptureInfo& info) override {
     // No-op for DummyBitmap
   }
 

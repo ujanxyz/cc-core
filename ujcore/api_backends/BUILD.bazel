@@ -10,6 +10,7 @@ cc_library(
     deps = [
         "//ujcore/api_schemas:GraphEngineApi",
         "//ujcore/data:GraphState",
+        "//ujcore/data:GraphStateJson",
         "//ujcore/graph:GraphBuilder",
         "//ujcore/graph:GraphUtils",
         "//ujcore/pipeline:PipelineRunner",

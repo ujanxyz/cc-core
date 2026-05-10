@@ -168,6 +168,8 @@ struct GraphEngineApi {
     };
 
     cppschema::ApiStub<VoidType, GetGraphResponse> getGraph;
+    cppschema::ApiStub<VoidType, std::string> encodeGraph;
+    cppschema::ApiStub<std::string, VoidType> decodeGraph;
     cppschema::ApiStub<CreateNodeRequest, CreateNodeResponse> createNode;
     cppschema::ApiStub<CreateIONodeRequest, CreateIONodeResponse> createIONode;
     cppschema::ApiStub<AddEdgeRequest, AddEdgeResponse> addEdge;
@@ -184,6 +186,8 @@ struct GraphEngineApi {
 
     DEFINE_API_VISITOR_FUNCTION(
         getGraph,
+        encodeGraph,
+        decodeGraph,
         createNode,
         createIONode,
         addEdge,

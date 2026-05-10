@@ -1,0 +1,16 @@
+load("@protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
+load("@protobuf//bazel:proto_library.bzl", "proto_library")
+
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+proto_library(
+    name = "graph_proto",
+    srcs = ["graph.proto"],
+)
+
+cc_proto_library(
+    name = "graph_cc_proto",
+    deps = [":graph_proto"],
+)

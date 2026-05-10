@@ -12,7 +12,7 @@ using json = ::nlohmann::json;
 constexpr const char* kAssetUriFieldName = "assetUri";
 
 __attribute__((constructor)) void RegisterBitmapAttr() {
-    auto enode = [](std::shared_ptr<void> data, ResourceContext* resourceCtx) -> std::string {
+    auto encode = [](std::shared_ptr<void> data, ResourceContext* resourceCtx) -> std::string {
         std::shared_ptr<BitmapAttr::Storage> bitmapStore = std::static_pointer_cast<BitmapAttr::Storage>(data);
         const std::optional<std::string>& assetUri = bitmapStore->assetUri;
 
@@ -26,7 +26,10 @@ __attribute__((constructor)) void RegisterBitmapAttr() {
         }
 
         if (bitmapStore->bitmap != nullptr) {
-            bitmapStore->bitmap->onCapture(resourceCtx->GetSlotIdStr());
+            bitmapStore->bitmap->onCapture(Bitmap::CaptureInfo {
+                .slotIdStr = resourceCtx->GetSlotIdStr(),
+                .modeStr = "encode",
+            });
         }
         return jsonObj.dump();
     };
@@ -48,7 +51,10 @@ __attribute__((constructor)) void RegisterBitmapAttr() {
         const std::string slotIdStr = resourceCtx->GetSlotIdStr();
         BitmapPool* bitmapPool = resourceCtx->GetBitmapPool();
         bitmapStore->bitmap = bitmapPool->ReleaseStagedBitmap(slotIdStr, assetUri);
-        bitmapStore->bitmap->onCapture(slotIdStr);
+        bitmapStore->bitmap->onCapture(Bitmap::CaptureInfo {
+            .slotIdStr = slotIdStr,
+            .modeStr = "decode",
+        });
         return bitmapStore;
     };
 
@@ -56,7 +62,7 @@ __attribute__((constructor)) void RegisterBitmapAttr() {
 
     registry.MutableTypeBuilder("bitmap", FILE_LINE)
         .SetLabel("Bitmap")
-        .SetToEncodedFn(std::move(enode))
+        .SetToEncodedFn(std::move(encode))
         .SetFromEncodedFn(std::move(decode));
 }
 

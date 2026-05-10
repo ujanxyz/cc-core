@@ -68,10 +68,11 @@ EM_JS(emscripten::EM_VAL, JsReleaseStagedBitmap, (const char* slotIdStr, const c
   return Emval.toHandle(retValue);
 });
 
-EM_JS(void, JsOnCaptureBitmap, (const char* slotIdStr, emscripten::EM_VAL imageData), {
+EM_JS(void, JsOnCaptureBitmap, (const char* slotIdStr, const char* modeStr, emscripten::EM_VAL imageData), {
     const jSlotIdStr = UTF8ToString(slotIdStr);
+    const jModeStr = UTF8ToString(modeStr);
     const jImageData = Emval.toValue(imageData);
-    globalThis.pipelineEvents.dispatchEvent(new CustomEvent("BITMAP_CAPTURED", { detail: { assetKey: jSlotIdStr, imageData: jImageData } }));
+    globalThis.pipelineEvents.dispatchEvent(new CustomEvent("BITMAP_CAPTURED", { detail: { assetKey: jSlotIdStr, mode: jModeStr, imageData: jImageData } }));
 });
 
 EM_JS(void, JsOnDestroyBitmap, (uint8_t* pixelData), {
@@ -124,11 +125,11 @@ public:
   }
 
   void flush() override {
-    onCapture(id_);
+    CHECK(false) << "Called deprecated JsHeapBackedBitmap::Flush()";
   }
 
-  void onCapture(const std::string& slotIdStr) override {
-    JsOnCaptureBitmap(slotIdStr.c_str(), jsImageData_.as_handle());
+  void onCapture(const CaptureInfo& info) override {
+    JsOnCaptureBitmap(info.slotIdStr.c_str(), info.modeStr.c_str(), jsImageData_.as_handle());
   }
 
 private:

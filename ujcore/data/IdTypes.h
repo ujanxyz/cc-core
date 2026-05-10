@@ -12,9 +12,14 @@ DEFINE_STRONG_UINT_TYPE(NodeId);
 DEFINE_STRONG_UINT_TYPE(EdgeId);
 
 // Sentinel zero values for invalid / uninitialized IDs.
+
+/// @json: Encode as number, like `21`
 const NodeId kZeroNodeId = NodeId(0);
+
+/// @json: Encode as number, like `0`
 const EdgeId kZeroEdgeId = EdgeId(0);
 
+/// @json: Encode as list of [parent: number, name: string], like `[21, "fx"]`
 struct SlotId {
     NodeId parent;  // parent node id
     std::string name;  // slot name

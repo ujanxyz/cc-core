@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 
 struct IDimesnion {
@@ -15,6 +16,12 @@ struct BytesData {
 
 class Bitmap {
 public:
+    struct CaptureInfo {
+        std::string slotIdStr;
+        // Accepted values: "encode", "decode", "function"
+        std::string modeStr;
+    };
+
     virtual ~Bitmap() = default;
 
     virtual std::string_view id() const = 0;
@@ -26,7 +33,7 @@ public:
 
     // Invoked after one stage has done modifying the content.
     virtual void flush() = 0;
-    virtual void onCapture(const std::string& slotIdStr) = 0;
+    virtual void onCapture(const CaptureInfo& info) = 0;
 
     // Helper function to calculate the total byte size of the bitmap.
     int32_t byteSize() const {

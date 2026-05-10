@@ -1,0 +1,134 @@
+syntax = "proto3";
+
+package ujore;
+
+message SlotId {
+	uint32 parent = 1;
+	string name = 2;
+}
+
+message IdGeneratorState {
+	uint32 next_node_id = 1;
+	uint32 next_edge_id = 2;
+}
+
+message GraphConfig {
+	int64 nodeid_splitmix_offset = 1;
+}
+
+message TopoSortState {
+	repeated uint32 sort_order = 1;
+	bool has_dirty_bit = 2;
+}
+
+message SlotInfo {
+	enum AccessEnum {
+		ACCESS_ENUM_UNSPECIFIED = 0;
+		I = 1;
+		O = 2;
+		M = 3;
+	}
+
+	uint32 parent = 1;
+	string name = 2;
+	string dtype = 3;
+	AccessEnum access = 4;
+}
+
+message NodeInfo {
+	enum NodeType {
+		NODE_TYPE_UNSPECIFIED = 0;
+		FN = 1;
+		IN = 2;
+		OUT = 3;
+	}
+
+	uint32 raw_id = 1;
+	string alnumid = 2;
+	NodeType ntype = 3;
+	string uri = 4;
+	optional string io_dtype = 5;
+	repeated string ins = 6;
+	repeated string outs = 7;
+	repeated string inouts = 8;
+}
+
+message EdgeInfo {
+	uint32 id = 1;
+	string catid = 2;
+	uint32 node0 = 3;
+	uint32 node1 = 4;
+	string slot0 = 5;
+	string slot1 = 6;
+}
+
+message EncodedData {
+	string payload = 1;
+}
+
+message SlotState {
+	enum Validity {
+		VALIDITY_UNSPECIFIED = 0;
+		VALID = 1;
+		WARN_DATA = 2;
+		ERR_TYPE = 3;
+		ERR_EDGE = 4;
+	}
+
+	repeated uint32 in_edges = 1;
+	repeated uint32 out_edges = 2;
+	optional EncodedData encoded_data = 3;
+	int32 gen_id = 4;
+}
+
+message NodeState {
+	enum ConnectedState {
+		CONNECTED_STATE_UNSPECIFIED = 0;
+		WAIT = 1;
+		RUN = 2;
+		ERR = 3;
+	}
+
+	string label = 1;
+	optional EncodedData encoded_data = 2;
+	ConnectedState connected = 3;
+	int32 gen_id = 4;
+}
+
+message SlotInfoEntry {
+	SlotId key = 1;
+	SlotInfo value = 2;
+}
+
+message NodeInfoEntry {
+	uint32 key = 1;
+	NodeInfo value = 2;
+}
+
+message EdgeInfoEntry {
+	uint32 key = 1;
+	EdgeInfo value = 2;
+}
+
+message SlotStateEntry {
+	SlotId key = 1;
+	SlotState value = 2;
+}
+
+message NodeStateEntry {
+	uint32 key = 1;
+	NodeState value = 2;
+}
+
+message GraphState {
+	IdGeneratorState idgen_state = 1;
+	TopoSortState topo_sort_state = 2;
+
+	// SlotId is not a valid proto map key type, so keyed collections use entry messages.
+	repeated SlotInfoEntry slot_infos = 3;
+	repeated NodeInfoEntry node_infos = 4;
+	repeated EdgeInfoEntry edge_infos = 5;
+
+	repeated SlotStateEntry slot_states = 6;
+	repeated NodeStateEntry node_states = 7;
+}

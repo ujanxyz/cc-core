@@ -5,6 +5,7 @@
 #include "ujcore/data/IdTypes.h"
 #include "ujcore/data/plinfo.h"
 #include "ujcore/data/GraphState.h"
+#include "ujcore/data/GraphStateJson.h"
 #include "ujcore/graph/GraphBuilder.h"
 #include "ujcore/graph/GraphUtils.h"
 #include "ujcore/pipeline/PipelineRunner.h"
@@ -43,6 +44,26 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
             .edgeInfos = GraphUtils::GetAllEdgeInfos(state_),
             .slotInfos = GraphUtils::GetAllSlotInfos(state_),
         };
+    }
+
+    std::string encodeGraphImpl(const VoidType& kvoid) {
+        auto encodedOr = EncodeGraphState(state_);
+        if (!encodedOr.ok()) {
+            LOG(FATAL) << "Encode graph state error: " << encodedOr.status();
+        }
+        return std::move(encodedOr).value();
+    }
+
+    VoidType decodeGraphImpl(const std::string& encoded) {
+        auto decodedOr = DecodeGraphState(encoded);
+        if (!decodedOr.ok()) {
+            LOG(FATAL) << "Decode graph state error: " << decodedOr.status();
+        }
+        state_ = std::move(decodedOr).value();
+        // TODO: Update topoSorter_ and builder_ with the new state. Currently they hold dangling references after state_ is replaced.
+        // topoSorter_ = TopoSorter(state_.topoSortState);
+        // builder_ = GraphBuilder(state_, topoSorter_);
+        return VoidType{};
     }
 
     CreateNodeResponse createNodeImpl(const CreateNodeRequest& request) {
@@ -283,6 +304,8 @@ static __attribute__((constructor)) void RegisterPipelineApiBackend() {
     auto* impl = new GraphEngineApiBackend();
     GraphEngineApi::ImplPtrs<GraphEngineApiBackend> ptrs = {
         .getGraph = &GraphEngineApiBackend::getGraphImpl,
+        .encodeGraph = &GraphEngineApiBackend::encodeGraphImpl,
+        .decodeGraph = &GraphEngineApiBackend::decodeGraphImpl,
         .createNode = &GraphEngineApiBackend::createNodeImpl,
         .createIONode = &GraphEngineApiBackend::createIONodeImpl,
         .addEdge = &GraphEngineApiBackend::addEdgeImpl,
