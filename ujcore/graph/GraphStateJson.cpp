@@ -1,11 +1,11 @@
-#include "ujcore/data/GraphStateJson.h"
+#include "ujcore/graph/GraphStateJson.h"
 
 #include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "nlohmann/json.hpp"
-#include "ujcore/data/GraphState.h"
-#include "ujcore/data/TopoSortState.h"
+#include "ujcore/graph/GraphState.h"
+#include "ujcore/graph/TopoSortState.h"
 #include "ujcore/utils/status_macros.h"
 
 #include <optional>
@@ -17,77 +17,77 @@ namespace {
 
 using ::nlohmann::json;
 
-std::string ToString(const plinfo::SlotInfo::AccessEnum access) {
+std::string ToString(const grph::SlotInfo::AccessEnum access) {
     switch (access) {
-        case plinfo::SlotInfo::AccessEnum::I:
+        case grph::SlotInfo::AccessEnum::I:
             return "I";
-        case plinfo::SlotInfo::AccessEnum::O:
+        case grph::SlotInfo::AccessEnum::O:
             return "O";
-        case plinfo::SlotInfo::AccessEnum::M:
+        case grph::SlotInfo::AccessEnum::M:
             return "M";
     }
     CHECK(false) << "Unhandled SlotInfo::AccessEnum";
 }
 
-absl::StatusOr<plinfo::SlotInfo::AccessEnum> AccessEnumFromString(const std::string& encoded) {
+absl::StatusOr<grph::SlotInfo::AccessEnum> AccessEnumFromString(const std::string& encoded) {
     if (encoded == "I") {
-        return plinfo::SlotInfo::AccessEnum::I;
+        return grph::SlotInfo::AccessEnum::I;
     }
     if (encoded == "O") {
-        return plinfo::SlotInfo::AccessEnum::O;
+        return grph::SlotInfo::AccessEnum::O;
     }
     if (encoded == "M") {
-        return plinfo::SlotInfo::AccessEnum::M;
+        return grph::SlotInfo::AccessEnum::M;
     }
     return absl::InvalidArgumentError("Unknown SlotInfo::AccessEnum value");
 }
 
-std::string ToString(const plinfo::NodeInfo::NodeType ntype) {
+std::string ToString(const grph::NodeInfo::NodeType ntype) {
     switch (ntype) {
-        case plinfo::NodeInfo::NodeType::FN:
+        case grph::NodeInfo::NodeType::FN:
             return "FN";
-        case plinfo::NodeInfo::NodeType::IN:
+        case grph::NodeInfo::NodeType::IN:
             return "IN";
-        case plinfo::NodeInfo::NodeType::OUT:
+        case grph::NodeInfo::NodeType::OUT:
             return "OUT";
     }
     CHECK(false) << "Unhandled NodeInfo::NodeType";
 }
 
-absl::StatusOr<plinfo::NodeInfo::NodeType> NodeTypeFromString(const std::string& encoded) {
+absl::StatusOr<grph::NodeInfo::NodeType> NodeTypeFromString(const std::string& encoded) {
     if (encoded == "FN") {
-        return plinfo::NodeInfo::NodeType::FN;
+        return grph::NodeInfo::NodeType::FN;
     }
     if (encoded == "IN") {
-        return plinfo::NodeInfo::NodeType::IN;
+        return grph::NodeInfo::NodeType::IN;
     }
     if (encoded == "OUT") {
-        return plinfo::NodeInfo::NodeType::OUT;
+        return grph::NodeInfo::NodeType::OUT;
     }
     return absl::InvalidArgumentError("Unknown NodeInfo::NodeType value");
 }
 
-std::string ToString(const plstate::NodeState::ConnectedState connected) {
+std::string ToString(const grph::NodeState::ConnectedState connected) {
     switch (connected) {
-        case plstate::NodeState::ConnectedState::WAIT:
+        case grph::NodeState::ConnectedState::WAIT:
             return "WAIT";
-        case plstate::NodeState::ConnectedState::RUN:
+        case grph::NodeState::ConnectedState::RUN:
             return "RUN";
-        case plstate::NodeState::ConnectedState::ERR:
+        case grph::NodeState::ConnectedState::ERR:
             return "ERR";
     }
     CHECK(false) << "Unhandled NodeState::ConnectedState";
 }
 
-absl::StatusOr<plstate::NodeState::ConnectedState> ConnectedStateFromString(const std::string& encoded) {
+absl::StatusOr<grph::NodeState::ConnectedState> ConnectedStateFromString(const std::string& encoded) {
     if (encoded == "WAIT") {
-        return plstate::NodeState::ConnectedState::WAIT;
+        return grph::NodeState::ConnectedState::WAIT;
     }
     if (encoded == "RUN") {
-        return plstate::NodeState::ConnectedState::RUN;
+        return grph::NodeState::ConnectedState::RUN;
     }
     if (encoded == "ERR") {
-        return plstate::NodeState::ConnectedState::ERR;
+        return grph::NodeState::ConnectedState::ERR;
     }
     return absl::InvalidArgumentError("Unknown NodeState::ConnectedState value");
 }
@@ -123,14 +123,14 @@ absl::StatusOr<SlotId> DecodeSlotId(const json& j) {
     return slotId;
 }
 
-json EncodeEncodedData(const std::optional<plstate::EncodedData>& encodedData) {
+json EncodeEncodedData(const std::optional<grph::EncodedData>& encodedData) {
     if (!encodedData.has_value()) {
         return nullptr;
     }
     return json{{"payload", encodedData->payload}};
 }
 
-absl::StatusOr<std::optional<plstate::EncodedData>> DecodeEncodedDataOptional(const json& j) {
+absl::StatusOr<std::optional<grph::EncodedData>> DecodeEncodedDataOptional(const json& j) {
     if (j.is_null()) {
         return std::nullopt;
     }
@@ -141,12 +141,12 @@ absl::StatusOr<std::optional<plstate::EncodedData>> DecodeEncodedDataOptional(co
         return absl::InvalidArgumentError("encodedData must have string payload");
     }
 
-    return plstate::EncodedData{
+    return grph::EncodedData{
         .payload = j["payload"].get<std::string>(),
     };
 }
 
-json EncodeSlotInfo(const plinfo::SlotInfo& slotInfo) {
+json EncodeSlotInfo(const grph::SlotInfo& slotInfo) {
     return json{
         {"parent", slotInfo.parent.value},
         {"name", slotInfo.name},
@@ -155,7 +155,7 @@ json EncodeSlotInfo(const plinfo::SlotInfo& slotInfo) {
     };
 }
 
-absl::StatusOr<plinfo::SlotInfo> DecodeSlotInfo(const json& j) {
+absl::StatusOr<grph::SlotInfo> DecodeSlotInfo(const json& j) {
     if (!j.is_object()) {
         return absl::InvalidArgumentError("SlotInfo must be an object");
     }
@@ -173,7 +173,7 @@ absl::StatusOr<plinfo::SlotInfo> DecodeSlotInfo(const json& j) {
         return absl::InvalidArgumentError("SlotInfo missing or invalid access");
     }
 
-    plinfo::SlotInfo slotInfo;
+    grph::SlotInfo slotInfo;
     slotInfo.parent = NodeId(j["parent"].get<uint32_t>());
     slotInfo.name = j["name"].get<std::string>();
     slotInfo.dtype = j["dtype"].get<std::string>();
@@ -181,7 +181,7 @@ absl::StatusOr<plinfo::SlotInfo> DecodeSlotInfo(const json& j) {
     return slotInfo;
 }
 
-json EncodeNodeInfo(const plinfo::NodeInfo& nodeInfo) {
+json EncodeNodeInfo(const grph::NodeInfo& nodeInfo) {
     json result{
         {"rawId", nodeInfo.rawId.value},
         {"alnumid", nodeInfo.alnumid},
@@ -197,7 +197,7 @@ json EncodeNodeInfo(const plinfo::NodeInfo& nodeInfo) {
     return result;
 }
 
-absl::StatusOr<plinfo::NodeInfo> DecodeNodeInfo(const json& j) {
+absl::StatusOr<grph::NodeInfo> DecodeNodeInfo(const json& j) {
     if (!j.is_object()) {
         return absl::InvalidArgumentError("NodeInfo must be an object");
     }
@@ -224,7 +224,7 @@ absl::StatusOr<plinfo::NodeInfo> DecodeNodeInfo(const json& j) {
         return absl::InvalidArgumentError("NodeInfo missing or invalid inouts");
     }
 
-    plinfo::NodeInfo nodeInfo;
+    grph::NodeInfo nodeInfo;
     nodeInfo.rawId = NodeId(j["rawId"].get<uint32_t>());
     nodeInfo.alnumid = j["alnumid"].get<std::string>();
     ASSIGN_OR_RETURN(nodeInfo.ntype, NodeTypeFromString(j["ntype"].get<std::string>()));
@@ -238,7 +238,7 @@ absl::StatusOr<plinfo::NodeInfo> DecodeNodeInfo(const json& j) {
     return nodeInfo;
 }
 
-json EncodeEdgeInfo(const plinfo::EdgeInfo& edgeInfo) {
+json EncodeEdgeInfo(const grph::EdgeInfo& edgeInfo) {
     return json{
         {"id", edgeInfo.id.value},
         {"catid", edgeInfo.catid},
@@ -249,7 +249,7 @@ json EncodeEdgeInfo(const plinfo::EdgeInfo& edgeInfo) {
     };
 }
 
-absl::StatusOr<plinfo::EdgeInfo> DecodeEdgeInfo(const json& j) {
+absl::StatusOr<grph::EdgeInfo> DecodeEdgeInfo(const json& j) {
     if (!j.is_object()) {
         return absl::InvalidArgumentError("EdgeInfo must be an object");
     }
@@ -273,7 +273,7 @@ absl::StatusOr<plinfo::EdgeInfo> DecodeEdgeInfo(const json& j) {
         return absl::InvalidArgumentError("EdgeInfo missing or invalid slot1");
     }
 
-    return plinfo::EdgeInfo{
+    return grph::EdgeInfo{
         .id = EdgeId(j["id"].get<uint32_t>()),
         .catid = j["catid"].get<std::string>(),
         .node0 = NodeId(j["node0"].get<uint32_t>()),
@@ -283,7 +283,7 @@ absl::StatusOr<plinfo::EdgeInfo> DecodeEdgeInfo(const json& j) {
     };
 }
 
-json EncodeSlotState(const plstate::SlotState& slotState) {
+json EncodeSlotState(const grph::SlotState& slotState) {
     json inEdges = json::array();
     for (const EdgeId edgeId : slotState.inEdges) {
         inEdges.push_back(EncodeEdgeId(edgeId));
@@ -305,7 +305,7 @@ json EncodeSlotState(const plstate::SlotState& slotState) {
     return result;
 }
 
-absl::StatusOr<plstate::SlotState> DecodeSlotState(const json& j) {
+absl::StatusOr<grph::SlotState> DecodeSlotState(const json& j) {
     if (!j.is_object()) {
         return absl::InvalidArgumentError("SlotState must be an object");
     }
@@ -320,7 +320,7 @@ absl::StatusOr<plstate::SlotState> DecodeSlotState(const json& j) {
         return absl::InvalidArgumentError("SlotState missing or invalid genId");
     }
 
-    plstate::SlotState slotState;
+    grph::SlotState slotState;
     for (const json& edgeIdJson : j["inEdges"]) {
         slotState.inEdges.insert(DecodeEdgeId(edgeIdJson));
     }
@@ -334,7 +334,7 @@ absl::StatusOr<plstate::SlotState> DecodeSlotState(const json& j) {
     return slotState;
 }
 
-json EncodeNodeState(const plstate::NodeState& nodeState) {
+json EncodeNodeState(const grph::NodeState& nodeState) {
     json result{
         {"label", nodeState.label},
         {"connected", ToString(nodeState.connected)},
@@ -346,7 +346,7 @@ json EncodeNodeState(const plstate::NodeState& nodeState) {
     return result;
 }
 
-absl::StatusOr<plstate::NodeState> DecodeNodeState(const json& j) {
+absl::StatusOr<grph::NodeState> DecodeNodeState(const json& j) {
     if (!j.is_object()) {
         return absl::InvalidArgumentError("NodeState must be an object");
     }
@@ -361,7 +361,7 @@ absl::StatusOr<plstate::NodeState> DecodeNodeState(const json& j) {
         return absl::InvalidArgumentError("NodeState missing or invalid genId");
     }
 
-    plstate::NodeState nodeState;
+    grph::NodeState nodeState;
     nodeState.label = j["label"].get<std::string>();
     ASSIGN_OR_RETURN(nodeState.connected, ConnectedStateFromString(j["connected"].get<std::string>()));
     nodeState.genId = j["genId"].get<int32_t>();
@@ -371,7 +371,7 @@ absl::StatusOr<plstate::NodeState> DecodeNodeState(const json& j) {
     return nodeState;
 }
 
-json EncodeSlotInfoMap(const std::map<SlotId, plinfo::SlotInfo>& slotInfos) {
+json EncodeSlotInfoMap(const std::map<SlotId, grph::SlotInfo>& slotInfos) {
     json entries = json::array();
     for (const auto& [key, value] : slotInfos) {
         entries.push_back(json::array({EncodeSlotId(key), EncodeSlotInfo(value)}));
@@ -379,7 +379,7 @@ json EncodeSlotInfoMap(const std::map<SlotId, plinfo::SlotInfo>& slotInfos) {
     return entries;
 }
 
-json EncodeNodeInfoMap(const std::map<NodeId, plinfo::NodeInfo>& nodeInfos) {
+json EncodeNodeInfoMap(const std::map<NodeId, grph::NodeInfo>& nodeInfos) {
     json entries = json::array();
     for (const auto& [key, value] : nodeInfos) {
         entries.push_back(json::array({EncodeNodeId(key), EncodeNodeInfo(value)}));
@@ -387,7 +387,7 @@ json EncodeNodeInfoMap(const std::map<NodeId, plinfo::NodeInfo>& nodeInfos) {
     return entries;
 }
 
-json EncodeEdgeInfoMap(const std::map<EdgeId, plinfo::EdgeInfo>& edgeInfos) {
+json EncodeEdgeInfoMap(const std::map<EdgeId, grph::EdgeInfo>& edgeInfos) {
     json entries = json::array();
     for (const auto& [key, value] : edgeInfos) {
         entries.push_back(json::array({EncodeEdgeId(key), EncodeEdgeInfo(value)}));
@@ -395,7 +395,7 @@ json EncodeEdgeInfoMap(const std::map<EdgeId, plinfo::EdgeInfo>& edgeInfos) {
     return entries;
 }
 
-json EncodeSlotStateMap(const std::map<SlotId, plstate::SlotState>& slotStates) {
+json EncodeSlotStateMap(const std::map<SlotId, grph::SlotState>& slotStates) {
     json entries = json::array();
     for (const auto& [key, value] : slotStates) {
         entries.push_back(json::array({EncodeSlotId(key), EncodeSlotState(value)}));
@@ -403,7 +403,7 @@ json EncodeSlotStateMap(const std::map<SlotId, plstate::SlotState>& slotStates) 
     return entries;
 }
 
-json EncodeNodeStateMap(const std::map<NodeId, plstate::NodeState>& nodeStates) {
+json EncodeNodeStateMap(const std::map<NodeId, grph::NodeState>& nodeStates) {
     json entries = json::array();
     for (const auto& [key, value] : nodeStates) {
         entries.push_back(json::array({EncodeNodeId(key), EncodeNodeState(value)}));
@@ -502,7 +502,7 @@ absl::StatusOr<GraphState> DecodeGraphState(const std::string& encoded) {
                 return absl::InvalidArgumentError("slotInfos entries must be [key, value]");
             }
             ASSIGN_OR_RETURN(const SlotId key, DecodeSlotId(entry[0]));
-            ASSIGN_OR_RETURN(const plinfo::SlotInfo value, DecodeSlotInfo(entry[1]));
+            ASSIGN_OR_RETURN(const grph::SlotInfo value, DecodeSlotInfo(entry[1]));
             state.slotInfos[key] = value;
         }
     }
@@ -517,7 +517,7 @@ absl::StatusOr<GraphState> DecodeGraphState(const std::string& encoded) {
                 return absl::InvalidArgumentError("nodeInfos entries must be [key, value]");
             }
             const NodeId key = DecodeNodeId(entry[0]);
-            ASSIGN_OR_RETURN(const plinfo::NodeInfo value, DecodeNodeInfo(entry[1]));
+            ASSIGN_OR_RETURN(const grph::NodeInfo value, DecodeNodeInfo(entry[1]));
             state.nodeInfos[key] = value;
         }
     }
@@ -532,7 +532,7 @@ absl::StatusOr<GraphState> DecodeGraphState(const std::string& encoded) {
                 return absl::InvalidArgumentError("edgeInfos entries must be [key, value]");
             }
             const EdgeId key = DecodeEdgeId(entry[0]);
-            ASSIGN_OR_RETURN(const plinfo::EdgeInfo value, DecodeEdgeInfo(entry[1]));
+            ASSIGN_OR_RETURN(const grph::EdgeInfo value, DecodeEdgeInfo(entry[1]));
             state.edgeInfos[key] = value;
         }
     }
@@ -547,7 +547,7 @@ absl::StatusOr<GraphState> DecodeGraphState(const std::string& encoded) {
                 return absl::InvalidArgumentError("slotStates entries must be [key, value]");
             }
             ASSIGN_OR_RETURN(const SlotId key, DecodeSlotId(entry[0]));
-            ASSIGN_OR_RETURN(const plstate::SlotState value, DecodeSlotState(entry[1]));
+            ASSIGN_OR_RETURN(const grph::SlotState value, DecodeSlotState(entry[1]));
             state.slotStates[key] = value;
         }
     }
@@ -562,7 +562,7 @@ absl::StatusOr<GraphState> DecodeGraphState(const std::string& encoded) {
                 return absl::InvalidArgumentError("nodeStates entries must be [key, value]");
             }
             const NodeId key = DecodeNodeId(entry[0]);
-            ASSIGN_OR_RETURN(const plstate::NodeState value, DecodeNodeState(entry[1]));
+            ASSIGN_OR_RETURN(const grph::NodeState value, DecodeNodeState(entry[1]));
             state.nodeStates[key] = value;
         }
     }

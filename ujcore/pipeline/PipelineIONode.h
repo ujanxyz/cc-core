@@ -5,8 +5,8 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "ujcore/data/IdTypes.h"
-#include "ujcore/data/plstate.h"
+#include "ujcore/graph/IdTypes.h"
+#include "ujcore/graph/GraphTypes.h"
 #include "ujcore/function/AttributeData.h"
 #include "ujcore/function/AttributeDataType.h"
 #include "ujcore/function/ResourceContext.h"
@@ -33,7 +33,7 @@ public:
 
   absl::Status RunAsIO();
 
-  absl::StatusOr<plstate::GraphRunOutput> GetRunResult() const;
+  absl::StatusOr<grph::GraphRunOutput> GetRunResult() const;
 
 private:
 public: // TODO: change to private after pipeline builder is implemented.
@@ -57,7 +57,7 @@ public: // TODO: change to private after pipeline builder is implemented.
 
     // Used only for input node. This points to the encoded input data from the graph state,
     // which will be converted and stored in the `slot_` during pipeline execution.
-    const std::optional<plstate::EncodedData>* encodedInput_ = nullptr;
+    const std::optional<grph::EncodedData>* encodedInput_ = nullptr;
 
     // Used only for output node. This holds the encoded output data after running the pipeline,
     // which will be returned to the external environment.

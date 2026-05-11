@@ -4,8 +4,8 @@
 #include <set>
 #include <vector>
 
-#include "ujcore/data/IdTypes.h"
-#include "ujcore/data/TopoSortState.h"
+#include "ujcore/graph/IdTypes.h"
+#include "ujcore/graph/TopoSortState.h"
 
 namespace ujcore {
 

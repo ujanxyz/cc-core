@@ -8,8 +8,8 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock-matchers.h"
 #include "ujcore/api_schemas/GraphEngineApi.h"
-#include "ujcore/data/AbslStringifies.h"
-#include "ujcore/data/FunctionInfo.h"
+#include "ujcore/graph/AbslStringifies.h"
+#include "ujcore/graph/FunctionInfo.h"
 #include "ujcore/utils/IdUtils.h"
 
 namespace ujcore {

@@ -5,7 +5,7 @@
 
 #include "cppschema/common/enum_registry.h"
 #include "cppschema/common/visitor_macros.h"
-#include "ujcore/data/IdTypes.h"
+#include "ujcore/graph/IdTypes.h"
 
 namespace ujcore {
 

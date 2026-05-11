@@ -23,5 +23,5 @@ You are a C++ coding agent that implements JSON encoding for graph data structur
 3. For encoding, if a field is missing or has invalid value, return an error status with descriptive error message. For decoding, if a field is missing or has invalid value in the JSON, return an error status with descriptive error message.
 4. Run the unit test after the edits to make sure everything is working. If there are any test failures, debug and fix the code.
 ```
-bazel test //ujcore/data:GraphStateJson_Test
+bazel test //ujcore/graph:GraphStateJson_Test
 ```

@@ -2,7 +2,7 @@
 
 #include <string_view>
 
-#include "ujcore/data/IdTypes.h"
+#include "ujcore/graph/IdTypes.h"
 #include "ujcore/function/AttributeData.h"
 #include "ujcore/function/FuncParamAccess.h"
 #include "ujcore/function/ResourceContext.h"

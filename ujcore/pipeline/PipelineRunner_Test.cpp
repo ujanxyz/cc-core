@@ -4,22 +4,22 @@
 
 #include <optional>
 
-#include "ujcore/data/IdTypes.h"
-#include "ujcore/data/plstate.h"
+#include "ujcore/graph/IdTypes.h"
+#include "ujcore/graph/GraphTypes.h"
 
 #include "absl/status/status_matchers.h"
 #include "gtest/gtest.h"
 #include "gmock/gmock-matchers.h"
-#include "ujcore/data/plinfo.h"
+#include "ujcore/graph/GraphTypes.h"
 
 namespace ujcore {
 namespace {
 
-using ::ujcore::plstate::EncodedData;
-using ::ujcore::plstate::SlotState;
+using ::ujcore::grph::EncodedData;
+using ::ujcore::grph::SlotState;
 
 void SetupGraphState(GraphState& graph) {
-    plinfo::NodeInfo n1 = {
+    grph::NodeInfo n1 = {
         .rawId = NodeId(1),
         .alnumid = "ABC783GH",
         .uri = "/testing/emit-float",
@@ -27,7 +27,7 @@ void SetupGraphState(GraphState& graph) {
         .outs = {"v"},
         .inouts = {},
     };
-    plinfo::NodeInfo n2 = {
+    grph::NodeInfo n2 = {
         .rawId = NodeId(2),
         .alnumid = "DEF524MO",
         .uri = "/testing/emit-point2d",
@@ -35,7 +35,7 @@ void SetupGraphState(GraphState& graph) {
         .outs = {"p"},
         .inouts = {},
     };
-    plinfo::NodeInfo n3 = {
+    grph::NodeInfo n3 = {
         .rawId = NodeId(3),
         .alnumid = "GHI662D7",
         .uri = "/testing/displace-point",
@@ -50,35 +50,35 @@ void SetupGraphState(GraphState& graph) {
     };
 
 
-    plinfo::SlotInfo slot1 = {
+    grph::SlotInfo slot1 = {
         .parent = NodeId(1),
         .name = "v",
         .dtype = "floats",
-        .access = plinfo::SlotInfo::AccessEnum::O,
+        .access = grph::SlotInfo::AccessEnum::O,
     };
-    plinfo::SlotInfo slot2 = {
+    grph::SlotInfo slot2 = {
         .parent = NodeId(2),
         .name = "p",
         .dtype = "points2d",
-        .access = plinfo::SlotInfo::AccessEnum::O,
+        .access = grph::SlotInfo::AccessEnum::O,
     };
-    plinfo::SlotInfo slot3 = {
+    grph::SlotInfo slot3 = {
         .parent = NodeId(3),
         .name = "p",
         .dtype = "points2d",
-        .access = plinfo::SlotInfo::AccessEnum::I,
+        .access = grph::SlotInfo::AccessEnum::I,
     };
-    plinfo::SlotInfo slot4 = {
+    grph::SlotInfo slot4 = {
         .parent = NodeId(3),
         .name = "dx",
         .dtype = "floats",
-        .access = plinfo::SlotInfo::AccessEnum::I,
+        .access = grph::SlotInfo::AccessEnum::I,
     };
-    plinfo::SlotInfo slot5 = {
+    grph::SlotInfo slot5 = {
         .parent = NodeId(3),
         .name = "fp",
         .dtype = "points2d",
-        .access = plinfo::SlotInfo::AccessEnum::O,
+        .access = grph::SlotInfo::AccessEnum::O,
     };
     graph.slotInfos = {
         {{slot1.parent, slot1.name}, slot1},
@@ -129,7 +129,7 @@ void SetupGraphState(GraphState& graph) {
         {{slot5.parent, slot5.name}, slotState5},
     };
 
-    plinfo::EdgeInfo edge1 = {
+    grph::EdgeInfo edge1 = {
         .id = EdgeId(1),
         .catid = "ABC783GH:v-GHI662D7:dx",
         .node0 = NodeId(1),
@@ -137,7 +137,7 @@ void SetupGraphState(GraphState& graph) {
         .slot0 = "v",
         .slot1 = "dx",
     };
-    plinfo::EdgeInfo edge2 = {
+    grph::EdgeInfo edge2 = {
         .id = EdgeId(2),
         .catid = "DEF524MO:p-GHI662D7:p",
         .node0 = NodeId(2),

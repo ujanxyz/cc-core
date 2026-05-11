@@ -19,11 +19,11 @@ using GraphIOStep = GraphPipeline::GraphIOStep;
 // Iterate over the nodes in the pipeline, and assign the resource context.
 void InternalAssignResourceCtx(std::map<NodeId, NodeStage>& nodeStages, ResourceContext* resourceCtx) {
     for (auto& [nodeId, stage] : nodeStages) {
-        if (stage.ntype == plinfo::NodeInfo::NodeType::FN) {
+        if (stage.ntype == grph::NodeInfo::NodeType::FN) {
             PipelineFnNode* fnNode = std::get<std::unique_ptr<PipelineFnNode>>(stage.node).get();
             fnNode->SetResourceContext(resourceCtx);
         }
-        else if (stage.ntype == plinfo::NodeInfo::NodeType::IN || stage.ntype == plinfo::NodeInfo::NodeType::OUT) {
+        else if (stage.ntype == grph::NodeInfo::NodeType::IN || stage.ntype == grph::NodeInfo::NodeType::OUT) {
             PipelineIONode* ioNode = std::get<std::unique_ptr<PipelineIONode>>(stage.node).get();
             ioNode->SetResourceContext(resourceCtx);
         }
@@ -43,8 +43,8 @@ absl::StatusOr<std::vector<AssetInfo>> PipelineRunner::RebuildFromState(const Gr
     return PipelineBuilder::GetAssetInfos(state, pipeline_);
 }
 
-absl::StatusOr<std::vector<plstate::GraphRunOutput>> PipelineRunner::RunPipeline() {
-    std::vector<plstate::GraphRunOutput> result;
+absl::StatusOr<std::vector<grph::GraphRunOutput>> PipelineRunner::RunPipeline() {
+    std::vector<grph::GraphRunOutput> result;
 
     for (auto& step : pipeline_.execSteps) {
         if (std::holds_alternative<EdgePropagateStep>(step)) {

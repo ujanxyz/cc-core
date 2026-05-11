@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "ujcore/data/IdTypes.h"
+#include "ujcore/graph/IdTypes.h"
 
 namespace ujcore {
 

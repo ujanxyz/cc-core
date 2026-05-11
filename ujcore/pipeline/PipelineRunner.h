@@ -5,11 +5,11 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "ujcore/data/AssetInfo.h"
+#include "ujcore/graph/AssetInfo.h"
 #include "ujcore/base/BitmapPool.h"
-#include "ujcore/data/GraphState.h"
-#include "ujcore/data/ResourceInfo.h"
-#include "ujcore/data/plstate.h"
+#include "ujcore/graph/GraphState.h"
+#include "ujcore/graph/ResourceInfo.h"
+#include "ujcore/graph/GraphTypes.h"
 #include "ujcore/function/ResourceContext.h"
 #include "ujcore/pipeline/GraphPipeline.h"
 
@@ -27,7 +27,7 @@ public:
     absl::StatusOr<std::vector<AssetInfo>> RebuildFromState(const GraphState& state);
 
     // Executes the pipeline and returns the graph outputs.
-    absl::StatusOr<std::vector<plstate::GraphRunOutput>> RunPipeline();
+    absl::StatusOr<std::vector<grph::GraphRunOutput>> RunPipeline();
 
     absl::Status AddInputBitmap(const NodeId nodeId, const BitmapInfo& bitmapInfo, uint8_t* data);
 

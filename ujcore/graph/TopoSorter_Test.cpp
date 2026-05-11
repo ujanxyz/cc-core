@@ -1,4 +1,4 @@
-#include "ujcore/data/TopoSorter.h"
+#include "ujcore/graph/TopoSorter.h"
 
 #include <map>
 #include <set>
@@ -6,7 +6,7 @@
 #include "absl/log/log.h"
 #include "gtest/gtest.h"
 #include "gmock/gmock-matchers.h"
-#include "ujcore/data/IdTypes.h"
+#include "ujcore/graph/IdTypes.h"
 
 namespace ujcore {
 

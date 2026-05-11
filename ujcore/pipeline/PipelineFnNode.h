@@ -5,8 +5,8 @@
 #include <string_view>
 
 #include "absl/status/statusor.h"
-#include "ujcore/data/IdTypes.h"
-#include "ujcore/data/plstate.h"
+#include "ujcore/graph/IdTypes.h"
+#include "ujcore/graph/GraphTypes.h"
 #include "ujcore/function/AttributeData.h"
 #include "ujcore/function/AttributeDataType.h"
 #include "ujcore/function/FuncParamAccess.h"
@@ -55,7 +55,7 @@ public: // TODO: change to private after pipeline builder is implemented.
 
         // Directly references to the entry in graph's slot state. This allows the function
         // node to read the latest manually overridden data for this slot.
-        const std::optional<plstate::EncodedData>* encodedInput = nullptr;
+        const std::optional<grph::EncodedData>* encodedInput = nullptr;
 
         // Only used for input slots, to convert manually overridden encoded data (if exists)
         // to internal attribute during execution.

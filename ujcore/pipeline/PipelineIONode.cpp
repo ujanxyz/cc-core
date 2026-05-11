@@ -1,8 +1,8 @@
 #include "ujcore/pipeline/PipelineIONode.h"
 
 #include "absl/log/log.h"
-#include "ujcore/data/IdTypes.h"
-#include "ujcore/data/plstate.h"
+#include "ujcore/graph/IdTypes.h"
+#include "ujcore/graph/GraphTypes.h"
 #include "ujcore/function/AttributeData.h"
 #include "ujcore/function/AttributeDataType.h"
 
@@ -20,12 +20,12 @@ absl::Status PipelineIONode::RunAsIO() {
     }
 }
 
-absl::StatusOr<plstate::GraphRunOutput> PipelineIONode::GetRunResult() const {
-    std::optional<plstate::EncodedData> encodedData = std::nullopt;
+absl::StatusOr<grph::GraphRunOutput> PipelineIONode::GetRunResult() const {
+    std::optional<grph::EncodedData> encodedData = std::nullopt;
     if (encodedOutput_.has_value()) {
-        encodedData = plstate::EncodedData{.payload = encodedOutput_.value()};
+        encodedData = grph::EncodedData{.payload = encodedOutput_.value()};
     }
-    return plstate::GraphRunOutput{
+    return grph::GraphRunOutput{
         .nodeId = selfId_,
         .dtype = AttributeDataTypeToStr(dtype_),
         .encodedData = std::move(encodedData),

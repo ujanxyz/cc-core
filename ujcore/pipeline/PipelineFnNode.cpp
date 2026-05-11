@@ -1,7 +1,7 @@
 #include "ujcore/pipeline/PipelineFnNode.h"
 
 #include "absl/log/log.h"
-#include "ujcore/data/IdTypes.h"
+#include "ujcore/graph/IdTypes.h"
 #include "ujcore/function/AttributeDataType.h"
 
 namespace ujcore {
@@ -27,7 +27,7 @@ absl::StatusOr<bool> PipelineFnNode::RunFunction() {
     // Prior to execution, for input slots with manually overridden data, decode the encoded data to internal attribute.
     for (auto& [slotName, slotEntry] : slotEntries_) {
         if (slotEntry.decodeFnPtr != nullptr && slotEntry.encodedInput->has_value()) {
-            const plstate::EncodedData& encodedData = slotEntry.encodedInput->value();
+            const grph::EncodedData& encodedData = slotEntry.encodedInput->value();
             std::shared_ptr<void> parsedData = (*slotEntry.decodeFnPtr)(encodedData.payload, resourceCtx_);
             if (parsedData == nullptr) {
                 return absl::InternalError(absl::StrCat("Failed to decode manual override data for node ", selfId_.value, ", slot ", slotName));

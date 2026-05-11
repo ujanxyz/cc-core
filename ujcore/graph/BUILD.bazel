@@ -5,16 +5,48 @@ package(
 )
 
 cc_library(
+    name = "AbslStringifies",
+    hdrs = ["AbslStringifies.h"],
+    deps = [
+        ":GraphTypes",
+        ":IdTypes",
+        # Although there is no header dependency on absl::strings, this is a must
+        # have peer dependency, as the caller primarility uses this lib to enable
+        # absl friendly string conversion (e.g. for use in `absl::StrCat`)
+        "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "AssetInfo",
+    hdrs = ["AssetInfo.h"],
+    deps = [
+        ":IdTypes",
+        "@cppschema//:enum_registry",
+        "@cppschema//:visitor_macros",
+    ],
+)
+
+cc_library(
+    name = "FunctionInfo",
+    hdrs = ["FunctionInfo.h"],
+    deps = [
+        "@cppschema//:enum_registry",
+        "@cppschema//:visitor_macros",
+    ],
+)
+
+cc_library(
     name = "GraphBuilder",
     srcs = ["GraphBuilder.cpp"],
     hdrs = ["GraphBuilder.h"],
-    deps =[
+    deps = [
+        ":AbslStringifies",
+        ":FunctionInfo",
+        ":GraphState",
+        ":GraphTypes",
         ":GraphUtils",
-        "//ujcore/data:AbslStringifies",
-        "//ujcore/data:plinfo",
-        "//ujcore/data:FunctionInfo",
-        "//ujcore/data:GraphState",
-        "//ujcore/data:TopoSorter",
+        ":TopoSorter",
         "//ujcore/function:FunctionRegistry",
         "//ujcore/function:FunctionSpec",
         "//ujcore/utils:IdUtils",
@@ -26,14 +58,107 @@ cc_library(
 )
 
 cc_library(
+    name = "GraphState",
+    hdrs = ["GraphState.h"],
+    deps = [
+        ":GraphTypes",
+        ":IdTypes",
+        ":TopoSortState",
+        "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "GraphStateJson",
+    srcs = ["GraphStateJson.cpp"],
+    hdrs = ["GraphStateJson.h"],
+    deps = [
+        ":GraphState",
+        ":TopoSortState",
+        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
+        "//ujcore/utils:status_macros",
+        "@nlohmann_json//:json",
+    ],
+)
+
+cc_test(
+    name = "GraphStateJson_Test",
+    srcs = ["GraphStateJson_Test.cpp"],
+    deps = [
+        ":GraphStateJson",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "GraphTypes",
+    hdrs = ["GraphTypes.h"],
+    deps = [
+        ":IdTypes",
+        "@cppschema//:enum_registry",
+        "@cppschema//:visitor_macros",
+    ],
+)
+
+cc_library(
     name = "GraphUtils",
     srcs = ["GraphUtils.cpp"],
     hdrs = ["GraphUtils.h"],
-    deps =[
-        "//ujcore/data:plinfo",
-        "//ujcore/data:GraphState",
-        "//ujcore/data:IdTypes",
+    deps = [
+        ":GraphState",
+        ":GraphTypes",
+        ":IdTypes",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "IdTypes",
+    hdrs = ["IdTypes.h"],
+    deps = [
+        "@cppschema//:strong_types",
+        "@cppschema//:visitor_macros",
+    ],
+)
+
+cc_library(
+    name = "ResourceInfo",
+    hdrs = ["ResourceInfo.h"],
+    deps = [
+        "@cppschema//:enum_registry",
+        "@cppschema//:visitor_macros",
+    ],
+)
+
+cc_library(
+    name = "TopoSortState",
+    hdrs = ["TopoSortState.h"],
+    deps = [
+        ":IdTypes",
+    ],
+)
+
+cc_library(
+    name = "TopoSorter",
+    srcs = ["TopoSorter.cpp"],
+    hdrs = ["TopoSorter.h"],
+    deps = [
+        ":IdTypes",
+        ":TopoSortState",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:check",
+    ],
+)
+
+cc_test(
+    name = "TopoSorter_Test",
+    srcs = ["TopoSorter_Test.cpp"],
+    deps = [
+        ":TopoSorter",
+        "@googletest//:gtest_main",
     ],
 )

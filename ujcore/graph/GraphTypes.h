@@ -1,15 +1,24 @@
 #pragma once
 
+#include <cstdint>
+#include <map>
+#include <optional>
+#include <set>
 #include <string>
+#include <vector>
 
 #include "cppschema/common/enum_registry.h"
 #include "cppschema/common/visitor_macros.h"
-#include "ujcore/data/IdTypes.h"
+#include "ujcore/graph/IdTypes.h"
 
-// plinfo: Pipeline info
-// Fixed information for pipeline elements, node, edge, slot etc.
+// GraphTypes: Merged types for pipeline info and state.
+// Fixed information and varying state for pipeline elements: node, edge, slot etc.
 
-namespace ujcore::plinfo {
+namespace ujcore::grph {
+
+// ============================================================================
+// Info types (from plinfo.h)
+// ============================================================================
 
 struct SlotInfo {
     // Input params are read-only, output params are created from scratch.
@@ -64,7 +73,7 @@ struct NodeInfo {
     // Identifies the node function used, e.g. "/fn/points-on-curve"
     // The uri of graph inputs functions are named as: "/$IN/<dtype-as-str>"
     // The uri of graph outputs functions are named as: "/$OUT/<dtype-as-str>"
-    /// @json: Encode as string, like `"/fn/points-on-curve"`
+    /// @json: Encode as string, like `"/fn/points-on-curve"`
     std::string uri;
 
     // Only for graph IO nodes, the data type of the graph input or output.
@@ -106,4 +115,69 @@ struct EdgeInfo {
     DEFINE_STRUCT_VISITOR_FUNCTION(id, catid, node0, node1, slot0, slot1);
 };
 
-}  // namespace ujcore::plinfo
+// ============================================================================
+// State types (from plstate.h)
+// ============================================================================
+
+struct EncodedData {
+    // Encoded payload data.
+    std::string payload;
+
+    DEFINE_STRUCT_VISITOR_FUNCTION(payload);
+};
+
+struct SlotState {
+    enum class Validity {
+        VALID = 0,
+        WARN_DATA,
+        ERR_TYPE,
+        ERR_EDGE,
+    };
+
+    // Edge connections: Raw ids of edges.
+    std::set<EdgeId> inEdges;
+    std::set<EdgeId> outEdges;
+
+    // Manual override data.
+    // Applies only to input and inout slot.
+    std::optional<EncodedData> encodedData;
+
+    // Generation id to keep track of changes.
+    int32_t genId {0LL};
+
+    DEFINE_ENUM_CONVERSION_FUNCTION(Validity, VALID, WARN_DATA, ERR_TYPE, ERR_EDGE);
+    DEFINE_STRUCT_VISITOR_FUNCTION(inEdges, outEdges, encodedData, genId);
+};
+
+struct NodeState {
+    enum class ConnectedState {
+        WAIT,
+        RUN,
+        ERR,
+    };
+
+    // UI visible label.
+    // TODO: Enable u8 string in JS conversion. Use std::u8string
+    std::string label;
+
+    // Only for graph IO nodes, this holds the data for the graph inputs and outputs.
+    std::optional<EncodedData> encodedData;
+
+    ConnectedState connected = ConnectedState::WAIT;
+
+    // Generation id to keep track of changes.
+    int32_t genId {0LL};
+
+    DEFINE_ENUM_CONVERSION_FUNCTION(ConnectedState, WAIT, RUN, ERR);
+    DEFINE_STRUCT_VISITOR_FUNCTION(label, encodedData, connected, genId);
+};
+
+struct GraphRunOutput {
+    NodeId nodeId;
+    std::string dtype;
+    std::optional<EncodedData> encodedData;
+
+    DEFINE_STRUCT_VISITOR_FUNCTION(nodeId, dtype, encodedData);
+};
+
+}  // namespace ujcore::grph

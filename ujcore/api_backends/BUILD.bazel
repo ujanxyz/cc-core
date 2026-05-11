@@ -9,8 +9,8 @@ cc_library(
     srcs = ["GraphEngineApiBackend.cpp"],
     deps = [
         "//ujcore/api_schemas:GraphEngineApi",
-        "//ujcore/data:GraphState",
-        "//ujcore/data:GraphStateJson",
+        "//ujcore/graph:GraphState",
+        "//ujcore/graph:GraphStateJson",
         "//ujcore/function:AttributeDataType",
         "//ujcore/function:FunctionLookup",
         "//ujcore/function:FunctionSpec",
@@ -28,7 +28,7 @@ cc_test(
     srcs = ["GraphEngineApiBackend_Test.cpp"],
     deps = [
         ":GraphEngineApiBackend",
-        "//ujcore/data:AbslStringifies",
+        "//ujcore/graph:AbslStringifies",
         "//ujcore/testing:TestFunction",
         "@abseil-cpp//absl/strings",
         "@googletest//:gtest_main",

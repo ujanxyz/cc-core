@@ -5,8 +5,8 @@
 #include <variant>
 #include <vector>
 
-#include "ujcore/data/IdTypes.h"
-#include "ujcore/data/plinfo.h"
+#include "ujcore/graph/IdTypes.h"
+#include "ujcore/graph/GraphTypes.h"
 #include "ujcore/function/AttributeData.h"
 #include "ujcore/pipeline/PipelineFnNode.h"
 #include "ujcore/pipeline/PipelineIONode.h"
@@ -39,7 +39,7 @@ struct GraphPipeline {
         GraphIOStep>;
 
     struct NodeStage {
-        plinfo::NodeInfo::NodeType ntype = plinfo::NodeInfo::NodeType::FN;
+        grph::NodeInfo::NodeType ntype = grph::NodeInfo::NodeType::FN;
         std::variant<std::unique_ptr<PipelineFnNode>, std::unique_ptr<PipelineIONode>> node;
     };
 

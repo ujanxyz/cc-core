@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ujcore/data/AssetInfo.h"
-#include "ujcore/data/GraphState.h"
+#include "ujcore/graph/AssetInfo.h"
+#include "ujcore/graph/GraphState.h"
 #include "ujcore/pipeline/GraphPipeline.h"
 
 namespace ujcore {

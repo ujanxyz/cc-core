@@ -1,10 +1,10 @@
-#include "ujcore/data/GraphStateJson.h"
+#include "ujcore/graph/GraphStateJson.h"
 
 #include "gtest/gtest.h"
 #include "nlohmann/json.hpp"
-#include "ujcore/data/GraphState.h"
-#include "ujcore/data/IdTypes.h"
-#include "ujcore/data/plinfo.h"
+#include "ujcore/graph/GraphState.h"
+#include "ujcore/graph/IdTypes.h"
+#include "ujcore/graph/GraphTypes.h"
 
 namespace ujcore {
 namespace {
@@ -19,33 +19,33 @@ GraphState MakeSampleGraphState() {
 	const SlotId slotIn {.parent = NodeId(1), .name = "x"};
 	const SlotId slotOut {.parent = NodeId(2), .name = "out"};
 
-	state.slotInfos[slotIn] = plinfo::SlotInfo {
+	state.slotInfos[slotIn] = grph::SlotInfo {
 		.parent = NodeId(1),
 		.name = "x",
 		.dtype = "float",
-		.access = plinfo::SlotInfo::AccessEnum::I,
+		.access = grph::SlotInfo::AccessEnum::I,
 	};
-	state.slotInfos[slotOut] = plinfo::SlotInfo {
+	state.slotInfos[slotOut] = grph::SlotInfo {
 		.parent = NodeId(2),
 		.name = "out",
 		.dtype = "float",
-		.access = plinfo::SlotInfo::AccessEnum::O,
+		.access = grph::SlotInfo::AccessEnum::O,
 	};
 
-	state.nodeInfos[NodeId(1)] = plinfo::NodeInfo {
+	state.nodeInfos[NodeId(1)] = grph::NodeInfo {
 		.rawId = NodeId(1),
 		.alnumid = "A",
-		.ntype = plinfo::NodeInfo::NodeType::FN,
+		.ntype = grph::NodeInfo::NodeType::FN,
 		.uri = "/fn/in",
 		.ioDtype = std::nullopt,
 		.ins = {"x"},
 		.outs = {"out"},
 		.inouts = {},
 	};
-	state.nodeInfos[NodeId(2)] = plinfo::NodeInfo {
+	state.nodeInfos[NodeId(2)] = grph::NodeInfo {
 		.rawId = NodeId(2),
 		.alnumid = "B",
-		.ntype = plinfo::NodeInfo::NodeType::OUT,
+		.ntype = grph::NodeInfo::NodeType::OUT,
 		.uri = "/$OUT/float",
 		.ioDtype = std::optional<std::string>("float"),
 		.ins = {"out"},
@@ -53,7 +53,7 @@ GraphState MakeSampleGraphState() {
 		.inouts = {},
 	};
 
-	state.edgeInfos[EdgeId(3)] = plinfo::EdgeInfo {
+	state.edgeInfos[EdgeId(3)] = grph::EdgeInfo {
 		.id = EdgeId(3),
 		.catid = "1|3|x|2|out",
 		.node0 = NodeId(1),
@@ -62,17 +62,17 @@ GraphState MakeSampleGraphState() {
 		.slot1 = "out",
 	};
 
-	state.slotStates[slotIn] = plstate::SlotState {
+	state.slotStates[slotIn] = grph::SlotState {
 		.inEdges = {},
 		.outEdges = {EdgeId(3)},
-		.encodedData = std::optional<plstate::EncodedData>(plstate::EncodedData{.payload = "42"}),
+		.encodedData = std::optional<grph::EncodedData>(grph::EncodedData{.payload = "42"}),
 		.genId = 12,
 	};
 
-	state.nodeStates[NodeId(2)] = plstate::NodeState {
+	state.nodeStates[NodeId(2)] = grph::NodeState {
 		.label = "Output",
-		.encodedData = std::optional<plstate::EncodedData>(plstate::EncodedData{.payload = "3.14"}),
-		.connected = plstate::NodeState::ConnectedState::RUN,
+		.encodedData = std::optional<grph::EncodedData>(grph::EncodedData{.payload = "3.14"}),
+		.connected = grph::NodeState::ConnectedState::RUN,
 		.genId = 7,
 	};
 

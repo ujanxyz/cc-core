@@ -1,8 +1,8 @@
 #include "ujcore/pipeline/PipelineBuilder.h"
 
-#include "ujcore/data/IdTypes.h"
-#include "ujcore/data/plinfo.h"
-#include "ujcore/data/plstate.h"
+#include "ujcore/graph/IdTypes.h"
+#include "ujcore/graph/GraphTypes.h"
+#include "ujcore/graph/GraphTypes.h"
 #include "ujcore/function/AttributeData.h"
 #include "ujcore/function/AttributeDataType.h"
 #include "ujcore/function/AttributeTypeRegistry.h"
@@ -18,15 +18,15 @@
 namespace ujcore {
 namespace {
 
-using ::ujcore::plinfo::SlotInfo;
-using ::ujcore::plstate::SlotState;
+using ::ujcore::grph::SlotInfo;
+using ::ujcore::grph::SlotState;
 
 using GraphIOStep = GraphPipeline::GraphIOStep;
 using NodeRunStep = GraphPipeline::NodeRunStep;
 using EdgePropagateStep = GraphPipeline::EdgePropagateStep;
 using NodeStage = GraphPipeline::NodeStage;
 
-absl::StatusOr<NodeStage> InternalHandleFunctionNode(const GraphState& graph_, const NodeId nodeId, const plinfo::NodeInfo& nodeInfo) {
+absl::StatusOr<NodeStage> InternalHandleFunctionNode(const GraphState& graph_, const NodeId nodeId, const grph::NodeInfo& nodeInfo) {
     auto& registry = FunctionRegistry::GetInstance();
     const AttributeTypeRegistry& attrRegistry = AttributeTypeRegistry::GetInstance();
 
@@ -59,7 +59,7 @@ absl::StatusOr<NodeStage> InternalHandleFunctionNode(const GraphState& graph_, c
             }
         }
 
-        // TODO: Create a SlotStorage from `plinfo::SlotInfo` and add to the node.
+        // TODO: Create a SlotStorage from `grph::SlotInfo` and add to the node.
         FuncParamAccess access = FuncParamAccess::kUnknown;
         switch (slotInfo.access) {
             case SlotInfo::AccessEnum::I:
@@ -105,7 +105,7 @@ absl::StatusOr<NodeStage> InternalHandleFunctionNode(const GraphState& graph_, c
     // return absl::OkStatus();
 }
 
-absl::StatusOr<NodeStage> InternalHandleGraphIONode(const GraphState& graph_, const NodeId nodeId, const plinfo::NodeInfo& nodeInfo) {
+absl::StatusOr<NodeStage> InternalHandleGraphIONode(const GraphState& graph_, const NodeId nodeId, const grph::NodeInfo& nodeInfo) {
     // if (!nodeInfo.ioDtype.has_value()) {
     //     return absl::InvalidArgumentError("Graph IO node must have ioDtype");
     // }
@@ -120,16 +120,16 @@ absl::StatusOr<NodeStage> InternalHandleGraphIONode(const GraphState& graph_, co
         return absl::InvalidArgumentError(
             absl::StrCat("Graph IO node should have exactly one slot, found: ", slotInfos.size()));
     }
-    const plinfo::SlotInfo& slotInfo = slotInfos[0];
-    if ((nodeInfo.ntype == plinfo::NodeInfo::NodeType::IN &&
-         slotInfo.access != plinfo::SlotInfo::AccessEnum::O) ||
-        (nodeInfo.ntype == plinfo::NodeInfo::NodeType::OUT &&
-         slotInfo.access != plinfo::SlotInfo::AccessEnum::I)) {
+    const grph::SlotInfo& slotInfo = slotInfos[0];
+    if ((nodeInfo.ntype == grph::NodeInfo::NodeType::IN &&
+         slotInfo.access != grph::SlotInfo::AccessEnum::O) ||
+        (nodeInfo.ntype == grph::NodeInfo::NodeType::OUT &&
+         slotInfo.access != grph::SlotInfo::AccessEnum::I)) {
         return absl::InvalidArgumentError(
             absl::StrCat("Graph input node should have output slot, and graph output node should have input slot"));
     }
 
-    const bool isOutput = (nodeInfo.ntype == plinfo::NodeInfo::NodeType::OUT);
+    const bool isOutput = (nodeInfo.ntype == grph::NodeInfo::NodeType::OUT);
     const SlotId slotId = {.parent = nodeId, .name = slotInfo.name};
 
     // TODO: Use nodeinfo's ioDtype directly after we ensure the graph state is correctly populated with it, instead of looking up from slot info.
@@ -139,8 +139,8 @@ absl::StatusOr<NodeStage> InternalHandleGraphIONode(const GraphState& graph_, co
             absl::StrCat("Unsupported data type for graph IO node: ", slotInfo.dtype));
     }
 
-    RETURN_IF_NOT_FOUND_IN_MAP(const plstate::SlotState& slotState, graph_.slotStates, slotId);
-    RETURN_IF_NOT_FOUND_IN_MAP(const plstate::NodeState& nodeState, graph_.nodeStates, nodeId);
+    RETURN_IF_NOT_FOUND_IN_MAP(const grph::SlotState& slotState, graph_.slotStates, slotId);
+    RETURN_IF_NOT_FOUND_IN_MAP(const grph::NodeState& nodeState, graph_.nodeStates, nodeId);
 
     if (!isOutput) {
         // It's a graph input. Its slot should not have incoming edges.
@@ -215,10 +215,10 @@ PipelineSlot* LookupPipelineSlot(GraphPipeline& pipeline_, NodeId nodeId, const 
         return nullptr;
     }
     GraphPipeline::NodeStage& nodeStage = stageIter->second;
-    if (nodeStage.ntype == plinfo::NodeInfo::NodeType::FN) {
+    if (nodeStage.ntype == grph::NodeInfo::NodeType::FN) {
         const std::unique_ptr<PipelineFnNode>& fnNode = std::get<std::unique_ptr<PipelineFnNode>>(nodeStage.node);
         return fnNode->LookupSlot(slotName);
-    } else if (nodeStage.ntype == plinfo::NodeInfo::NodeType::IN || nodeStage.ntype == plinfo::NodeInfo::NodeType::OUT) {
+    } else if (nodeStage.ntype == grph::NodeInfo::NodeType::IN || nodeStage.ntype == grph::NodeInfo::NodeType::OUT) {
         const std::unique_ptr<PipelineIONode>& ioNode = std::get<std::unique_ptr<PipelineIONode>>(nodeStage.node);
         return &ioNode->slot_;
     }
@@ -237,12 +237,12 @@ absl::Status PipelineBuilder::Rebuild(const GraphState& graph, GraphPipeline& pi
 
     for (const auto& [nodeId, node] : graph.nodeInfos) {
         switch (node.ntype) {
-            case plinfo::NodeInfo::NodeType::FN: {
+            case grph::NodeInfo::NodeType::FN: {
                 ASSIGN_OR_RETURN(pipeline.nodeStages[nodeId], InternalHandleFunctionNode(graph, nodeId, node));
                 break;
             }
-            case plinfo::NodeInfo::NodeType::IN:
-            case plinfo::NodeInfo::NodeType::OUT: {
+            case grph::NodeInfo::NodeType::IN:
+            case grph::NodeInfo::NodeType::OUT: {
                 ASSIGN_OR_RETURN(pipeline.nodeStages[nodeId], InternalHandleGraphIONode(graph, nodeId, node));
                 break;
             }
@@ -301,7 +301,7 @@ absl::Status PipelineBuilder::Rebuild(const GraphState& graph, GraphPipeline& pi
         }
 
         RETURN_IF_NOT_FOUND_IN_MAP(GraphPipeline::NodeStage& nodeStage, pipeline.nodeStages, nodeId);
-        if (nodeStage.ntype == plinfo::NodeInfo::NodeType::FN) {
+        if (nodeStage.ntype == grph::NodeInfo::NodeType::FN) {
             std::unique_ptr<PipelineFnNode>& fnNode = std::get<std::unique_ptr<PipelineFnNode>>(nodeStage.node);
             executionSteps.push_back(NodeRunStep {
                 .fnNode = fnNode.get(),
@@ -312,7 +312,7 @@ absl::Status PipelineBuilder::Rebuild(const GraphState& graph, GraphPipeline& pi
             executionSteps.push_back(GraphIOStep {
                 .ioNode = ioNode.get(),
             });
-            if (nodeStage.ntype == plinfo::NodeInfo::NodeType::IN) {
+            if (nodeStage.ntype == grph::NodeInfo::NodeType::IN) {
                 ++numInStages;
             } else {
                 ++numOutStages;
@@ -351,12 +351,12 @@ absl::StatusOr<std::vector<AssetInfo>> PipelineBuilder::GetAssetInfos(const Grap
                 }
 
                 const SlotId slotId = SlotId { .parent = nodeId, .name = slotName };
-                RETURN_IF_NOT_FOUND_IN_MAP(const plinfo::SlotInfo& slotInfo, graph.slotInfos, slotId);
+                RETURN_IF_NOT_FOUND_IN_MAP(const grph::SlotInfo& slotInfo, graph.slotInfos, slotId);
                 if (slotInfo.access == SlotInfo::AccessEnum::I) {
                     // It is a function input slot of type asset.
                     if (slotEntry.encodedInput != nullptr && slotEntry.encodedInput->has_value()) {
                         // This input slot actually has an encoded data at the time of execution.
-                        const std::optional<plstate::EncodedData>& encodedDataOpt = *slotEntry.encodedInput;
+                        const std::optional<grph::EncodedData>& encodedDataOpt = *slotEntry.encodedInput;
                         ASSIGN_OR_RETURN(const std::string assetUri, GetBitmapAssetUriFromEncoded(encodedDataOpt->payload));
                         assetInfos.push_back(AssetInfo {
                             .slotId = slotId,
@@ -400,10 +400,10 @@ absl::StatusOr<std::vector<AssetInfo>> PipelineBuilder::GetAssetInfos(const Grap
                     .dtype = AttributeDataTypeToStr(ioNode->dtype_),
                 });
             } else {
-                RETURN_IF_NOT_FOUND_IN_MAP(const plstate::NodeState& nodeState, graph.nodeStates, nodeId);
+                RETURN_IF_NOT_FOUND_IN_MAP(const grph::NodeState& nodeState, graph.nodeStates, nodeId);
                 std::optional<std::string> assetUriOpt;
                 if (nodeState.encodedData.has_value()) {
-                    const std::optional<plstate::EncodedData>& encodedDataOpt = *nodeState.encodedData;
+                    const std::optional<grph::EncodedData>& encodedDataOpt = *nodeState.encodedData;
                     ASSIGN_OR_RETURN(const std::string assetUri, GetBitmapAssetUriFromEncoded(encodedDataOpt->payload));
                     assetUriOpt = assetUri;
                 } else {

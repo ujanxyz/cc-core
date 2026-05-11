@@ -7,12 +7,12 @@
 #include <vector>
 
 #include "absl/status/statusor.h"
-#include "ujcore/data/FunctionInfo.h"
-#include "ujcore/data/GraphState.h"
-#include "ujcore/data/IdTypes.h"
-#include "ujcore/data/TopoSorter.h"
-#include "ujcore/data/plinfo.h"
-#include "ujcore/data/plstate.h"
+#include "ujcore/graph/FunctionInfo.h"
+#include "ujcore/graph/GraphState.h"
+#include "ujcore/graph/IdTypes.h"
+#include "ujcore/graph/TopoSorter.h"
+#include "ujcore/graph/GraphTypes.h"
+#include "ujcore/graph/GraphTypes.h"
 #include "ujcore/function/FunctionSpec.h"
 
 namespace ujcore {
@@ -39,21 +39,21 @@ class GraphBuilder {
   }
 
   // Upon success returns the same number of SlotInfos
-  absl::StatusOr<std::vector<plinfo::SlotInfo>> LookupNodeSlotInfos(NodeId nodeId, const std::vector<std::string>& slotNames) const;
+  absl::StatusOr<std::vector<grph::SlotInfo>> LookupNodeSlotInfos(NodeId nodeId, const std::vector<std::string>& slotNames) const;
 
-  absl::StatusOr<plinfo::NodeInfo> AddFuncNode(const FunctionInfo& fnInfo);
+  absl::StatusOr<grph::NodeInfo> AddFuncNode(const FunctionInfo& fnInfo);
 
-  absl::StatusOr<std::tuple<plinfo::NodeInfo, plinfo::SlotInfo>> AddIONode(const std::string& dtype, bool isOutput);
+  absl::StatusOr<std::tuple<grph::NodeInfo, grph::SlotInfo>> AddIONode(const std::string& dtype, bool isOutput);
 
-  absl::StatusOr<plinfo::EdgeInfo> AddEdge(
+  absl::StatusOr<grph::EdgeInfo> AddEdge(
       const NodeId sourceNode, const std::string& sourceSlot,
       const NodeId targetNode, const std::string& targetSlot);
 
   absl::StatusOr<std::tuple<std::vector<EdgeId> /* edge ids */, std::set<SlotId> /* deleted slot ids*/, std::set<SlotId> /* affected slot ids */ >>
   DeleteElements(const std::vector<NodeId>& nodeIds, const std::vector<EdgeId>& edgeIds);
 
-  absl::Status SetNodeEncodedData(const NodeId nodeId, const std::optional<plstate::EncodedData>& encodedData);
-  absl::Status SetSlotEncodedData(const SlotId slotId, const std::optional<plstate::EncodedData>& encodedData);
+  absl::Status SetNodeEncodedData(const NodeId nodeId, const std::optional<grph::EncodedData>& encodedData);
+  absl::Status SetSlotEncodedData(const SlotId slotId, const std::optional<grph::EncodedData>& encodedData);
 
   // Sets the graph input data for the given input nodes. The input data should be encoded as strings.
   absl::Status SetGraphInputs(const std::vector<std::tuple<NodeId, std::string /* encoded data */>>& graphInputs);
@@ -66,7 +66,7 @@ class GraphBuilder {
   absl::StatusOr<int> ClearGraph();
 
   // Validates whether an edge can be added between the given source and target slots, and returns the validation result.
-  absl::StatusOr<plstate::SlotState::Validity> ValidateEdge(const SlotId sourceSlotId, const SlotId targetSlotId) const;
+  absl::StatusOr<grph::SlotState::Validity> ValidateEdge(const SlotId sourceSlotId, const SlotId targetSlotId) const;
 
 private:
   GraphState& state_;

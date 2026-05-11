@@ -3,10 +3,10 @@
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "cppschema/backend/api_backend_bridge.h"
-#include "ujcore/data/IdTypes.h"
-#include "ujcore/data/plinfo.h"
-#include "ujcore/data/GraphState.h"
-#include "ujcore/data/GraphStateJson.h"
+#include "ujcore/graph/IdTypes.h"
+#include "ujcore/graph/GraphTypes.h"
+#include "ujcore/graph/GraphState.h"
+#include "ujcore/graph/GraphStateJson.h"
 #include "ujcore/function/AttributeDataType.h"
 #include "ujcore/function/FunctionLookup.h"
 #include "ujcore/function/FunctionSpec.h"
@@ -119,16 +119,16 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
             LOG(FATAL) << "Insert node error: " << nodeInfoOr.status();
         }
         const NodeId nodeId = nodeInfoOr->rawId;
-        const plinfo::NodeInfo nodeInfo = std::move(nodeInfoOr).value();
+        const grph::NodeInfo nodeInfo = std::move(nodeInfoOr).value();
 
-        auto addNodeSlotInfos = [this, nodeRawId = nodeId](const std::vector<std::string>& slotNames, std::vector<plinfo::SlotInfo>& result) -> void {
+        auto addNodeSlotInfos = [this, nodeRawId = nodeId](const std::vector<std::string>& slotNames, std::vector<grph::SlotInfo>& result) -> void {
             auto slotsOr = builder_.LookupNodeSlotInfos(NodeId(nodeRawId), slotNames);
             if (!slotsOr.ok()) {
                 LOG(FATAL) << "Lookup node slots error: " << slotsOr.status();
             }
             result = std::move(slotsOr).value();
         };
-        auto addNodeSlotStates = [this, nodeRawId = nodeId](const std::vector<std::string>& slotNames, std::vector<plstate::SlotState>& result) -> void {
+        auto addNodeSlotStates = [this, nodeRawId = nodeId](const std::vector<std::string>& slotNames, std::vector<grph::SlotState>& result) -> void {
             std::vector<SlotId> slotIds;
             slotIds.reserve(slotNames.size());
             for (const std::string& slotName : slotNames) {
@@ -138,7 +138,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
             if (!slotStatesOr.ok()) {
                 LOG(FATAL) << "Lookup node slots error: " << slotStatesOr.status();
             }
-            std::vector<plstate::SlotState> states;
+            std::vector<grph::SlotState> states;
             states.reserve(slotStatesOr->size());
             for (auto& [_, slotState] : std::move(slotStatesOr).value()) {
                 states.push_back(std::move(slotState));
@@ -163,8 +163,8 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         if (!nodeSlotInfoOr.ok()) {
             LOG(FATAL) << "Insert IO node error: " << nodeSlotInfoOr.status();
         }
-        plinfo::NodeInfo nodeInfo;
-        plinfo::SlotInfo slotInfo;
+        grph::NodeInfo nodeInfo;
+        grph::SlotInfo slotInfo;
         std::tie(nodeInfo, slotInfo) = std::move(nodeSlotInfoOr).value();
 
         const NodeId nodeId = nodeInfo.rawId;
@@ -172,7 +172,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         if (!slotStateOr.ok() || slotStateOr->size() != 1) {
             LOG(FATAL) << "Lookup IO node slot state error: " << slotStateOr.status();
         }
-        const plstate::SlotState slotState = std::move(slotStateOr).value().begin()->second;
+        const grph::SlotState slotState = std::move(slotStateOr).value().begin()->second;
         return CreateIONodeResponse {
             .nodeInfo = std::move(nodeInfo),
             .nodeState = GraphUtils::CopyNodeState(state_, nodeId),
@@ -186,7 +186,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         if (!edgeInfoOr.ok()) {
             LOG(FATAL) << "Add edge error: " << edgeInfoOr.status();
         }
-        const plinfo::EdgeInfo edgeInfo = std::move(edgeInfoOr).value();
+        const grph::EdgeInfo edgeInfo = std::move(edgeInfoOr).value();
 
         auto state0Or = GraphUtils::LookupSlotStates(state_, { SlotId{edgeInfo.node0, edgeInfo.slot0} });
         auto state1Or = GraphUtils::LookupSlotStates(state_, { SlotId{edgeInfo.node1, edgeInfo.slot1} });
@@ -197,8 +197,8 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
             LOG(FATAL) << "Lookup target slot state error: " << state1Or.status();
         }
 
-        plstate::SlotState& sourceState = std::move(state0Or).value().begin()->second;
-        plstate::SlotState& targetState = std::move(state1Or).value().begin()->second;
+        grph::SlotState& sourceState = std::move(state0Or).value().begin()->second;
+        grph::SlotState& targetState = std::move(state1Or).value().begin()->second;
         sourceState.outEdges.insert(edgeInfo.id);
         targetState.inEdges.insert(edgeInfo.id);
 
@@ -235,7 +235,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         if (!validateResultOr.ok()) {
             LOG(FATAL) << "Validate edge error: " << validateResultOr.status();
         }
-        plstate::SlotState::Validity validity = std::move(validateResultOr).value();
+        grph::SlotState::Validity validity = std::move(validateResultOr).value();
         return ValidateEdgeResponse {
             .validity = validity,
         };
@@ -246,7 +246,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         if (!nodeStates.ok()) {
             LOG(FATAL) << "Lookup node states error: " << nodeStates.status();
         }
-        std::vector<std::pair<NodeId, plstate::NodeState>> result;
+        std::vector<std::pair<NodeId, grph::NodeState>> result;
         for (auto& [nodeId, nodeState] : std::move(nodeStates).value()) {
             result.push_back({nodeId, std::move(nodeState)});
         }
@@ -260,7 +260,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         if (!slotStates.ok()) {
             LOG(FATAL) << "Lookup slot states error: " << slotStates.status();
         }
-        std::vector<std::pair<SlotId, plstate::SlotState>> result;
+        std::vector<std::pair<SlotId, grph::SlotState>> result;
         for (auto& [slotId, slotState] : std::move(slotStates).value()) {
             result.push_back({slotId, std::move(slotState)});
         }

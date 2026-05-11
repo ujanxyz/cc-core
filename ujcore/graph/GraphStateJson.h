@@ -3,8 +3,8 @@
 #include <string>
 
 #include "absl/status/statusor.h"
-#include "ujcore/data/GraphState.h"
-#include "ujcore/data/TopoSortState.h"
+#include "ujcore/graph/GraphState.h"
+#include "ujcore/graph/TopoSortState.h"
 
 #include "nlohmann/json.hpp"
 

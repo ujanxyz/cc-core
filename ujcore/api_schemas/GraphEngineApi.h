@@ -8,21 +8,21 @@
 #include "cppschema/common/enum_registry.h"
 #include "cppschema/common/types.h"
 #include "cppschema/common/visitor_macros.h"
-#include "ujcore/data/AssetInfo.h"
-#include "ujcore/data/FunctionInfo.h"
-#include "ujcore/data/IdTypes.h"
-#include "ujcore/data/ResourceInfo.h"
-#include "ujcore/data/plinfo.h"
-#include "ujcore/data/plstate.h"
+#include "ujcore/graph/AssetInfo.h"
+#include "ujcore/graph/FunctionInfo.h"
+#include "ujcore/graph/IdTypes.h"
+#include "ujcore/graph/ResourceInfo.h"
+#include "ujcore/graph/GraphTypes.h"
+#include "ujcore/graph/GraphTypes.h"
 
 namespace ujcore {
 
 struct GraphEngineApi {
     // API: getGraph
     struct GetGraphResponse {
-        std::vector<plinfo::NodeInfo> nodeInfos;
-        std::vector<plinfo::EdgeInfo> edgeInfos;
-        std::vector<plinfo::SlotInfo> slotInfos;
+        std::vector<grph::NodeInfo> nodeInfos;
+        std::vector<grph::EdgeInfo> edgeInfos;
+        std::vector<grph::SlotInfo> slotInfos;
         DEFINE_STRUCT_VISITOR_FUNCTION(nodeInfos, edgeInfos, slotInfos);
     };
 
@@ -32,16 +32,16 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(func);
     };
     struct CreateNodeResponse {
-        std::optional<plinfo::NodeInfo> nodeInfo;
-        std::optional<plstate::NodeState> nodeState;
+        std::optional<grph::NodeInfo> nodeInfo;
+        std::optional<grph::NodeState> nodeState;
 
-        std::vector<plinfo::SlotInfo> inInfos;
-        std::vector<plinfo::SlotInfo> outInfos;
-        std::vector<plinfo::SlotInfo> inoutInfos;
+        std::vector<grph::SlotInfo> inInfos;
+        std::vector<grph::SlotInfo> outInfos;
+        std::vector<grph::SlotInfo> inoutInfos;
 
-        std::vector<plstate::SlotState> inStates;
-        std::vector<plstate::SlotState> outStates;
-        std::vector<plstate::SlotState> inoutStates;
+        std::vector<grph::SlotState> inStates;
+        std::vector<grph::SlotState> outStates;
+        std::vector<grph::SlotState> inoutStates;
 
         DEFINE_STRUCT_VISITOR_FUNCTION(nodeInfo, nodeState, inInfos, outInfos, inoutInfos, inStates, outStates, inoutStates);
     };
@@ -53,10 +53,10 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(dtype, isOutput);
     };
     struct CreateIONodeResponse {
-        std::optional<plinfo::NodeInfo> nodeInfo;
-        std::optional<plstate::NodeState> nodeState;
-        std::optional<plinfo::SlotInfo> slotInfo;
-        std::optional<plstate::SlotState> slotState;
+        std::optional<grph::NodeInfo> nodeInfo;
+        std::optional<grph::NodeState> nodeState;
+        std::optional<grph::SlotInfo> slotInfo;
+        std::optional<grph::SlotState> slotState;
         DEFINE_STRUCT_VISITOR_FUNCTION(nodeInfo, nodeState, slotInfo, slotState);
     };
 
@@ -69,9 +69,9 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(sourceNode, sourceSlot, targetNode, targetSlot);
     };
     struct AddEdgeResponse {
-        std::optional<plinfo::EdgeInfo> edgeInfo;
-        std::optional<plstate::SlotState> sourceState;
-        std::optional<plstate::SlotState> targetState;
+        std::optional<grph::EdgeInfo> edgeInfo;
+        std::optional<grph::SlotState> sourceState;
+        std::optional<grph::SlotState> targetState;
         DEFINE_STRUCT_VISITOR_FUNCTION(edgeInfo, sourceState, targetState);
     };
 
@@ -102,7 +102,7 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(sourceNode, sourceSlot, targetNode, targetSlot);
     };
     struct ValidateEdgeResponse {
-        plstate::SlotState::Validity validity = plstate::SlotState::Validity::VALID;
+        grph::SlotState::Validity validity = grph::SlotState::Validity::VALID;
     
         DEFINE_STRUCT_VISITOR_FUNCTION(validity);
     };
@@ -113,7 +113,7 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(nodeIds);
     };
     struct GetNodeStatesResponse {
-        std::vector<std::pair<NodeId, plstate::NodeState>> nodeStates;
+        std::vector<std::pair<NodeId, grph::NodeState>> nodeStates;
         DEFINE_STRUCT_VISITOR_FUNCTION(nodeStates);
     };
 
@@ -123,7 +123,7 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(slotIds);
     };
     struct GetSlotStatesResponse {
-        std::vector<std::pair<SlotId, plstate::SlotState>> slotStates;
+        std::vector<std::pair<SlotId, grph::SlotState>> slotStates;
         DEFINE_STRUCT_VISITOR_FUNCTION(slotStates);
     };
 
@@ -173,7 +173,7 @@ struct GraphEngineApi {
         std::optional<SlotId> slotId;
 
         // If this is not set, the existing manual data will be cleared.
-        std::optional<plstate::EncodedData> encodedData;
+        std::optional<grph::EncodedData> encodedData;
 
         DEFINE_STRUCT_VISITOR_FUNCTION(isNode, nodeId, slotId, encodedData);
     };
@@ -186,7 +186,7 @@ struct GraphEngineApi {
 
     // API: runPipeline
     struct RunPipelineResponse {
-        std::vector<plstate::GraphRunOutput> outputs;
+        std::vector<grph::GraphRunOutput> outputs;
 
         DEFINE_STRUCT_VISITOR_FUNCTION(outputs);
     };

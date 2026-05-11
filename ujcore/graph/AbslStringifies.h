@@ -5,8 +5,8 @@
 
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
-#include "ujcore/data/IdTypes.h"
-#include "ujcore/data/plinfo.h"
+#include "ujcore/graph/IdTypes.h"
+#include "ujcore/graph/GraphTypes.h"
 
 namespace ujcore {
 
@@ -44,10 +44,10 @@ void AbslStringify(Sink& sink, const SlotId& slotId) {
     absl::Format(&sink, "%d.%s", slotId.parent.value, slotId.name);
 }
 
-namespace plinfo {
+namespace grph {
 
 template <typename Sink>
-void AbslStringify(Sink& sink, const plinfo::NodeInfo& node) {
+void AbslStringify(Sink& sink, const grph::NodeInfo& node) {
     std::string slotsStr;
     if (node.ins.size() > 0) {
       absl::StrAppend(&slotsStr, "; ins:", absl::StrJoin(node.ins, ","));
@@ -62,22 +62,22 @@ void AbslStringify(Sink& sink, const plinfo::NodeInfo& node) {
 }
 
 template <typename Sink>
-void AbslStringify(Sink& sink, const plinfo::EdgeInfo& edge) {
+void AbslStringify(Sink& sink, const grph::EdgeInfo& edge) {
     absl::Format(&sink, "(%s: [%d/%s] -> [%d/%s])",
          edge.catid, edge.node0.value, edge.slot0, edge.node1.value, edge.slot1);
 }
 
 template <typename Sink>
-void AbslStringify(Sink& sink, const plinfo::SlotInfo& slot) {
+void AbslStringify(Sink& sink, const grph::SlotInfo& slot) {
     std::string accessStr;
     switch (slot.access) {
-        case plinfo::SlotInfo::AccessEnum::I:
+        case grph::SlotInfo::AccessEnum::I:
           accessStr = "I";
           break;
-        case plinfo::SlotInfo::AccessEnum::O:
+        case grph::SlotInfo::AccessEnum::O:
           accessStr = "O";
           break;
-        case plinfo::SlotInfo::AccessEnum::M:
+        case grph::SlotInfo::AccessEnum::M:
           accessStr = "M";
           break;
     }
@@ -87,21 +87,21 @@ void AbslStringify(Sink& sink, const plinfo::SlotInfo& slot) {
 // Array of nodes, edges, slots.
 
 template <typename Sink>
-void AbslStringify(Sink& sink, const std::vector<plinfo::NodeInfo>& arr) {
+void AbslStringify(Sink& sink, const std::vector<grph::NodeInfo>& arr) {
     absl::Format(&sink, "%s", detail::CollectionToStr(arr));
 }
 
 template <typename Sink>
-void AbslStringify(Sink& sink, const std::vector<plinfo::EdgeInfo>& arr) {
+void AbslStringify(Sink& sink, const std::vector<grph::EdgeInfo>& arr) {
     absl::Format(&sink, "%s", detail::CollectionToStr(arr));
 }
 
 template <typename Sink>
-void AbslStringify(Sink& sink, const std::vector<plinfo::SlotInfo>& arr) {
+void AbslStringify(Sink& sink, const std::vector<grph::SlotInfo>& arr) {
     absl::Format(&sink, "%s", detail::CollectionToStr(arr));
 }
 
 
-}  // namespace plinfo
+}  // namespace grph
 
 }  // namespace ujcore
