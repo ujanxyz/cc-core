@@ -10,7 +10,7 @@
 #include "ujcore/data/FunctionInfo.h"
 #include "ujcore/data/GraphState.h"
 #include "ujcore/data/IdTypes.h"
-#include "ujcore/data/TopoSortOrder.h"
+#include "ujcore/data/TopoSorter.h"
 #include "ujcore/data/plinfo.h"
 #include "ujcore/data/plstate.h"
 #include "ujcore/function/FunctionSpec.h"
@@ -32,7 +32,7 @@ class GraphBuilder {
     std::set<std::string> edge_ids;
   };
 
-  GraphBuilder(GraphState& state, TopoSortOrder& topoSorter);
+  GraphBuilder(GraphState& state, TopoSorter& topoSorter);
 
   GraphState* mutable_state() {
     return &state_;
@@ -68,11 +68,9 @@ class GraphBuilder {
   // Validates whether an edge can be added between the given source and target slots, and returns the validation result.
   absl::StatusOr<plstate::SlotState::Validity> ValidateEdge(const SlotId sourceSlotId, const SlotId targetSlotId) const;
 
-  absl::StatusOr<std::vector<FunctionInfo>> GetAvailableFuncInfos() const;
-
- private:
+private:
   GraphState& state_;
-  TopoSortOrder& topoSorter_;
+  TopoSorter& topoSorter_;
 
   GraphConfig config_;
 };

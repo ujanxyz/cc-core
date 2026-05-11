@@ -51,6 +51,7 @@ cc_library(
     name = "FunctionInfo",
     hdrs = ["FunctionInfo.h"],
     deps = [
+        "@cppschema//:enum_registry",
         "@cppschema//:visitor_macros",
     ],
 )
@@ -119,9 +120,9 @@ cc_library(
 )
 
 cc_library(
-    name = "TopoSortOrder",
-    srcs = ["TopoSortOrder.cpp"],
-    hdrs = ["TopoSortOrder.h"],
+    name = "TopoSorter",
+    srcs = ["TopoSorter.cpp"],
+    hdrs = ["TopoSorter.h"],
     deps = [
         ":IdTypes",
         ":TopoSortState",
@@ -131,10 +132,10 @@ cc_library(
 )
 
 cc_test(
-    name = "TopoSortOrder_Test",
-    srcs = ["TopoSortOrder_Test.cpp"],
+    name = "TopoSorter_Test",
+    srcs = ["TopoSorter_Test.cpp"],
     deps = [
-        ":TopoSortOrder",
+        ":TopoSorter",
         "@googletest//:gtest_main",
     ],
 )

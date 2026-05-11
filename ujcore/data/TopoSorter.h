@@ -9,9 +9,9 @@
 
 namespace ujcore {
 
-class TopoSortOrder final {
+class TopoSorter final {
  public:
-    TopoSortOrder(TopoSortState& state);
+    TopoSorter(TopoSortState& state);
 
     void AddNode(const NodeId& u);
     void RemoveNode(const NodeId& u);
@@ -38,7 +38,7 @@ class TopoSortOrder final {
     std::map<NodeId, std::set<NodeId>> inAdj;
     std::map<NodeId, std::set<NodeId>> outAdj;
 
-    friend class TopoSortOrderTest;
+    friend class TopoSorterTest;
 };
 
 }  // namespace ujcore

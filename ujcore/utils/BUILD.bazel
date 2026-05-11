@@ -5,9 +5,30 @@ package(
 )
 
 cc_library(
+    name = "IdGenerator",
+    srcs = ["IdGenerator.cpp"],
+    hdrs = ["IdGenerator.h"],
+    deps = [
+        "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "IdGenerator_Test",
+    srcs = ["IdGenerator_Test.cpp"],
+    deps = [
+        ":IdGenerator",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "IdUtils",
     srcs = ["IdUtils.cpp"],
     hdrs = ["IdUtils.h"],
+    deps = [
+        "@cppschema//:strong_types",
+    ],
 )
 
 cc_test(

@@ -1,41 +1,88 @@
 #include "ujcore/api_schemas/GraphEngineApi.h"
 
+#include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "cppschema/backend/api_backend_bridge.h"
 #include "ujcore/data/IdTypes.h"
 #include "ujcore/data/plinfo.h"
 #include "ujcore/data/GraphState.h"
 #include "ujcore/data/GraphStateJson.h"
+#include "ujcore/function/AttributeDataType.h"
+#include "ujcore/function/FunctionLookup.h"
+#include "ujcore/function/FunctionSpec.h"
 #include "ujcore/graph/GraphBuilder.h"
 #include "ujcore/graph/GraphUtils.h"
 #include "ujcore/pipeline/PipelineRunner.h"
 #include "ujcore/utils/status_macros.h"
 
 namespace ujcore {
+namespace {
+
+using GetGraphResponse = GraphEngineApi::GetGraphResponse;
+using CreateNodeRequest = GraphEngineApi::CreateNodeRequest;
+using CreateNodeResponse = GraphEngineApi::CreateNodeResponse;
+using CreateIONodeRequest = GraphEngineApi::CreateIONodeRequest;
+using CreateIONodeResponse = GraphEngineApi::CreateIONodeResponse;
+using AddEdgeRequest = GraphEngineApi::AddEdgeRequest;
+using AddEdgeResponse = GraphEngineApi::AddEdgeResponse;
+using DeleteElementsRequest = GraphEngineApi::DeleteElementsRequest;
+using DeleteElementsResponse = GraphEngineApi::DeleteElementsResponse;
+using ValidateEdgeRequest = GraphEngineApi::ValidateEdgeRequest;
+using ValidateEdgeResponse = GraphEngineApi::ValidateEdgeResponse;
+using GetNodeStatesRequest = GraphEngineApi::GetNodeStatesRequest;
+using GetNodeStatesResponse = GraphEngineApi::GetNodeStatesResponse;
+using GetSlotStatesRequest = GraphEngineApi::GetSlotStatesRequest;
+using GetSlotStatesResponse = GraphEngineApi::GetSlotStatesResponse;
+using GetAvailableFuncsRequest = GraphEngineApi::GetAvailableFuncsRequest;
+using GetAvailableFuncsResponse = GraphEngineApi::GetAvailableFuncsResponse;
+using SetEncodedDataRequest = GraphEngineApi::SetEncodedDataRequest;
+using BuildPipelineResponse = GraphEngineApi::BuildPipelineResponse;
+using RunPipelineResponse = GraphEngineApi::RunPipelineResponse;
+using GetResourcesResponse = GraphEngineApi::GetResourcesResponse;
+
+FunctionInfo ToFunctionInfo(const FunctionSpec& spec) {
+    std::vector<FunctionInfo::Param> params;
+    params.reserve(spec.params.size());
+    for (const FuncParamSpec& p : spec.params) {
+        FunctionInfo::AccessEnum access = FunctionInfo::AccessEnum::I;
+        switch (p.access) {
+            case FuncParamAccess::kInput: access = FunctionInfo::AccessEnum::I; break;
+            case FuncParamAccess::kOutput: access = FunctionInfo::AccessEnum::O; break;
+            case FuncParamAccess::kInOut:  access = FunctionInfo::AccessEnum::M; break;
+            default:
+                LOG(WARNING) << "Unknown FuncParamAccess value for param " << p.name
+                    << ", defaulting to Input access.";
+                access = FunctionInfo::AccessEnum::I;
+        }
+        params.push_back({
+            .name = p.name,
+            .type = AttributeDataTypeToStr(p.dtype),
+            .access = access,
+        });
+    }
+    return FunctionInfo{
+        .uri = spec.uri,
+        .label = spec.label,
+        .desc = spec.desc,
+        .params = std::move(params),
+    };
+}
+
+bool HasFilter(
+    const std::vector<GetAvailableFuncsRequest::CategoryFilter>& filters,
+    const GetAvailableFuncsRequest::CategoryFilter wanted) {
+    for (const auto filter : filters) {
+        if (filter == wanted) {
+            return true;
+        }
+    }
+    return false;
+}
+
+}  // namespace
 
 class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
  public:
-    using GetGraphResponse = GraphEngineApi::GetGraphResponse;
-    using CreateNodeRequest = GraphEngineApi::CreateNodeRequest;
-    using CreateNodeResponse = GraphEngineApi::CreateNodeResponse;
-    using CreateIONodeRequest = GraphEngineApi::CreateIONodeRequest;
-    using CreateIONodeResponse = GraphEngineApi::CreateIONodeResponse;
-    using AddEdgeRequest = GraphEngineApi::AddEdgeRequest;
-    using AddEdgeResponse = GraphEngineApi::AddEdgeResponse;
-    using DeleteElementsRequest = GraphEngineApi::DeleteElementsRequest;
-    using DeleteElementsResponse = GraphEngineApi::DeleteElementsResponse;
-    using ValidateEdgeRequest = GraphEngineApi::ValidateEdgeRequest;
-    using ValidateEdgeResponse = GraphEngineApi::ValidateEdgeResponse;
-    using GetNodeStatesRequest = GraphEngineApi::GetNodeStatesRequest;
-    using GetNodeStatesResponse = GraphEngineApi::GetNodeStatesResponse;
-    using GetSlotStatesRequest = GraphEngineApi::GetSlotStatesRequest;
-    using GetSlotStatesResponse = GraphEngineApi::GetSlotStatesResponse;
-    using GetAvailableFuncsResponse = GraphEngineApi::GetAvailableFuncsResponse;
-    using SetEncodedDataRequest = GraphEngineApi::SetEncodedDataRequest;
-    using BuildPipelineResponse = GraphEngineApi::BuildPipelineResponse;
-    using RunPipelineResponse = GraphEngineApi::RunPipelineResponse;
-    using GetResourcesResponse = GraphEngineApi::GetResourcesResponse;
-
     GraphEngineApiBackend(): topoSorter_(state_.topoSortState), builder_(state_, topoSorter_) {}
 
     GetGraphResponse getGraphImpl(const VoidType& kvoid) {
@@ -230,13 +277,35 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         return {};
     }
 
-    GetAvailableFuncsResponse getAvailableFuncsImpl(const VoidType&) {
-        auto allInfos = builder_.GetAvailableFuncInfos();
-        if (!allInfos.ok()) {
-            LOG(FATAL) << "Get all func infos error: " << allInfos.status();
+    GetAvailableFuncsResponse getAvailableFuncsImpl(const GetAvailableFuncsRequest& request) {
+        using CategoryFilter = GetAvailableFuncsRequest::CategoryFilter;
+        FunctionLookup lookup;
+
+        if (HasFilter(request.filters, CategoryFilter::URI_LIST)) {
+            CHECK(request.uriList.has_value());
+            lookup.WithUriList(request.uriList.value());
         }
+        if (HasFilter(request.filters, CategoryFilter::PREFIX)) {
+            CHECK(request.prefix.has_value());
+            lookup.WithUriPrefix(request.prefix.value());
+        }
+        if (HasFilter(request.filters, CategoryFilter::PAGE)) {
+            CHECK(request.pageStart.has_value());
+            CHECK(request.pageSize.has_value());
+            const int32_t start = std::max<int32_t>(0, request.pageStart.value());
+            const int32_t size = std::max<int32_t>(0, request.pageSize.value());
+            lookup.WithPagination(static_cast<size_t>(start), static_cast<size_t>(size));
+        }
+
+        std::vector<FunctionSpec> specs = lookup.Fetch();
+        std::vector<FunctionInfo> infos;
+        infos.reserve(specs.size());
+        for (const FunctionSpec& spec : specs) {
+            infos.push_back(ToFunctionInfo(spec));
+        }
+
         return GetAvailableFuncsResponse {
-            .infos = std::move(allInfos).value(),
+            .infos = std::move(infos),
         };
     }
 
@@ -295,7 +364,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
 
  private:
    GraphState state_;
-   TopoSortOrder topoSorter_;
+   TopoSorter topoSorter_;
    GraphBuilder builder_;
    PipelineRunner runner_;
 };

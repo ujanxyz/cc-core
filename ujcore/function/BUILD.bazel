@@ -79,6 +79,28 @@ cc_library(
 )
 
 cc_library(
+    name = "FunctionLookup",
+    srcs = ["FunctionLookup.cpp"],
+    hdrs = ["FunctionLookup.h"],
+    deps = [
+        ":FunctionRegistry",
+        ":FunctionSpec",
+    ],
+)
+
+cc_test(
+    name = "FunctionLookup_Test",
+    srcs = ["FunctionLookup_Test.cpp"],
+    deps = [
+        ":FunctionLookup",
+        ":FunctionRegistry",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "FunctionSpec",
     hdrs = ["FunctionSpec.h"],
     deps = [

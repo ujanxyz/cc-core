@@ -14,10 +14,10 @@ cc_library(
         "//ujcore/data:plinfo",
         "//ujcore/data:FunctionInfo",
         "//ujcore/data:GraphState",
-        "//ujcore/data:TopoSortOrder",
+        "//ujcore/data:TopoSorter",
         "//ujcore/function:FunctionRegistry",
         "//ujcore/function:FunctionSpec",
-        "//ujcore/graph:IdGenerator",
+        "//ujcore/utils:IdUtils",
         "//ujcore/utils:status_macros",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
@@ -35,23 +35,5 @@ cc_library(
         "//ujcore/data:IdTypes",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
-    ],
-)
-
-cc_library(
-    name = "IdGenerator",
-    srcs = ["IdGenerator.cpp"],
-    hdrs = ["IdGenerator.h"],
-    deps = [
-        "@abseil-cpp//absl/strings",
-    ],
-)
-
-cc_test(
-    name = "IdGenerator_Test",
-    srcs = ["IdGenerator_Test.cpp"],
-    deps = [
-        ":IdGenerator",
-        "@googletest//:gtest_main",
     ],
 )

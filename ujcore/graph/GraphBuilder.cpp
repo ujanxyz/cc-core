@@ -6,7 +6,7 @@
 #include "ujcore/data/plstate.h"
 #include "ujcore/function/FunctionRegistry.h"
 #include "ujcore/graph/GraphUtils.h"
-#include "ujcore/graph/IdGenerator.h"
+#include "ujcore/utils/IdUtils.h"
 #include "ujcore/utils/status_macros.h"
 #include "ujcore/function/FunctionSpec.h"
 
@@ -112,7 +112,7 @@ std::map<EdgeId, plinfo::EdgeInfo> InternalDeleteEdges(const std::set<EdgeId>& e
 }  // namespace
 
 //--------------------------------------------------------------------------------------------------
-GraphBuilder::GraphBuilder(GraphState& state, TopoSortOrder& topoSorter): state_(state), topoSorter_(topoSorter) {
+GraphBuilder::GraphBuilder(GraphState& state, TopoSorter& topoSorter): state_(state), topoSorter_(topoSorter) {
   config_ = {
     .nodeid_splitmix_offset = 0ULL,
   };
@@ -142,7 +142,7 @@ absl::StatusOr<plinfo::NodeInfo> GraphBuilder::AddFuncNode(const FunctionInfo& f
     return absl::NotFoundError(absl::StrCat("Function not found: ", fnInfo.uri));
   }
   const NodeId nodeId (++state_.idgen_state.next_node_id);
-  const std::string alphanumId = GenSplitMix64OfLength(nodeId.value + config_.nodeid_splitmix_offset, 10);
+  const std::string alphanumId = EncodeStringId(nodeId);
   plinfo::NodeInfo nodeInfo = {
     .rawId = nodeId,
     .alnumid = alphanumId,
@@ -170,7 +170,7 @@ absl::StatusOr<plinfo::NodeInfo> GraphBuilder::AddFuncNode(const FunctionInfo& f
 absl::StatusOr<std::tuple<plinfo::NodeInfo, plinfo::SlotInfo>>
 GraphBuilder::AddIONode(const std::string& dtype, bool isOutput) {
   const NodeId nodeId (++state_.idgen_state.next_node_id);
-  const std::string alphanumId = GenSplitMix64OfLength(nodeId.value + config_.nodeid_splitmix_offset, 10);
+  const std::string alphanumId = EncodeStringId(nodeId);
   plinfo::NodeInfo nodeInfo = {
     .rawId = nodeId,
     .alnumid = alphanumId,
@@ -408,26 +408,6 @@ absl::StatusOr<SlotState::Validity> GraphBuilder::ValidateEdge(const SlotId sour
   }
 
   return SlotState::Validity::VALID;
-}
-
-absl::StatusOr<std::vector<FunctionInfo>>
-GraphBuilder::GetAvailableFuncInfos() const {
-  auto& registry = FunctionRegistry::GetInstance();
-  const std::vector<std::string> allUris = registry.GetAllUris();
-
-  std::vector<FunctionInfo> funcInfos;
-  funcInfos.reserve(allUris.size());
-
-  for (const auto& uri :  allUris) {
-    auto spec = registry.GetSpecFromUri(uri);
-    if (spec == nullptr) continue;
-    funcInfos.push_back(FunctionInfo {
-      .uri = uri,
-      .label = spec->label,
-      .desc = spec->desc,
-    });
-  }
-  return funcInfos;
 }
 
 }  // namespace ujcore

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "cppschema/apispec/api_framework.h"
+#include "cppschema/common/enum_registry.h"
 #include "cppschema/common/types.h"
 #include "cppschema/common/visitor_macros.h"
 #include "ujcore/data/AssetInfo.h"
@@ -127,6 +128,36 @@ struct GraphEngineApi {
     };
 
     // API: getAvailableFuncs
+    struct GetAvailableFuncsRequest {
+        // A cetegory filter is used to filter the returned functions.
+        enum class CategoryFilter {
+            UNKNOWN = 0,
+
+            // Only functions whose URI is in the provided list will be returned.  
+            URI_LIST = 1,
+
+            // Only functions whose uri matches the provided prefix will be returned.
+            PREFIX = 2,
+
+            // Used for pagination.
+            PAGE = 3,
+        };
+
+        // If no filter is provided, all functions will be returned.
+        // If multiple filters are provided, they will be ANDed together
+        // (i.e. only functions that satisfy all filters will be returned).
+        std::vector<CategoryFilter> filters;
+
+        // The following filter specific fields are used based on the value of `categoryFilter`.
+
+        std::optional<std::vector<std::string>> uriList; // used when categoryFilter is URI_LIST
+        std::optional<std::string> prefix; // used when categoryFilter is PREFIX
+        std::optional<int32_t> pageStart;  // used when categoryFilter is PAGE
+        std::optional<int32_t> pageSize;  // used when categoryFilter is PAGE
+
+        DEFINE_ENUM_CONVERSION_FUNCTION(CategoryFilter, UNKNOWN, URI_LIST, PREFIX, PAGE);
+        DEFINE_STRUCT_VISITOR_FUNCTION(filters, uriList, prefix, pageStart, pageSize);
+    };
     struct GetAvailableFuncsResponse {
         std::vector<FunctionInfo> infos;
         DEFINE_STRUCT_VISITOR_FUNCTION(infos);
@@ -178,7 +209,7 @@ struct GraphEngineApi {
     cppschema::ApiStub<GetNodeStatesRequest, GetNodeStatesResponse> getNodeStates;
     cppschema::ApiStub<GetSlotStatesRequest, GetSlotStatesResponse> getSlotStates;
     cppschema::ApiStub<VoidType, VoidType> clearGraph;
-    cppschema::ApiStub<VoidType, GetAvailableFuncsResponse> getAvailableFuncs;
+    cppschema::ApiStub<GetAvailableFuncsRequest, GetAvailableFuncsResponse> getAvailableFuncs;
     cppschema::ApiStub<SetEncodedDataRequest, VoidType> setEncodedData;
     cppschema::ApiStub<VoidType, BuildPipelineResponse> buildPipeline;
     cppschema::ApiStub<VoidType, RunPipelineResponse> runPipeline;

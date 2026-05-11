@@ -10,6 +10,7 @@
 #include "ujcore/api_schemas/GraphEngineApi.h"
 #include "ujcore/data/AbslStringifies.h"
 #include "ujcore/data/FunctionInfo.h"
+#include "ujcore/utils/IdUtils.h"
 
 namespace ujcore {
 namespace {
@@ -28,6 +29,8 @@ using DeleteElementsResponse = GraphEngineApi::DeleteElementsResponse;
 
 TEST(GraphEngineApiBackendTest, Basic) {
     VoidType kVoid;
+    const std::string node1_alnumid = EncodeStringId(NodeId(1));
+    const std::string node2_alnumid = EncodeStringId(NodeId(2));
     CreateNodeRequest create_req = {
         .func = FunctionInfo {
             .uri = "/testing/displace-point",
@@ -38,11 +41,15 @@ TEST(GraphEngineApiBackendTest, Basic) {
     
     CreateNodeResponse create_resp = ApiRegistry<GraphEngineApi>::Get().template Call<CreateNodeRequest, CreateNodeResponse>("createNode", create_req);
     ASSERT_TRUE(create_resp.nodeInfo.has_value());
-    EXPECT_EQ(absl::StrCat(*create_resp.nodeInfo), "(n#1:s2GhcWpBLP; fn:/testing/displace-point; ins:p,dx; outs:fp)");
+    EXPECT_EQ(
+        absl::StrCat(*create_resp.nodeInfo),
+        absl::StrCat("(n#1:", node1_alnumid, "; fn:/testing/displace-point; ins:p,dx; outs:fp)"));
 
     create_resp = ApiRegistry<GraphEngineApi>::Get().template Call<CreateNodeRequest, CreateNodeResponse>("createNode", create_req);
     ASSERT_TRUE(create_resp.nodeInfo.has_value());
-    EXPECT_EQ(absl::StrCat(*create_resp.nodeInfo), "(n#2:ZBqg1rBrgq; fn:/testing/displace-point; ins:p,dx; outs:fp)");
+    EXPECT_EQ(
+        absl::StrCat(*create_resp.nodeInfo),
+        absl::StrCat("(n#2:", node2_alnumid, "; fn:/testing/displace-point; ins:p,dx; outs:fp)"));
 
     AddEdgeRequest add_edge_req1 = {
         .sourceNode = NodeId(2),
@@ -59,11 +66,15 @@ TEST(GraphEngineApiBackendTest, Basic) {
 
     AddEdgeResponse edge_resp1 = ApiRegistry<GraphEngineApi>::Get().template Call<AddEdgeRequest, AddEdgeResponse>("addEdge", add_edge_req1);
     ASSERT_TRUE(edge_resp1.edgeInfo.has_value());
-    EXPECT_EQ(absl::StrCat(*edge_resp1.edgeInfo), "(ZBqg1rBrgq$fp--s2GhcWpBLP$p: [2/fp] -> [1/p])");
+    EXPECT_EQ(
+        absl::StrCat(*edge_resp1.edgeInfo),
+        absl::StrCat("(", node2_alnumid, "$fp--", node1_alnumid, "$p: [2/fp] -> [1/p])"));
 
     AddEdgeResponse edge_resp2 = ApiRegistry<GraphEngineApi>::Get().template Call<AddEdgeRequest, AddEdgeResponse>("addEdge", add_edge_req2);
     ASSERT_TRUE(edge_resp2.edgeInfo.has_value());
-    EXPECT_EQ(absl::StrCat(*edge_resp2.edgeInfo), "(s2GhcWpBLP$fp--ZBqg1rBrgq$p: [1/fp] -> [2/p])");
+    EXPECT_EQ(
+        absl::StrCat(*edge_resp2.edgeInfo),
+        absl::StrCat("(", node1_alnumid, "$fp--", node2_alnumid, "$p: [1/fp] -> [2/p])"));
 
 
     GetGraphResponse graph = ApiRegistry<GraphEngineApi>::Get().template Call<VoidType, GetGraphResponse>("getGraph", kVoid);

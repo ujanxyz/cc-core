@@ -1,4 +1,4 @@
-#include "ujcore/data/TopoSortOrder.h"
+#include "ujcore/data/TopoSorter.h"
 
 #include <algorithm>
 
@@ -7,9 +7,9 @@
 
 namespace ujcore {
 
-TopoSortOrder::TopoSortOrder(TopoSortState& state) : state_(state) {}
+TopoSorter::TopoSorter(TopoSortState& state) : state_(state) {}
 
-void TopoSortOrder::AddNode(const NodeId& u) {
+void TopoSorter::AddNode(const NodeId& u) {
     if (pos.find(u) == pos.end()) {
         pos[u] = state_.sortOrder.size();
         state_.sortOrder.push_back(u);
@@ -19,7 +19,7 @@ void TopoSortOrder::AddNode(const NodeId& u) {
     }
 }
 
-void TopoSortOrder::RemoveNode(const NodeId& u) {
+void TopoSorter::RemoveNode(const NodeId& u) {
     if (pos.find(u) == pos.end()) return;
 
     // Remove from adjacency lists of others
@@ -42,12 +42,12 @@ void TopoSortOrder::RemoveNode(const NodeId& u) {
     state_.hasDirtyBit = true;
 }
 
-void TopoSortOrder::RemoveEdge(const NodeId& u, const NodeId& v) {
+void TopoSorter::RemoveEdge(const NodeId& u, const NodeId& v) {
     if (inAdj.count(v)) inAdj[v].erase(u);
     if (outAdj.count(u)) outAdj[u].erase(v);
 }
 
-bool TopoSortOrder::AddEdge(const NodeId& u, const NodeId& v) {
+bool TopoSorter::AddEdge(const NodeId& u, const NodeId& v) {
     AddNode(u);
     AddNode(v);
     
@@ -60,14 +60,14 @@ bool TopoSortOrder::AddEdge(const NodeId& u, const NodeId& v) {
     return reorder(u, v);
 }
 
-void TopoSortOrder::PrintTopoOrder() {
+void TopoSorter::PrintTopoOrder() {
     LOG(INFO) << "Topo Sort Order:";
     for (const NodeId n : state_.sortOrder) {
         LOG(INFO) << n.value;
     }
 }
 
-bool TopoSortOrder::reorder(const NodeId& u, const NodeId& v) {
+bool TopoSorter::reorder(const NodeId& u, const NodeId& v) {
     std::vector<int> delta_f_indices;
     std::vector<int> delta_b_indices;
 
@@ -105,7 +105,7 @@ bool TopoSortOrder::reorder(const NodeId& u, const NodeId& v) {
     return true;
 }
 
-bool TopoSortOrder::forward_dfs(const NodeId& curr, int upper_bound, 
+bool TopoSorter::forward_dfs(const NodeId& curr, int upper_bound, 
                          std::vector<int>& delta_f_indices) {
   std::vector<NodeId> stack;  // Emulates recursion stack for depth-first search
   std::set<NodeId> visited;
@@ -129,7 +129,7 @@ bool TopoSortOrder::forward_dfs(const NodeId& curr, int upper_bound,
   return true;
 }
 
-bool TopoSortOrder::backward_dfs(const NodeId& curr, int lower_bound, 
+bool TopoSorter::backward_dfs(const NodeId& curr, int lower_bound, 
                          std::vector<int>& delta_b_indices) {
   std::vector<NodeId> stack;  // Emulates recursion stack for depth-first search
   std::set<NodeId> visited;
