@@ -1,44 +1,44 @@
-#include "ujcore/api_schemas/GraphEngineApi.h"
+#include "ujcore/api_schemas/GraphApi.h"
 
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "cppschema/backend/api_backend_bridge.h"
+#include "ujcore/api_backends/SharedStore.h"
 #include "ujcore/graph/IdTypes.h"
 #include "ujcore/graph/GraphTypes.h"
-#include "ujcore/graph/GraphState.h"
 #include "ujcore/graph/GraphStateJson.h"
 #include "ujcore/function/AttributeDataType.h"
 #include "ujcore/function/FunctionLookup.h"
 #include "ujcore/function/FunctionSpec.h"
-#include "ujcore/graph/GraphBuilder.h"
 #include "ujcore/graph/GraphUtils.h"
-#include "ujcore/pipeline/PipelineRunner.h"
-#include "ujcore/utils/status_macros.h"
+#include "ujcore/utils/IdUtils.h"
 
 namespace ujcore {
 namespace {
 
-using GetGraphResponse = GraphEngineApi::GetGraphResponse;
-using CreateNodeRequest = GraphEngineApi::CreateNodeRequest;
-using CreateNodeResponse = GraphEngineApi::CreateNodeResponse;
-using CreateIONodeRequest = GraphEngineApi::CreateIONodeRequest;
-using CreateIONodeResponse = GraphEngineApi::CreateIONodeResponse;
-using AddEdgeRequest = GraphEngineApi::AddEdgeRequest;
-using AddEdgeResponse = GraphEngineApi::AddEdgeResponse;
-using DeleteElementsRequest = GraphEngineApi::DeleteElementsRequest;
-using DeleteElementsResponse = GraphEngineApi::DeleteElementsResponse;
-using ValidateEdgeRequest = GraphEngineApi::ValidateEdgeRequest;
-using ValidateEdgeResponse = GraphEngineApi::ValidateEdgeResponse;
-using GetNodeStatesRequest = GraphEngineApi::GetNodeStatesRequest;
-using GetNodeStatesResponse = GraphEngineApi::GetNodeStatesResponse;
-using GetSlotStatesRequest = GraphEngineApi::GetSlotStatesRequest;
-using GetSlotStatesResponse = GraphEngineApi::GetSlotStatesResponse;
-using GetAvailableFuncsRequest = GraphEngineApi::GetAvailableFuncsRequest;
-using GetAvailableFuncsResponse = GraphEngineApi::GetAvailableFuncsResponse;
-using SetEncodedDataRequest = GraphEngineApi::SetEncodedDataRequest;
-using BuildPipelineResponse = GraphEngineApi::BuildPipelineResponse;
-using RunPipelineResponse = GraphEngineApi::RunPipelineResponse;
-using GetResourcesResponse = GraphEngineApi::GetResourcesResponse;
+using GetGraphMetaResponse = GraphApi::GetGraphMetaResponse;
+using SetGraphMetaRequest = GraphApi::SetGraphMetaRequest;
+using GetGraphResponse = GraphApi::GetGraphResponse;
+using CreateNodeRequest = GraphApi::CreateNodeRequest;
+using CreateNodeResponse = GraphApi::CreateNodeResponse;
+using CreateIONodeRequest = GraphApi::CreateIONodeRequest;
+using CreateIONodeResponse = GraphApi::CreateIONodeResponse;
+using AddEdgesRequest = GraphApi::AddEdgesRequest;
+using AddEdgesResponse = GraphApi::AddEdgesResponse;
+using DeleteElementsRequest = GraphApi::DeleteElementsRequest;
+using DeleteElementsResponse = GraphApi::DeleteElementsResponse;
+using ValidateEdgeRequest = GraphApi::ValidateEdgeRequest;
+using ValidateEdgeResponse = GraphApi::ValidateEdgeResponse;
+using GetNodeStatesRequest = GraphApi::GetNodeStatesRequest;
+using GetNodeStatesResponse = GraphApi::GetNodeStatesResponse;
+using GetSlotStatesRequest = GraphApi::GetSlotStatesRequest;
+using GetSlotStatesResponse = GraphApi::GetSlotStatesResponse;
+using GetAvailableFuncsRequest = GraphApi::GetAvailableFuncsRequest;
+using GetAvailableFuncsResponse = GraphApi::GetAvailableFuncsResponse;
+using SetEncodedDataRequest = GraphApi::SetEncodedDataRequest;
+using BuildPipelineResponse = GraphApi::BuildPipelineResponse;
+using RunPipelineResponse = GraphApi::RunPipelineResponse;
+using GetResourcesResponse = GraphApi::GetResourcesResponse;
 
 FunctionInfo ToFunctionInfo(const FunctionSpec& spec) {
     std::vector<FunctionInfo::Param> params;
@@ -81,20 +81,33 @@ bool HasFilter(
 
 }  // namespace
 
-class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
+class GraphApiBackend : public cppschema::ApiBackend<GraphApi> {
  public:
-    GraphEngineApiBackend(): topoSorter_(state_.topoSortState), builder_(state_, topoSorter_) {}
+    GraphApiBackend(): store_(SharedStore::Instance()) {}
+
+    GetGraphMetaResponse getGraphMetaImpl(const VoidType& kvoid) {
+        return GetGraphMetaResponse {
+            .lastNodeId = store_.state().idgen_state.lastNodeId,
+            .lastEdgeId = store_.state().idgen_state.lastEdgeId,
+        };
+    }
+
+    VoidType setGraphMetaImpl(const SetGraphMetaRequest& request) {
+        store_.state().idgen_state.lastNodeId = request.lastNodeId;
+        store_.state().idgen_state.lastEdgeId = request.lastEdgeId;
+        return VoidType{};
+    }
 
     GetGraphResponse getGraphImpl(const VoidType& kvoid) {
         return GetGraphResponse {
-            .nodeInfos = GraphUtils::GetAllNodeInfos(state_),
-            .edgeInfos = GraphUtils::GetAllEdgeInfos(state_),
-            .slotInfos = GraphUtils::GetAllSlotInfos(state_),
+            .nodeInfos = GraphUtils::GetAllNodeInfos(store_.state()),
+            .edgeInfos = GraphUtils::GetAllEdgeInfos(store_.state()),
+            .slotInfos = GraphUtils::GetAllSlotInfos(store_.state()),
         };
     }
 
     std::string encodeGraphImpl(const VoidType& kvoid) {
-        auto encodedOr = EncodeGraphState(state_);
+        auto encodedOr = EncodeGraphState(store_.state());
         if (!encodedOr.ok()) {
             LOG(FATAL) << "Encode graph state error: " << encodedOr.status();
         }
@@ -106,15 +119,17 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         if (!decodedOr.ok()) {
             LOG(FATAL) << "Decode graph state error: " << decodedOr.status();
         }
-        state_ = std::move(decodedOr).value();
-        // TODO: Update topoSorter_ and builder_ with the new state. Currently they hold dangling references after state_ is replaced.
-        // topoSorter_ = TopoSorter(state_.topoSortState);
-        // builder_ = GraphBuilder(state_, topoSorter_);
+        store_.state() = std::move(decodedOr).value();
         return VoidType{};
     }
 
     CreateNodeResponse createNodeImpl(const CreateNodeRequest& request) {
-        auto nodeInfoOr = builder_.AddFuncNode(request.func);
+        std::optional<NodeId> overrideIdOpt;
+        if (request.overrideId.has_value()) {
+            overrideIdOpt = NodeId(DecodeStringId(request.overrideId.value()));
+        }
+
+        auto nodeInfoOr = store_.builder().AddFuncNode(request.func, overrideIdOpt);
         if (!nodeInfoOr.ok()) {
             LOG(FATAL) << "Insert node error: " << nodeInfoOr.status();
         }
@@ -122,7 +137,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         const grph::NodeInfo nodeInfo = std::move(nodeInfoOr).value();
 
         auto addNodeSlotInfos = [this, nodeRawId = nodeId](const std::vector<std::string>& slotNames, std::vector<grph::SlotInfo>& result) -> void {
-            auto slotsOr = builder_.LookupNodeSlotInfos(NodeId(nodeRawId), slotNames);
+            auto slotsOr = store_.builder().LookupNodeSlotInfos(NodeId(nodeRawId), slotNames);
             if (!slotsOr.ok()) {
                 LOG(FATAL) << "Lookup node slots error: " << slotsOr.status();
             }
@@ -134,7 +149,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
             for (const std::string& slotName : slotNames) {
                 slotIds.push_back(SlotId{nodeRawId, slotName});
             }
-            auto slotStatesOr = GraphUtils::LookupSlotStates(state_, slotIds);
+            auto slotStatesOr = GraphUtils::LookupSlotStates(store_.state(), slotIds);
             if (!slotStatesOr.ok()) {
                 LOG(FATAL) << "Lookup node slots error: " << slotStatesOr.status();
             }
@@ -154,12 +169,17 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         addNodeSlotStates(nodeInfo.outs, response.outStates);
         addNodeSlotStates(nodeInfo.inouts, response.inoutStates);
         response.nodeInfo = std::move(nodeInfo);
-        response.nodeState = GraphUtils::CopyNodeState(state_, nodeId);
+        response.nodeState = GraphUtils::CopyNodeState(store_.state(), nodeId);
         return response;
     }
 
     CreateIONodeResponse createIONodeImpl(const CreateIONodeRequest& request) {
-        auto nodeSlotInfoOr = builder_.AddIONode(request.dtype, request.isOutput);
+        std::optional<NodeId> overrideIdOpt;
+        if (request.overrideId.has_value()) {
+            overrideIdOpt = NodeId(DecodeStringId(request.overrideId.value()));
+        }
+
+        auto nodeSlotInfoOr = store_.builder().AddIONode(request.dtype, request.isOutput, overrideIdOpt);
         if (!nodeSlotInfoOr.ok()) {
             LOG(FATAL) << "Insert IO node error: " << nodeSlotInfoOr.status();
         }
@@ -168,49 +188,47 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
         std::tie(nodeInfo, slotInfo) = std::move(nodeSlotInfoOr).value();
 
         const NodeId nodeId = nodeInfo.rawId;
-        auto slotStateOr = GraphUtils::LookupSlotStates(state_, { SlotId{nodeId, slotInfo.name} });
+        auto slotStateOr = GraphUtils::LookupSlotStates(store_.state(), { SlotId{nodeId, slotInfo.name} });
         if (!slotStateOr.ok() || slotStateOr->size() != 1) {
             LOG(FATAL) << "Lookup IO node slot state error: " << slotStateOr.status();
         }
         const grph::SlotState slotState = std::move(slotStateOr).value().begin()->second;
         return CreateIONodeResponse {
             .nodeInfo = std::move(nodeInfo),
-            .nodeState = GraphUtils::CopyNodeState(state_, nodeId),
+            .nodeState = GraphUtils::CopyNodeState(store_.state(), nodeId),
             .slotInfo = std::move(slotInfo),
             .slotState = std::move(slotState),
         };
     }
 
-    AddEdgeResponse addEdgeImpl(const AddEdgeRequest& request) {
-        auto edgeInfoOr = builder_.AddEdge(request.sourceNode, request.sourceSlot, request.targetNode, request.targetSlot);
-        if (!edgeInfoOr.ok()) {
-            LOG(FATAL) << "Add edge error: " << edgeInfoOr.status();
+    AddEdgesResponse addEdgesImpl(const AddEdgesRequest& request) {
+        std::vector<GraphBuilder::AddEdgeEntry> entries;
+        entries.reserve(request.entries.size());
+        for (const auto& entry : request.entries) {
+            std::optional<EdgeId> overrideEdgeIdOpt;
+            if (entry.overrideEdgeId.has_value()) {
+                overrideEdgeIdOpt = EdgeId(entry.overrideEdgeId.value());
+            }
+            entries.push_back({
+                .node0 = NodeId(DecodeStringId(entry.source.parent)),
+                .slot0 = entry.source.name,
+                .node1 = NodeId(DecodeStringId(entry.target.parent)),
+                .slot1 = entry.target.name,
+                .overrideEdgeId = overrideEdgeIdOpt,
+            });
         }
-        const grph::EdgeInfo edgeInfo = std::move(edgeInfoOr).value();
 
-        auto state0Or = GraphUtils::LookupSlotStates(state_, { SlotId{edgeInfo.node0, edgeInfo.slot0} });
-        auto state1Or = GraphUtils::LookupSlotStates(state_, { SlotId{edgeInfo.node1, edgeInfo.slot1} });
-        if (!state0Or.ok() || state0Or->size() != 1) {
-            LOG(FATAL) << "Lookup source slot state error: " << state0Or.status();
+        auto edgeInfosOr = store_.builder().AddEdges(entries);
+        if (!edgeInfosOr.ok()) {
+            LOG(FATAL) << "Add edges error: " << edgeInfosOr.status();
         }
-        if (!state1Or.ok() || state1Or->size() != 1) {
-            LOG(FATAL) << "Lookup target slot state error: " << state1Or.status();
-        }
-
-        grph::SlotState& sourceState = std::move(state0Or).value().begin()->second;
-        grph::SlotState& targetState = std::move(state1Or).value().begin()->second;
-        sourceState.outEdges.insert(edgeInfo.id);
-        targetState.inEdges.insert(edgeInfo.id);
-
-        return AddEdgeResponse {
-            .edgeInfo = std::move(edgeInfo),
-            .sourceState = sourceState,
-            .targetState = targetState,
+        return AddEdgesResponse {
+            .edgeInfos = std::move(edgeInfosOr).value(),
         };
     }
 
     DeleteElementsResponse deleteElementsImpl(const DeleteElementsRequest& request) {
-        auto deleteResultOr = builder_.DeleteElements(request.nodeIds, request.edgeIds);
+        auto deleteResultOr = store_.builder().DeleteElements(request.nodeIds, request.edgeIds);
         if (!deleteResultOr.ok()) {
             LOG(FATAL) << "Delete elements error: " << deleteResultOr.status();
         }
@@ -231,7 +249,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
     ValidateEdgeResponse validateEdgeImpl(const ValidateEdgeRequest& request) {
         SlotId sourceSlotId{request.sourceNode, request.sourceSlot};
         SlotId targetSlotId{request.targetNode, request.targetSlot};
-        auto validateResultOr = builder_.ValidateEdge(sourceSlotId, targetSlotId);
+        auto validateResultOr = store_.builder().ValidateEdge(sourceSlotId, targetSlotId);
         if (!validateResultOr.ok()) {
             LOG(FATAL) << "Validate edge error: " << validateResultOr.status();
         }
@@ -242,7 +260,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
     }
 
     GetNodeStatesResponse getNodeStatesImpl(const GetNodeStatesRequest& request) {
-        auto nodeStates = GraphUtils::LookupNodeStates(state_, request.nodeIds);
+        auto nodeStates = GraphUtils::LookupNodeStates(store_.state(), request.nodeIds);
         if (!nodeStates.ok()) {
             LOG(FATAL) << "Lookup node states error: " << nodeStates.status();
         }
@@ -256,7 +274,15 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
     }
 
     GetSlotStatesResponse getSlotStatesImpl(const GetSlotStatesRequest& request) {
-        auto slotStates = GraphUtils::LookupSlotStates(state_, request.slotIds);
+        std::vector<SlotId> slotIds;
+        for (const EncodedSlotId& encodedSlotId : request.slotIdsEncoded) {
+            const NodeId nodeId = NodeId(DecodeStringId(encodedSlotId.parent));
+            slotIds.push_back(SlotId{nodeId, encodedSlotId.name});
+        }
+        for (const SlotId& slotId : request.slotIds) {
+            slotIds.push_back(slotId);
+        }
+        auto slotStates = GraphUtils::LookupSlotStates(store_.state(), slotIds);
         if (!slotStates.ok()) {
             LOG(FATAL) << "Lookup slot states error: " << slotStates.status();
         }
@@ -270,7 +296,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
     }
 
     VoidType clearGraphImpl(const VoidType&) {
-        auto countOr = builder_.ClearGraph();
+        auto countOr = store_.builder().ClearGraph();
         if (!countOr.ok()) {
             LOG(FATAL) << "Clear graph error: " << countOr.status();
         }
@@ -315,7 +341,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
                 LOG(FATAL) << "Node id must be set for node encoded data.";
             }
             const NodeId nodeId = request.nodeId.value();
-            auto status = builder_.SetNodeEncodedData(nodeId, request.encodedData);
+            auto status = store_.builder().SetNodeEncodedData(nodeId, request.encodedData);
             if (!status.ok()) {
                 LOG(FATAL) << "Set node encoded data error: " << status;
             }
@@ -324,7 +350,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
                 LOG(FATAL) << "Slot id must be set for slot encoded data.";
             }
             const SlotId slotId = request.slotId.value();
-            auto status = builder_.SetSlotEncodedData(slotId, request.encodedData);
+            auto status = store_.builder().SetSlotEncodedData(slotId, request.encodedData);
             if (!status.ok()) {
                 LOG(FATAL) << "Set slot encoded data error: " << status;
             }
@@ -333,7 +359,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
     }
 
     BuildPipelineResponse buildPipelineImpl(const VoidType&) {
-        auto assetInfosOr = runner_.RebuildFromState(state_);
+        auto assetInfosOr = store_.runner().RebuildFromState(store_.state());
         if (!assetInfosOr.ok()) {
             LOG(FATAL) << "Build pipeline error: " << assetInfosOr.status();
         }
@@ -344,7 +370,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
 
     RunPipelineResponse runPipelineImpl(const VoidType& request) {
         RunPipelineResponse response;
-        auto runResult = runner_.RunPipeline();
+        auto runResult = store_.runner().RunPipeline();
         if (!runResult.ok()) {
             LOG(FATAL) << "Run pipeline error: " << runResult.status();
         }
@@ -353,7 +379,7 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
     }
 
     GetResourcesResponse getResourcesImpl(const VoidType&) {
-        auto resourcesOr = runner_.GetPipelineResources();
+        auto resourcesOr = store_.runner().GetPipelineResources();
         if (!resourcesOr.ok()) {
             LOG(FATAL) << "Get pipeline resources error: " << resourcesOr.status();
         }
@@ -363,33 +389,32 @@ class GraphEngineApiBackend : public cppschema::ApiBackend<GraphEngineApi> {
     }
 
  private:
-   GraphState state_;
-   TopoSorter topoSorter_;
-   GraphBuilder builder_;
-   PipelineRunner runner_;
+   SharedStore& store_;
 };
 
 static __attribute__((constructor)) void RegisterPipelineApiBackend() {
-    auto* impl = new GraphEngineApiBackend();
-    GraphEngineApi::ImplPtrs<GraphEngineApiBackend> ptrs = {
-        .getGraph = &GraphEngineApiBackend::getGraphImpl,
-        .encodeGraph = &GraphEngineApiBackend::encodeGraphImpl,
-        .decodeGraph = &GraphEngineApiBackend::decodeGraphImpl,
-        .createNode = &GraphEngineApiBackend::createNodeImpl,
-        .createIONode = &GraphEngineApiBackend::createIONodeImpl,
-        .addEdge = &GraphEngineApiBackend::addEdgeImpl,
-        .deleteElements = &GraphEngineApiBackend::deleteElementsImpl,
-        .validateEdge = &GraphEngineApiBackend::validateEdgeImpl,
-        .getNodeStates = &GraphEngineApiBackend::getNodeStatesImpl,
-        .getSlotStates = &GraphEngineApiBackend::getSlotStatesImpl,
-        .clearGraph = &GraphEngineApiBackend::clearGraphImpl,
-        .getAvailableFuncs = &GraphEngineApiBackend::getAvailableFuncsImpl,
-        .setEncodedData = &GraphEngineApiBackend::setEncodedDataImpl,
-        .buildPipeline = &GraphEngineApiBackend::buildPipelineImpl,
-        .runPipeline = &GraphEngineApiBackend::runPipelineImpl,
-        .getResources = &GraphEngineApiBackend::getResourcesImpl,
+    auto* impl = new GraphApiBackend();
+    GraphApi::ImplPtrs<GraphApiBackend> ptrs = {
+        .getGraphMeta = &GraphApiBackend::getGraphMetaImpl,
+        .setGraphMeta = &GraphApiBackend::setGraphMetaImpl,
+        .getGraph = &GraphApiBackend::getGraphImpl,
+        .encodeGraph = &GraphApiBackend::encodeGraphImpl,
+        .decodeGraph = &GraphApiBackend::decodeGraphImpl,
+        .createNode = &GraphApiBackend::createNodeImpl,
+        .createIONode = &GraphApiBackend::createIONodeImpl,
+        .addEdges = &GraphApiBackend::addEdgesImpl,
+        .deleteElements = &GraphApiBackend::deleteElementsImpl,
+        .validateEdge = &GraphApiBackend::validateEdgeImpl,
+        .getNodeStates = &GraphApiBackend::getNodeStatesImpl,
+        .getSlotStates = &GraphApiBackend::getSlotStatesImpl,
+        .clearGraph = &GraphApiBackend::clearGraphImpl,
+        .getAvailableFuncs = &GraphApiBackend::getAvailableFuncsImpl,
+        .setEncodedData = &GraphApiBackend::setEncodedDataImpl,
+        .buildPipeline = &GraphApiBackend::buildPipelineImpl,
+        .runPipeline = &GraphApiBackend::runPipelineImpl,
+        .getResources = &GraphApiBackend::getResourcesImpl,
     };
-    cppschema::RegisterBackend<GraphEngineApi, GraphEngineApiBackend>(impl, ptrs);
+    cppschema::RegisterBackend<GraphApi, GraphApiBackend>(impl, ptrs);
 }
 
 }  // namespace ujcore

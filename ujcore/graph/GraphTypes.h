@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <map>
 #include <optional>
 #include <set>
 #include <string>
@@ -98,13 +97,14 @@ struct EdgeInfo {
     EdgeId id {0};
 
     // Concatenated id from parts.
-    /// @json: Encode as string, like `"21|5|fx|42|in"`
     std::string catid;
 
+    // The source and target node alphanumeric ids.
+    std::string alnumNode0;
+    std::string alnumNode1;
+
     // Id (raw) of the source and target node.
-    /// @json: Encode as number, like `21`
     NodeId node0 {0};
-    /// @json: Encode as number, like `42`
     NodeId node1 {0};
 
     /// @json: Encode as string, like `"fx"` or `"in"`
@@ -112,7 +112,7 @@ struct EdgeInfo {
     /// @json: Encode as string, like `"fx"` or `"in"`
     std::string slot1;
 
-    DEFINE_STRUCT_VISITOR_FUNCTION(id, catid, node0, node1, slot0, slot1);
+    DEFINE_STRUCT_VISITOR_FUNCTION(id, catid, alnumNode0, alnumNode1, node0, node1, slot0, slot1);
 };
 
 // ============================================================================

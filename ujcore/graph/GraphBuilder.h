@@ -13,7 +13,6 @@
 #include "ujcore/graph/TopoSorter.h"
 #include "ujcore/graph/GraphTypes.h"
 #include "ujcore/graph/GraphTypes.h"
-#include "ujcore/function/FunctionSpec.h"
 
 namespace ujcore {
 
@@ -27,6 +26,14 @@ struct EngineOpResult {
 
 class GraphBuilder {
  public:
+  struct AddEdgeEntry {
+    NodeId node0 {0};
+    std::string slot0;
+    NodeId node1 {0};
+    std::string slot1;
+    std::optional<EdgeId> overrideEdgeId;
+  };
+
   struct DeleteRequest {
     std::set<std::string> node_ids;
     std::set<std::string> edge_ids;
@@ -41,13 +48,12 @@ class GraphBuilder {
   // Upon success returns the same number of SlotInfos
   absl::StatusOr<std::vector<grph::SlotInfo>> LookupNodeSlotInfos(NodeId nodeId, const std::vector<std::string>& slotNames) const;
 
-  absl::StatusOr<grph::NodeInfo> AddFuncNode(const FunctionInfo& fnInfo);
+  absl::StatusOr<grph::NodeInfo> AddFuncNode(const FunctionInfo& fnInfo, std::optional<NodeId> overrideId);
 
-  absl::StatusOr<std::tuple<grph::NodeInfo, grph::SlotInfo>> AddIONode(const std::string& dtype, bool isOutput);
+  absl::StatusOr<std::tuple<grph::NodeInfo, grph::SlotInfo>> AddIONode(const std::string& dtype, bool isOutput, std::optional<NodeId> overrideId);
 
-  absl::StatusOr<grph::EdgeInfo> AddEdge(
-      const NodeId sourceNode, const std::string& sourceSlot,
-      const NodeId targetNode, const std::string& targetSlot);
+  absl::StatusOr<std::vector<grph::EdgeInfo>> AddEdges(
+      const std::vector<GraphBuilder::AddEdgeEntry>& entries);
 
   absl::StatusOr<std::tuple<std::vector<EdgeId> /* edge ids */, std::set<SlotId> /* deleted slot ids*/, std::set<SlotId> /* affected slot ids */ >>
   DeleteElements(const std::vector<NodeId>& nodeIds, const std::vector<EdgeId>& edgeIds);

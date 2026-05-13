@@ -11,8 +11,8 @@ namespace {
 
 GraphState MakeSampleGraphState() {
 	GraphState state;
-	state.idgen_state.next_node_id = 5;
-	state.idgen_state.next_edge_id = 9;
+	state.idgen_state.lastNodeId = 5;
+	state.idgen_state.lastEdgeId = 9;
 	state.topoSortState.sortOrder = {NodeId(1), NodeId(2)};
 	state.topoSortState.hasDirtyBit = true;
 
@@ -80,8 +80,8 @@ GraphState MakeSampleGraphState() {
 }
 
 void ExpectGraphStateEqual(const GraphState& lhs, const GraphState& rhs) {
-	EXPECT_EQ(lhs.idgen_state.next_node_id, rhs.idgen_state.next_node_id);
-	EXPECT_EQ(lhs.idgen_state.next_edge_id, rhs.idgen_state.next_edge_id);
+	EXPECT_EQ(lhs.idgen_state.lastNodeId, rhs.idgen_state.lastNodeId);
+	EXPECT_EQ(lhs.idgen_state.lastEdgeId, rhs.idgen_state.lastEdgeId);
 
 	ASSERT_EQ(lhs.topoSortState.sortOrder.size(), rhs.topoSortState.sortOrder.size());
 	for (size_t i = 0; i < lhs.topoSortState.sortOrder.size(); ++i) {
@@ -168,7 +168,7 @@ TEST(GraphStateJsonTest, StructToJsonToStructRoundTrip) {
 TEST(GraphStateJsonTest, JsonToStructToJsonRoundTrip) {
 	const std::string input = R"json(
 	{
-	  "idgenState": {"nextNodeId": 11, "nextEdgeId": 17},
+	  "idgenState": {"lastNodeId": 11, "lastEdgeId": 17},
 	  "topoSortState": {"sortOrder": [1, 2], "hasDirtyBit": true},
 	  "slotInfos": [
 		[[1, "x"], {"parent": 1, "name": "x", "dtype": "float", "access": "I"}]

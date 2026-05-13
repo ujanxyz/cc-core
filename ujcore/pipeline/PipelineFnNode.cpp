@@ -1,6 +1,8 @@
 #include "ujcore/pipeline/PipelineFnNode.h"
 
 #include "absl/log/log.h"
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "ujcore/graph/IdTypes.h"
 #include "ujcore/function/AttributeDataType.h"
 
@@ -23,7 +25,7 @@ PipelineSlot* PipelineFnNode::LookupSlot(const std::string& slotName) {
     return slotIter->second.plSlot.get();
 }
 
-absl::StatusOr<bool> PipelineFnNode::RunFunction() {
+absl::Status PipelineFnNode::RunFunction() {
     // Prior to execution, for input slots with manually overridden data, decode the encoded data to internal attribute.
     for (auto& [slotName, slotEntry] : slotEntries_) {
         if (slotEntry.decodeFnPtr != nullptr && slotEntry.encodedInput->has_value()) {
@@ -42,8 +44,23 @@ absl::StatusOr<bool> PipelineFnNode::RunFunction() {
         }
     }
 
-    auto result = funcInstance_->OnRun(*functionCtx_);
-    return result;
+    const ujfunc::FunctionReturn result = funcInstance_->OnRun(*functionCtx_);
+    if (result.IsDone() || result.IsAwait()) {
+        return absl::OkStatus();
+    }
+    if (result.IsNoData()) {
+        return absl::FailedPreconditionError(
+            absl::StrCat("Function returned NO_DATA for node ", selfId_.value));
+    }
+    if (result.IsError()) {
+        if (result.error.has_value()) {
+            return *result.error;
+        }
+        return absl::InternalError(
+            absl::StrCat("Function returned ERROR without status for node ", selfId_.value));
+    }
+    return absl::InternalError(
+        absl::StrCat("Function returned unknown code for node ", selfId_.value));
 }
 
 NodeId PipelineFnNode::GetFunctionNodeId() const {

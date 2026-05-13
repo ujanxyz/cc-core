@@ -135,13 +135,22 @@ absl::StatusOr<std::vector<grph::SlotInfo>> GraphBuilder::LookupNodeSlotInfos(
   return infos;
 }
 
-absl::StatusOr<grph::NodeInfo> GraphBuilder::AddFuncNode(const FunctionInfo& fnInfo) {
+absl::StatusOr<grph::NodeInfo> GraphBuilder::AddFuncNode(const FunctionInfo& fnInfo, std::optional<NodeId> overrideId) {
   auto& registry = FunctionRegistry::GetInstance();
   std::unique_ptr<FunctionSpec> funcSpec = registry.GetSpecFromUri(fnInfo.uri);
   if (funcSpec == nullptr) {
     return absl::NotFoundError(absl::StrCat("Function not found: ", fnInfo.uri));
   }
-  const NodeId nodeId (++state_.idgen_state.next_node_id);
+  NodeId nodeId {0};
+  if (overrideId.has_value()) {
+    nodeId = overrideId.value();
+  } else {
+    nodeId = NodeId(++state_.idgen_state.lastNodeId);
+  }
+  if (state_.nodeInfos.contains(nodeId)) {
+    return absl::AlreadyExistsError(absl::StrCat("Node id already exists: ", nodeId));
+  }
+  
   const std::string alphanumId = EncodeStringId(nodeId);
   grph::NodeInfo nodeInfo = {
     .rawId = nodeId,
@@ -168,8 +177,17 @@ absl::StatusOr<grph::NodeInfo> GraphBuilder::AddFuncNode(const FunctionInfo& fnI
 }
 
 absl::StatusOr<std::tuple<grph::NodeInfo, grph::SlotInfo>>
-GraphBuilder::AddIONode(const std::string& dtype, bool isOutput) {
-  const NodeId nodeId (++state_.idgen_state.next_node_id);
+GraphBuilder::AddIONode(const std::string& dtype, bool isOutput, std::optional<NodeId> overrideId) {
+  NodeId nodeId {0};
+  if (overrideId.has_value()) {
+    nodeId = overrideId.value();
+  } else {
+    nodeId = NodeId(++state_.idgen_state.lastNodeId);
+  }
+  if (state_.nodeInfos.contains(nodeId)) {
+    return absl::AlreadyExistsError(absl::StrCat("Node id already exists: ", nodeId));
+  }
+
   const std::string alphanumId = EncodeStringId(nodeId);
   grph::NodeInfo nodeInfo = {
     .rawId = nodeId,
@@ -206,44 +224,74 @@ GraphBuilder::AddIONode(const std::string& dtype, bool isOutput) {
   return std::make_tuple(nodeInfo, slotInfo);
 }
 
-absl::StatusOr<grph::EdgeInfo> GraphBuilder::AddEdge(const NodeId sourceNode, const std::string& sourceSlot, const NodeId targetNode, const std::string& targetSlot) {
-  const grph::NodeInfo* nodeInfo0 = nullptr;
-  const grph::NodeInfo* nodeInfo1 = nullptr;
-  grph::NodeState* nodeState0 = nullptr;
-  grph::NodeState* nodeState1 = nullptr;
-  // This quits if any node info or state lookup fails, which means the edge cannot be added.
-  ASSIGN_OR_RETURN(std::tie(nodeInfo0, nodeState0), InternalGetNodeInfoAndState(state_, sourceNode));
-  ASSIGN_OR_RETURN(std::tie(nodeInfo1, nodeState1), InternalGetNodeInfoAndState(state_, targetNode));
+absl::StatusOr<std::vector<grph::EdgeInfo>> GraphBuilder::AddEdges(
+  const std::vector<GraphBuilder::AddEdgeEntry>& entries) {
+  int numFailedEntries = 0;
+  std::vector<grph::EdgeInfo> addedEdges;
 
-  const grph::SlotInfo* slotInfo0 = nullptr;
-  const grph::SlotInfo* slotInfo1 = nullptr;
-  grph::SlotState* slotState0 = nullptr;
-  grph::SlotState* slotState1 = nullptr;
+  for (const auto& entry : entries) {
+    const NodeId srcNodeId = entry.node0;
+    const NodeId targetNodeId = entry.node1;
 
-  // This quits if any slot info or state lookup fails, which means the edge cannot be added.
-  ASSIGN_OR_RETURN(std::tie(slotInfo0, slotState0), InternalGetSlotInfoAndState(state_, sourceNode, sourceSlot));
-  ASSIGN_OR_RETURN(std::tie(slotInfo1, slotState1), InternalGetSlotInfoAndState(state_, targetNode, targetSlot));
+    const grph::NodeInfo* nodeInfo0 = nullptr;
+    const grph::NodeInfo* nodeInfo1 = nullptr;
+    grph::NodeState* nodeState0 = nullptr;
+    grph::NodeState* nodeState1 = nullptr;
+    // This quits if any node info or state lookup fails, which means the edge cannot be added.
+    ASSIGN_OR_RETURN(std::tie(nodeInfo0, nodeState0), InternalGetNodeInfoAndState(state_, srcNodeId));
+    ASSIGN_OR_RETURN(std::tie(nodeInfo1, nodeState1), InternalGetNodeInfoAndState(state_, targetNodeId));
 
-  if (!slotState1->inEdges.empty()) {
-    return absl::InternalError("Target slot already has an edge");
+    const grph::SlotInfo* slotInfo0 = nullptr;
+    const grph::SlotInfo* slotInfo1 = nullptr;
+    grph::SlotState* slotState0 = nullptr;
+    grph::SlotState* slotState1 = nullptr;
+
+    // This quits if any slot info or state lookup fails, which means the edge cannot be added.
+    ASSIGN_OR_RETURN(std::tie(slotInfo0, slotState0), InternalGetSlotInfoAndState(state_, srcNodeId, entry.slot0));
+    ASSIGN_OR_RETURN(std::tie(slotInfo1, slotState1), InternalGetSlotInfoAndState(state_, targetNodeId, entry.slot1));
+
+    if (!slotState1->inEdges.empty()) {
+      ++numFailedEntries;
+      continue;
+      return absl::InternalError("Target slot already has an edge");
+    }
+
+    EdgeId edgeId {0};
+    if (entry.overrideEdgeId.has_value()) {
+      edgeId = entry.overrideEdgeId.value();
+    } else {
+      edgeId = EdgeId(++state_.idgen_state.lastEdgeId);
+    }
+
+    if (state_.edgeInfos.contains(edgeId)) {
+      return absl::AlreadyExistsError(absl::StrCat("Edge id already exists: ", edgeId));
+    }
+
+    const std::string catid = absl::StrCat(nodeInfo0->alnumid, "$", entry.slot0, "--", nodeInfo1->alnumid, "$", entry.slot1);
+    const auto newEdge = grph::EdgeInfo {
+      .id = edgeId,
+      .catid = catid,
+      .alnumNode0 = nodeInfo0->alnumid,
+      .alnumNode1 = nodeInfo1->alnumid,
+      .node0 = srcNodeId,
+      .node1 = targetNodeId,
+      .slot0 = entry.slot0,
+      .slot1 = entry.slot1,
+    };
+    state_.edgeInfos[edgeId] = newEdge;
+
+    slotState0->outEdges.insert(edgeId);
+    slotState1->inEdges.insert(edgeId);
+    topoSorter_.AddEdge(srcNodeId, targetNodeId);
+
+    addedEdges.push_back(newEdge);
   }
 
-  const EdgeId edgeId (++state_.idgen_state.next_edge_id);
-  const std::string catid = absl::StrCat(nodeInfo0->alnumid, "$", sourceSlot, "--", nodeInfo1->alnumid, "$", targetSlot);
-  const auto newEdge = grph::EdgeInfo {
-    .id = edgeId,
-    .catid = catid,
-    .node0 = sourceNode,
-    .node1 = targetNode,
-    .slot0 = sourceSlot,
-    .slot1 = targetSlot,
-  };
-  state_.edgeInfos[edgeId] = newEdge;
+  if (numFailedEntries > 0) {
+    LOG(WARNING) << "Failed to add " << numFailedEntries << " edges due to target slot already having an edge.";
+  }
 
-  slotState0->outEdges.insert(edgeId);
-  slotState1->inEdges.insert(edgeId);
-  topoSorter_.AddEdge(sourceNode, targetNode);
-  return newEdge;
+  return addedEdges;
 }
 
 absl::StatusOr<std::tuple<std::vector<EdgeId>, std::set<SlotId> /* deleted slot ids*/, std::set<SlotId> /* affected slot ids */ >>

@@ -1,6 +1,5 @@
 #include "absl/log/check.h"
 #include "absl/log/log.h"
-#include "absl/status/statusor.h"
 #include "ujcore/function/AttributeDataType.h"
 #include "ujcore/function/FunctionBase.h"
 #include "ujcore/function/FunctionRegistry.h"
@@ -8,10 +7,7 @@
 #include "ujcore/function/ParamAccessors.h"
 #include "ujcore/functions/attributes/BitmapAttr.h" // Assuming you have defined BitmapAttr in this header
 #include "ujcore/functions/attributes/ColorsAttr.h"
-#include "ujcore/functions/attributes/FloatListAttr.h"
-#include "ujcore/functions/attributes/Points2DAttr.h"
 #include "ujcore/base/Bitmap.h"
-#include "ujcore/utils/status_macros.h"
 #include <cstdint>
 
 namespace {
@@ -43,14 +39,14 @@ public:
         return true;
     }
 
-    absl::StatusOr<bool> OnRun(FunctionContext& ctx) override {
+    ujfunc::FunctionReturn OnRun(FunctionContext& ctx) override {
         auto vOut = GetOutParam<BitmapAttr>(ctx, "pic");
         vOut->setFromUri("/bmpuri-001");
         Bitmap* bmp = vOut->createBitmap();
         LOG(INFO) << "EmitBitmapFn created bitmap with id: " << bmp->id() << ", width: " << bmp->width() << ", height: " << bmp->height();
         drawOnBitmap(bmp);
-        bmp->flush();
-        return true;
+        vOut->Capture();
+        return ctx.ReturnDone();
     }
 
 private:
@@ -105,15 +101,15 @@ public:
         return true;
     }
 
-    absl::StatusOr<bool> OnRun(FunctionContext& ctx) override {
+    ujfunc::FunctionReturn OnRun(FunctionContext& ctx) override {
         auto vColors = GetInParam<ColorsAttr>(ctx, "palette");
         auto vOut = GetOutParam<BitmapAttr>(ctx, "pic");
         vOut->setFromUri("/bmpuri-002");
         Bitmap* bmp = vOut->createBitmap();
         LOG(INFO) << "DrawColorBandsFn created bitmap with id: " << bmp->id() << ", width: " << bmp->width() << ", height: " << bmp->height();
         drawColorBands(bmp, vColors->asColorsSpan());
-        bmp->flush();
-        return true;
+        vOut->Capture();
+        return ctx.ReturnDone();
     }
 
 private:
@@ -169,11 +165,15 @@ public:
         return true;
     }
 
-    absl::StatusOr<bool> OnRun(FunctionContext& ctx) override {
+    ujfunc::FunctionReturn OnRun(FunctionContext& ctx) override {
         auto bmpIn = GetInParam<BitmapAttr>(ctx, "bmpIn");
         auto bmpOut = GetOutParam<BitmapAttr>(ctx, "bmpOut");
 
-        ASSIGN_OR_RETURN(const Bitmap* bmpInPtr, bmpIn->readBitmap());
+        auto bmpInPtrOr = bmpIn->readBitmap();
+        if (!bmpInPtrOr.ok()) {
+            return ctx.ReturnStatus(std::move(bmpInPtrOr).status());
+        }
+        const Bitmap* bmpInPtr = std::move(bmpInPtrOr).value();
         Bitmap* bmpOutPtr = bmpOut->createBitmap();
 
         const uint8_t* inPixels = bmpInPtr->bytes();
@@ -210,7 +210,8 @@ public:
                 outPixels[dstIdx + 3] = inPixels[srcIdx + 3];     // A (keep alpha unchanged)
             }
         }
-        return true;
+        bmpOut->Capture();
+        return ctx.ReturnDone();
     }
 private:
 };

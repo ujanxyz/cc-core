@@ -9,7 +9,8 @@
 #include "absl/flags/reflection.h"
 
 #include "cppschema/wasm/js_api_bridge.h"
-#include "ujcore/api_schemas/GraphEngineApi.h"
+#include "ujcore/api_schemas/FlowApi.h"
+#include "ujcore/api_schemas/GraphApi.h"
 #include "ujcore/base/BuildInfo.h"
 
 #include "ujcore/wasm/JsBitmapPool.h"
@@ -67,5 +68,6 @@ EMSCRIPTEN_BINDINGS(EntrypointModule) {
 
     emscripten::function("getBuildInfo", &get_build_info);
     emscripten::function("parseAbseilFlags", &parse_abseil_flags);
-    cppschema::jsbridge::CreateJsApiMethods<ujcore::GraphEngineApi>("GraphEngineApi");
+    cppschema::jsbridge::CreateJsApiMethods<ujcore::FlowApi>("FlowApi");
+    cppschema::jsbridge::CreateJsApiMethods<ujcore::GraphApi>("GraphApi");
 }

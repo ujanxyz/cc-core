@@ -5,14 +5,22 @@ package(
 )
 
 cc_library(
-    name = "GraphEngineApi",
-    hdrs = ["GraphEngineApi.h"],
+    name = "FlowApi",
+    hdrs = ["FlowApi.h"],
+    deps = [
+        "//ujcore/graph:AssetInfo",
+        "@cppschema//:apispec",
+    ],
+)
+
+cc_library(
+    name = "GraphApi",
+    hdrs = ["GraphApi.h"],
     deps = [
         "//ujcore/graph:GraphTypes",
         "//ujcore/graph:AssetInfo",
         "//ujcore/graph:FunctionInfo",
         "//ujcore/graph:ResourceInfo",
         "@cppschema//:apispec",
-        "@cppschema//:js_converter",
     ],
 )

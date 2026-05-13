@@ -5,10 +5,43 @@ package(
 )
 
 cc_library(
-    name = "GraphEngineApiBackend",
-    srcs = ["GraphEngineApiBackend.cpp"],
+    name = "SharedStore",
+    srcs = ["SharedStore.cpp"],
+    hdrs = ["SharedStore.h"],
     deps = [
-        "//ujcore/api_schemas:GraphEngineApi",
+        "//ujcore/graph:GraphBuilder",
+        "//ujcore/graph:GraphState",
+        "//ujcore/graph:TopoSorter",
+        "//ujcore/pipeline:PipelineRunner",
+    ],
+)
+
+cc_library(
+    name = "FlowApiBackend",
+    srcs = ["FlowApiBackend.cpp"],
+    deps = [
+        ":SharedStore",
+        "//ujcore/api_schemas:FlowApi",
+        "@cppschema//:backend_bridge",
+    ],
+    alwayslink = 1,
+)
+
+cc_test(
+    name = "FlowApiBackend_Test",
+    srcs = ["FlowApiBackend_Test.cpp"],
+    deps = [
+        ":FlowApiBackend",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "GraphApiBackend",
+    srcs = ["GraphApiBackend.cpp"],
+    deps = [
+        ":SharedStore",
+        "//ujcore/api_schemas:GraphApi",
         "//ujcore/graph:GraphState",
         "//ujcore/graph:GraphStateJson",
         "//ujcore/function:AttributeDataType",
@@ -24,10 +57,10 @@ cc_library(
 )
 
 cc_test(
-    name = "GraphEngineApiBackend_Test",
-    srcs = ["GraphEngineApiBackend_Test.cpp"],
+    name = "GraphApiBackend_Test",
+    srcs = ["GraphApiBackend_Test.cpp"],
     deps = [
-        ":GraphEngineApiBackend",
+        ":GraphApiBackend",
         "//ujcore/graph:AbslStringifies",
         "//ujcore/testing:TestFunction",
         "@abseil-cpp//absl/strings",

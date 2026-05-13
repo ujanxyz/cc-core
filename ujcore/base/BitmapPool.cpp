@@ -42,10 +42,6 @@ public:
     return ownedBytes_.get();
   }
 
-  void flush() override {
-    // No-op for DummyBitmap
-  }
-
   void onCapture(const CaptureInfo& info) override {
     // No-op for DummyBitmap
   }

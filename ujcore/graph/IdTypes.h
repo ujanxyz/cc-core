@@ -27,6 +27,13 @@ struct SlotId {
     DEFINE_STRUCT_VISITOR_FUNCTION(parent, name);
 };
 
+struct EncodedSlotId {
+    std::string parent;  // parent node id encoded as string
+    std::string name;  // slot name
+
+    DEFINE_STRUCT_VISITOR_FUNCTION(parent, name);
+};
+
 }  // namespace ujcore
 
 template <>

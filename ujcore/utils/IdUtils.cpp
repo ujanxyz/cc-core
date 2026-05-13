@@ -19,7 +19,9 @@ std::string to_kBase62Chars(uint32_t value) noexcept {
         value /= 62;
     }
     std::reverse(result.begin(), result.end());
-    return result;
+
+    // Fix output length to 6 chars:
+    return std::string(6 - result.size(), '0') + result;
 }
 
 uint64_t from_kBase62Chars(const std::string& str) noexcept {

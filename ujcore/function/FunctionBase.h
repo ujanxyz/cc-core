@@ -1,7 +1,7 @@
 #pragma once
 
-#include "absl/status/statusor.h"
 #include "ujcore/function/FunctionContext.h"
+#include "ujcore/function/FunctionReturn.h"
 #include "ujcore/function/FunctionSpec.h"
 
 class FunctionBase {
@@ -13,5 +13,6 @@ public:
     }
 
     virtual bool OnInit(FunctionContext& ctx) = 0;
-    virtual absl::StatusOr<bool> OnRun(FunctionContext& ctx) = 0;
+
+    virtual ujfunc::FunctionReturn OnRun(FunctionContext& ctx) = 0;
 };

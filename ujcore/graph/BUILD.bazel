@@ -48,7 +48,6 @@ cc_library(
         ":GraphUtils",
         ":TopoSorter",
         "//ujcore/function:FunctionRegistry",
-        "//ujcore/function:FunctionSpec",
         "//ujcore/utils:IdUtils",
         "//ujcore/utils:status_macros",
         "@abseil-cpp//absl/status",

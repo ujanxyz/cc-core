@@ -63,6 +63,7 @@ cc_library(
     deps = [
         ":AttributeData",
         ":FuncParamAccess",
+        ":FunctionReturn",
         ":ResourceContext",
         "//ujcore/graph:IdTypes",
     ],
@@ -97,6 +98,14 @@ cc_test(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "FunctionReturn",
+    hdrs = ["FunctionReturn.h"],
+    deps = [
+        "@abseil-cpp//absl/status",
     ],
 )
 

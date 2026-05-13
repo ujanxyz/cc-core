@@ -17,12 +17,12 @@
 * Uses Bazel (bazelmod).
 * Each directory has a `BILD.bazel` file, containing:
   - `default_visibility = ["//:__subpackages__"],`
-  - One build rule per library, having a pair of header (`.hpp`) and  source (`.cpp`).
+  - One build rule per library, having a pair of header (`.h`) and  source (`.cpp`).
   - Snake case file names. If the API is a class, use the same name in snake case.
-    Example: A class `NodeCreator` is defined in `node_creator.hpp` and `node_creator.cpp`.
+    Example: A class `NodeCreator` is defined in `NodeCreator.h` and `NodeCreator.cpp`.
 
 # Unit tests
 
-* Always have unit test for libraries. The test file name will be like `node_creator_test.cpp`.
+* Always have unit test for libraries. The test file name will be like `NodeCreator_Test.cpp`.
 * Use GoogleTest framework for unit-testing. Links `@googletest//:gtest_main` in the test target.
 * Contain the entire test code inside an anomymous namespace inside the app namespace.

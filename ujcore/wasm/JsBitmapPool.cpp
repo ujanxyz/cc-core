@@ -124,10 +124,6 @@ public:
     return wrappedBytes_.get();
   }
 
-  void flush() override {
-    CHECK(false) << "Called deprecated JsHeapBackedBitmap::Flush()";
-  }
-
   void onCapture(const CaptureInfo& info) override {
     JsOnCaptureBitmap(info.slotIdStr.c_str(), info.modeStr.c_str(), jsImageData_.as_handle());
   }

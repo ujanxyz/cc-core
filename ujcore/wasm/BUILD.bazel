@@ -37,8 +37,10 @@ cc_binary(
     ],
     deps = [
         ":JsBitmapPool",
-         "//ujcore/api_schemas:GraphEngineApi",
-         "//ujcore/api_backends:GraphEngineApiBackend",
+         "//ujcore/api_schemas:FlowApi",
+         "//ujcore/api_schemas:GraphApi",
+         "//ujcore/api_backends:FlowApiBackend",
+         "//ujcore/api_backends:GraphApiBackend",
          "//ujcore/base:BuildInfo",
          # This pulls all the actual function definitions.
          "//ujcore/functions:all_functions",

@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <type_traits>
 
 #include "cppschema/common/strong_types.h"
 
@@ -17,6 +18,15 @@ namespace ujcore {
 std::string EncodeStringId(uint32_t id);
 
 /**
+ * Works with any strong id with uint32_t as underlying. i.e. must be defined with:
+ * DEFINE_STRONG_TYPE(Name, uint32_t)
+ */
+template<class Tag>
+std::string EncodeStringId(const StrongType<uint32_t, Tag> id) {
+    return EncodeStringId(id.value);
+}
+
+/**
  * Decodes a Base62 string produced by EncodeStringId back to the original ID.
  *
  * The algorithm converts the string from Base62 to a 32-bit value and applies
@@ -24,13 +34,10 @@ std::string EncodeStringId(uint32_t id);
  */
 uint32_t DecodeStringId(const std::string& str);
 
-// Works with any strrong id with uint32_t as underlying. i.e. must be defined with:
-// DEFINE_STRONG_TYPE(Name, uint32_t)
-//
-
-template<class Tag>
-std::string EncodeStringId(const StrongType<uint32_t, Tag> id) {
-    return EncodeStringId(id.value);
+template<class STRONG_TYPE>
+STRONG_TYPE DecodeStringIdAsStrongType(const std::string& str) {
+    static_assert(std::is_same_v<typename STRONG_TYPE::value_type, uint32_t>, "Strong type must have uint32_t as underlying type");
+    return STRONG_TYPE(DecodeStringId(str));
 }
 
 }  // namespace ujcore

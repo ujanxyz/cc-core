@@ -1,4 +1,4 @@
-// bazel test //ujcore/api_backends:GraphEngineApiBackend_Test
+// bazel test //ujcore/api_backends:GraphApiBackend_Test
 
 #include "cppschema/apispec/api_registry.h"
 
@@ -7,7 +7,7 @@
 #include "cppschema/common/types.h"
 #include "gtest/gtest.h"
 #include "gmock/gmock-matchers.h"
-#include "ujcore/api_schemas/GraphEngineApi.h"
+#include "ujcore/api_schemas/GraphApi.h"
 #include "ujcore/graph/AbslStringifies.h"
 #include "ujcore/graph/FunctionInfo.h"
 #include "ujcore/utils/IdUtils.h"
@@ -19,15 +19,15 @@ using ::cppschema::ApiRegistry;
 using ::testing::ElementsAre;
 using ::ujcore::FunctionInfo;
 
-using GetGraphResponse = GraphEngineApi::GetGraphResponse;
-using CreateNodeRequest = GraphEngineApi::CreateNodeRequest;
-using CreateNodeResponse = GraphEngineApi::CreateNodeResponse;
-using AddEdgeRequest = GraphEngineApi::AddEdgeRequest;
-using AddEdgeResponse = GraphEngineApi::AddEdgeResponse;
-using DeleteElementsRequest = GraphEngineApi::DeleteElementsRequest;
-using DeleteElementsResponse = GraphEngineApi::DeleteElementsResponse;
+using GetGraphResponse = GraphApi::GetGraphResponse;
+using CreateNodeRequest = GraphApi::CreateNodeRequest;
+using CreateNodeResponse = GraphApi::CreateNodeResponse;
+using AddEdgeRequest = GraphApi::AddEdgeRequest;
+using AddEdgeResponse = GraphApi::AddEdgeResponse;
+using DeleteElementsRequest = GraphApi::DeleteElementsRequest;
+using DeleteElementsResponse = GraphApi::DeleteElementsResponse;
 
-TEST(GraphEngineApiBackendTest, Basic) {
+TEST(GraphApiBackendTest, Basic) {
     VoidType kVoid;
     const std::string node1_alnumid = EncodeStringId(NodeId(1));
     const std::string node2_alnumid = EncodeStringId(NodeId(2));
@@ -39,13 +39,13 @@ TEST(GraphEngineApiBackendTest, Basic) {
         },
     };
     
-    CreateNodeResponse create_resp = ApiRegistry<GraphEngineApi>::Get().template Call<CreateNodeRequest, CreateNodeResponse>("createNode", create_req);
+    CreateNodeResponse create_resp = ApiRegistry<GraphApi>::Get().template Call<CreateNodeRequest, CreateNodeResponse>("createNode", create_req);
     ASSERT_TRUE(create_resp.nodeInfo.has_value());
     EXPECT_EQ(
         absl::StrCat(*create_resp.nodeInfo),
         absl::StrCat("(n#1:", node1_alnumid, "; fn:/testing/displace-point; ins:p,dx; outs:fp)"));
 
-    create_resp = ApiRegistry<GraphEngineApi>::Get().template Call<CreateNodeRequest, CreateNodeResponse>("createNode", create_req);
+    create_resp = ApiRegistry<GraphApi>::Get().template Call<CreateNodeRequest, CreateNodeResponse>("createNode", create_req);
     ASSERT_TRUE(create_resp.nodeInfo.has_value());
     EXPECT_EQ(
         absl::StrCat(*create_resp.nodeInfo),
@@ -64,20 +64,20 @@ TEST(GraphEngineApiBackendTest, Basic) {
         .targetSlot = "p",
     };
 
-    AddEdgeResponse edge_resp1 = ApiRegistry<GraphEngineApi>::Get().template Call<AddEdgeRequest, AddEdgeResponse>("addEdge", add_edge_req1);
+    AddEdgeResponse edge_resp1 = ApiRegistry<GraphApi>::Get().template Call<AddEdgeRequest, AddEdgeResponse>("addEdge", add_edge_req1);
     ASSERT_TRUE(edge_resp1.edgeInfo.has_value());
     EXPECT_EQ(
         absl::StrCat(*edge_resp1.edgeInfo),
         absl::StrCat("(", node2_alnumid, "$fp--", node1_alnumid, "$p: [2/fp] -> [1/p])"));
 
-    AddEdgeResponse edge_resp2 = ApiRegistry<GraphEngineApi>::Get().template Call<AddEdgeRequest, AddEdgeResponse>("addEdge", add_edge_req2);
+    AddEdgeResponse edge_resp2 = ApiRegistry<GraphApi>::Get().template Call<AddEdgeRequest, AddEdgeResponse>("addEdge", add_edge_req2);
     ASSERT_TRUE(edge_resp2.edgeInfo.has_value());
     EXPECT_EQ(
         absl::StrCat(*edge_resp2.edgeInfo),
         absl::StrCat("(", node1_alnumid, "$fp--", node2_alnumid, "$p: [1/fp] -> [2/p])"));
 
 
-    GetGraphResponse graph = ApiRegistry<GraphEngineApi>::Get().template Call<VoidType, GetGraphResponse>("getGraph", kVoid);
+    GetGraphResponse graph = ApiRegistry<GraphApi>::Get().template Call<VoidType, GetGraphResponse>("getGraph", kVoid);
     ASSERT_EQ(graph.nodeInfos.size(), 2);
     ASSERT_EQ(graph.edgeInfos.size(), 2);
     ASSERT_EQ(graph.slotInfos.size(), 6);
@@ -90,7 +90,7 @@ TEST(GraphEngineApiBackendTest, Basic) {
         .nodeIds = {NodeId(1)},
         .edgeIds = {},
     };
-    DeleteElementsResponse deleteResp = ApiRegistry<GraphEngineApi>::Get().template Call<DeleteElementsRequest, DeleteElementsResponse>("deleteElements", deleteReq1);
+    DeleteElementsResponse deleteResp = ApiRegistry<GraphApi>::Get().template Call<DeleteElementsRequest, DeleteElementsResponse>("deleteElements", deleteReq1);
     EXPECT_THAT(deleteResp.nodeIds, ElementsAre(NodeId(1)));
     EXPECT_THAT(deleteResp.edgeIds, ElementsAre());
 

@@ -58,10 +58,7 @@ absl::StatusOr<std::vector<grph::GraphRunOutput>> PipelineRunner::RunPipeline() 
         }
         else if (std::holds_alternative<NodeRunStep>(step)) {
             const NodeRunStep& nodeStep = std::get<NodeRunStep>(step);
-            ASSIGN_OR_RETURN(bool runStatus, nodeStep.fnNode->RunFunction());
-            if (!runStatus) {
-                return absl::InternalError("Node run failed");
-            }
+            RETURN_IF_ERROR(nodeStep.fnNode->RunFunction());
         }
         else if (std::holds_alternative<GraphIOStep>(step)) {
             const GraphIOStep& ioStep = std::get<GraphIOStep>(step);

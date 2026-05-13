@@ -417,8 +417,8 @@ absl::StatusOr<std::string> EncodeGraphState(const GraphState& state) {
     json j;
 
     j["idgenState"] = {
-        {"nextNodeId", state.idgen_state.next_node_id},
-        {"nextEdgeId", state.idgen_state.next_edge_id},
+        {"lastNodeId", state.idgen_state.lastNodeId},
+        {"lastEdgeId", state.idgen_state.lastEdgeId},
     };
 
     json topoSortState;
@@ -456,17 +456,17 @@ absl::StatusOr<GraphState> DecodeGraphState(const std::string& encoded) {
         if (!idgenState.is_object()) {
             return absl::InvalidArgumentError("idgenState must be object");
         }
-        if (idgenState.contains("nextNodeId")) {
-            if (!idgenState["nextNodeId"].is_number_unsigned()) {
-                return absl::InvalidArgumentError("nextNodeId must be unsigned integer");
+        if (idgenState.contains("lastNodeId")) {
+            if (!idgenState["lastNodeId"].is_number_unsigned()) {
+                return absl::InvalidArgumentError("lastNodeId must be unsigned integer");
             }
-            state.idgen_state.next_node_id = idgenState["nextNodeId"].get<uint32_t>();
+            state.idgen_state.lastNodeId = idgenState["lastNodeId"].get<uint32_t>();
         }
-        if (idgenState.contains("nextEdgeId")) {
-            if (!idgenState["nextEdgeId"].is_number_unsigned()) {
-                return absl::InvalidArgumentError("nextEdgeId must be unsigned integer");
+        if (idgenState.contains("lastEdgeId")) {
+            if (!idgenState["lastEdgeId"].is_number_unsigned()) {
+                return absl::InvalidArgumentError("lastEdgeId must be unsigned integer");
             }
-            state.idgen_state.next_edge_id = idgenState["nextEdgeId"].get<uint32_t>();
+            state.idgen_state.lastEdgeId = idgenState["lastEdgeId"].get<uint32_t>();
         }
     }
 

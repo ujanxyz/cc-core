@@ -17,7 +17,23 @@
 
 namespace ujcore {
 
-struct GraphEngineApi {
+struct GraphApi {
+    // API: getGraphMeta
+    struct GetGraphMetaResponse {
+        uint32_t lastNodeId = 0;
+        uint32_t lastEdgeId = 0;
+
+        DEFINE_STRUCT_VISITOR_FUNCTION(lastNodeId, lastEdgeId);
+    };
+
+    // API: setGraphMeta
+    struct SetGraphMetaRequest {
+        uint32_t lastNodeId = 0;
+        uint32_t lastEdgeId = 0;
+
+        DEFINE_STRUCT_VISITOR_FUNCTION(lastNodeId, lastEdgeId);
+    };
+
     // API: getGraph
     struct GetGraphResponse {
         std::vector<grph::NodeInfo> nodeInfos;
@@ -29,7 +45,13 @@ struct GraphEngineApi {
     // API: createNode
     struct CreateNodeRequest {
         FunctionInfo func;
-        DEFINE_STRUCT_VISITOR_FUNCTION(func);
+
+        // If provided, the created node will have this id. Otherwise, a new id will be generated.
+        // This is used when the graph is being reconstructed from a serialized state, then we
+        // want to preserve the original node ids.
+        std::optional<std::string> overrideId;
+
+        DEFINE_STRUCT_VISITOR_FUNCTION(func, overrideId);
     };
     struct CreateNodeResponse {
         std::optional<grph::NodeInfo> nodeInfo;
@@ -50,7 +72,10 @@ struct GraphEngineApi {
     struct CreateIONodeRequest {
         std::string dtype;
         bool isOutput = false;  // if true, it's an output node.
-        DEFINE_STRUCT_VISITOR_FUNCTION(dtype, isOutput);
+        // If provided, the created node will have this id. Otherwise, a new id will be generated.
+        std::optional<std::string> overrideId;
+
+        DEFINE_STRUCT_VISITOR_FUNCTION(dtype, isOutput, overrideId);
     };
     struct CreateIONodeResponse {
         std::optional<grph::NodeInfo> nodeInfo;
@@ -60,20 +85,25 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(nodeInfo, nodeState, slotInfo, slotState);
     };
 
-    // API: addEdge
-    struct AddEdgeRequest {
-        NodeId sourceNode;
-        std::string sourceSlot;
-        NodeId targetNode;
-        std::string targetSlot;
-        DEFINE_STRUCT_VISITOR_FUNCTION(sourceNode, sourceSlot, targetNode, targetSlot);
+    // API: addEdges
+    struct AddEdgesRequest {
+        struct Entry {
+            EncodedSlotId source;
+            EncodedSlotId target;
+
+            std::optional<uint32_t> overrideEdgeId;
+
+            DEFINE_STRUCT_VISITOR_FUNCTION(source, target, overrideEdgeId);
+        };
+        std::vector<Entry> entries;
+
+        DEFINE_STRUCT_VISITOR_FUNCTION(entries);
     };
-    struct AddEdgeResponse {
-        std::optional<grph::EdgeInfo> edgeInfo;
-        std::optional<grph::SlotState> sourceState;
-        std::optional<grph::SlotState> targetState;
-        DEFINE_STRUCT_VISITOR_FUNCTION(edgeInfo, sourceState, targetState);
-    };
+    struct AddEdgesResponse {
+        std::vector<grph::EdgeInfo> edgeInfos;
+
+        DEFINE_STRUCT_VISITOR_FUNCTION(edgeInfos);
+     };
 
     // API: deleteElements
     struct DeleteElementsRequest {
@@ -120,7 +150,8 @@ struct GraphEngineApi {
     // API: getSlotStates
    struct GetSlotStatesRequest {
         std::vector<SlotId> slotIds;
-        DEFINE_STRUCT_VISITOR_FUNCTION(slotIds);
+        std::vector<EncodedSlotId> slotIdsEncoded;
+        DEFINE_STRUCT_VISITOR_FUNCTION(slotIds, slotIdsEncoded);
     };
     struct GetSlotStatesResponse {
         std::vector<std::pair<SlotId, grph::SlotState>> slotStates;
@@ -198,12 +229,15 @@ struct GraphEngineApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(resources);
     };
 
+
+    cppschema::ApiStub<VoidType, GetGraphMetaResponse> getGraphMeta;
+    cppschema::ApiStub<SetGraphMetaRequest, VoidType> setGraphMeta;
     cppschema::ApiStub<VoidType, GetGraphResponse> getGraph;
     cppschema::ApiStub<VoidType, std::string> encodeGraph;
     cppschema::ApiStub<std::string, VoidType> decodeGraph;
     cppschema::ApiStub<CreateNodeRequest, CreateNodeResponse> createNode;
     cppschema::ApiStub<CreateIONodeRequest, CreateIONodeResponse> createIONode;
-    cppschema::ApiStub<AddEdgeRequest, AddEdgeResponse> addEdge;
+    cppschema::ApiStub<AddEdgesRequest, AddEdgesResponse> addEdges;
     cppschema::ApiStub<DeleteElementsRequest, DeleteElementsResponse> deleteElements;
     cppschema::ApiStub<ValidateEdgeRequest, ValidateEdgeResponse> validateEdge;
     cppschema::ApiStub<GetNodeStatesRequest, GetNodeStatesResponse> getNodeStates;
@@ -216,12 +250,14 @@ struct GraphEngineApi {
     cppschema::ApiStub<VoidType, GetResourcesResponse> getResources;
 
     DEFINE_API_VISITOR_FUNCTION(
+        getGraphMeta,
+        setGraphMeta,
         getGraph,
         encodeGraph,
         decodeGraph,
         createNode,
         createIONode,
-        addEdge,
+        addEdges,
         deleteElements,
         validateEdge,
         getNodeStates,

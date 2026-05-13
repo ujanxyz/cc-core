@@ -5,6 +5,7 @@
 #include "ujcore/graph/IdTypes.h"
 #include "ujcore/function/AttributeData.h"
 #include "ujcore/function/FuncParamAccess.h"
+#include "ujcore/function/FunctionReturn.h"
 #include "ujcore/function/ResourceContext.h"
 
 class FunctionContextParent {
@@ -50,6 +51,50 @@ public:
         return parent_->GetResourceContext();
     }
 
-private:
+    // Helpers related to function return.
+
+    // ---- DONE ----
+    [[nodiscard]]
+    ujfunc::FunctionReturn ReturnDone() const {
+        return ujfunc::FunctionReturn{
+        .code = ujfunc::ReturnCode::DONE
+        };
+    }
+
+    // ---- NO DATA ----
+    [[nodiscard]]
+    ujfunc::FunctionReturn ReturnNoData(std::vector<std::string> missing) const {
+        return ujfunc::FunctionReturn{
+        .code = ujfunc::ReturnCode::NO_DATA,
+        .noData = ujfunc::NoDataInfo{ std::move(missing) }
+        };
+    }
+
+    // ---- AWAIT ----
+    [[nodiscard]]
+    ujfunc::FunctionReturn ReturnAwait(std::string channel,
+                                std::string token) const {
+        return ujfunc::FunctionReturn{
+        .code = ujfunc::ReturnCode::AWAIT,
+        .await = ujfunc::AwaitInfo{
+            .channel = std::move(channel),
+            .token = std::move(token),
+        }
+        };
+    }
+
+    // ---- ERROR: from absl::Status ----
+    [[nodiscard]]
+    ujfunc::FunctionReturn ReturnStatus(absl::Status&& status) const {
+        if (status.ok()) {
+            return ReturnDone();
+        }
+        return ujfunc::FunctionReturn{
+            .code = ujfunc::ReturnCode::ERROR,
+            .error = std::move(status),
+        };
+    }
+  
+  private:
     FunctionContextParent* const parent_;
 };

@@ -4,7 +4,7 @@
 #include <memory>
 #include <string_view>
 
-#include "absl/status/statusor.h"
+#include "absl/status/status.h"
 #include "ujcore/graph/IdTypes.h"
 #include "ujcore/graph/GraphTypes.h"
 #include "ujcore/function/AttributeData.h"
@@ -32,8 +32,8 @@ public:
       resourceCtx_ = resourceCtx;
   }
 
-  // Execute the function stage in the pipeline.
-  absl::StatusOr<bool> RunFunction();
+    // Execute the function stage in the pipeline.
+    absl::Status RunFunction();
 
   // Methods implementing `FunctionContextParent`.
 

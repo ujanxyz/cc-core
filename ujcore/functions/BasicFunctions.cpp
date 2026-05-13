@@ -1,6 +1,5 @@
 #include "absl/log/check.h"
 #include "absl/log/log.h"
-#include "absl/status/statusor.h"
 #include "ujcore/function/AttributeDataType.h"
 #include "ujcore/function/FunctionBase.h"
 #include "ujcore/function/FunctionRegistry.h"
@@ -35,10 +34,10 @@ public:
         return true;
     }
 
-    absl::StatusOr<bool> OnRun(FunctionContext& ctx) override {
+    ujfunc::FunctionReturn OnRun(FunctionContext& ctx) override {
         auto vOut = GetOutParam<FloatListAttr>(ctx, "v");
         vOut->setFromFloatSpan(std::vector<float>({3.141596f}));
-        return true;
+        return ctx.ReturnDone();
     }
 };
 
@@ -63,11 +62,11 @@ public:
         return true;
     }
 
-    absl::StatusOr<bool> OnRun(FunctionContext& ctx) override {
+    ujfunc::FunctionReturn OnRun(FunctionContext& ctx) override {
         ctx.DumpDebugInfo();
         auto pOut = GetOutParam<Points2DAttr>(ctx, "p");
         pOut->appendPoint(150.5f, 250.5f);
-        return true;
+        return ctx.ReturnDone();
     }
 };
 
@@ -94,7 +93,7 @@ public:
         return true;
     }
 
-    absl::StatusOr<bool> OnRun(FunctionContext& ctx) override {
+    ujfunc::FunctionReturn OnRun(FunctionContext& ctx) override {
         auto pIn = GetInParam<Points2DAttr>(ctx, "p");
         auto dx = GetInParam<FloatListAttr>(ctx, "dx");
 
@@ -106,7 +105,7 @@ public:
 
         auto fpOut = GetOutParam<Points2DAttr>(ctx, "fp");
         fpOut->appendPoint(p.x + dxVal, p.y);
-        return true;
+        return ctx.ReturnDone();
     }
 };
 

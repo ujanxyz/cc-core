@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 
-#include "absl/status/statusor.h"
 #include "gtest/gtest.h"
 #include "ujcore/function/FunctionBase.h"
 #include "ujcore/function/FunctionRegistry.h"
@@ -19,9 +18,9 @@ public:
         return true;
     }
 
-    absl::StatusOr<bool> OnRun(FunctionContext& ctx) override {
+    ujfunc::FunctionReturn OnRun(FunctionContext& ctx) override {
         (void)ctx;
-        return true;
+        return {.code = ujfunc::ReturnCode::DONE};
     }
 };
 

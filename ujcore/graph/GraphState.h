@@ -9,8 +9,8 @@
 namespace ujcore {
 
 struct IdGeneratorState {
-    uint32_t next_node_id {0};
-    uint32_t next_edge_id {0};
+    uint32_t lastNodeId {0};
+    uint32_t lastEdgeId {0};
 };
 
 struct GraphConfig {

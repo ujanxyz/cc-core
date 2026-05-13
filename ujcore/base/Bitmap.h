@@ -31,8 +31,8 @@ public:
     virtual uint8_t* bytes() = 0;
     virtual const uint8_t* bytes() const = 0;
 
-    // Invoked after one stage has done modifying the content.
-    virtual void flush() = 0;
+    // Should be invoked after one stage has done modifying the content.
+    // This syncs the UI previews.
     virtual void onCapture(const CaptureInfo& info) = 0;
 
     // Helper function to calculate the total byte size of the bitmap.
