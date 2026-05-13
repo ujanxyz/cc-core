@@ -44,6 +44,9 @@ absl::Status PipelineIONode::InternalRunAsInput() {
     const std::string& encoded = encodedInput_->value().payload;
     VLOG(1) << "Decoding input for node " << selfId_.value << " with dtype " << AttributeDataTypeToStr(dtype_) << ", data: " << encoded;
     std::shared_ptr<void> decodedData = (*decodeFnPtr)(encoded, resourceCtx_);
+
+    // TODO: Clear SetSlotIdStr
+
     if (decodedData == nullptr) {
         return absl::InternalError("Failed to decode graph input data for node " + std::to_string(selfId_.value));
     }

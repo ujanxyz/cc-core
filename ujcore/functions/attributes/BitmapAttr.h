@@ -70,8 +70,9 @@ public:
             if (storage->bitmap != nullptr) {
                 const std::string slotIdStr = resourceCtx->GetSlotIdStr();
                 std::cout << "[BitmapAttr] Capturing bitmap for slot: " << slotIdStr << std::endl;
+
                 storage->bitmap->onCapture(Bitmap::CaptureInfo {
-                    .slotIdStr = slotIdStr,
+                    .slotIdStr = encodedSlotId,
                     .modeStr = "function",
                 });
             }

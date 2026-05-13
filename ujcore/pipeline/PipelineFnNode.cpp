@@ -44,6 +44,8 @@ absl::Status PipelineFnNode::RunFunction() {
         }
     }
 
+    // resourceCtx_->SetSlotIdStr(absl::StrCat(selfId_.value, ":", "$out"));
+
     const ujfunc::FunctionReturn result = funcInstance_->OnRun(*functionCtx_);
     if (result.IsDone() || result.IsAwait()) {
         return absl::OkStatus();
