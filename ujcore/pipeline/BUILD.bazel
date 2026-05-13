@@ -38,6 +38,19 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "PipelineBuilder_Test",
+    srcs = ["PipelineBuilder_Test.cpp"],
+    deps = [
+        ":PipelineBuilder",
+        "//ujcore/graph:GraphTypes",
+        "//ujcore/graph:IdTypes",
+        "//ujcore/testing:TestFunction",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "PipelineFnNode",
     srcs = ["PipelineFnNode.cpp"],

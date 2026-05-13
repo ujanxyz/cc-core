@@ -91,7 +91,7 @@ void SetupGraphState(GraphState& graph) {
     SlotState slotState1 = {
         // Node 1, Slot "v"
         .inEdges = {},
-        .outEdges = {},
+        .outEdges = {EdgeId(1)},  // edge1 goes out
         .encodedData = EncodedData {
             .payload = "2.12f,5.75f",
         },
@@ -99,18 +99,18 @@ void SetupGraphState(GraphState& graph) {
     SlotState slotState2 = {
         // Node 2, Slot "p"
         .inEdges = {},
-        .outEdges = {},
+        .outEdges = {EdgeId(2)},  // edge2 goes out
         .encodedData = std::nullopt,
     };
     SlotState slotState3 = {
         // Node 3, Slot "p"
-        .inEdges = {},
+        .inEdges = {EdgeId(2)},  // edge2 comes in
         .outEdges = {},
         .encodedData = std::nullopt,
     };
     SlotState slotState4 = {
         // Node 3, Slot "dx"
-        .inEdges = {},
+        .inEdges = {EdgeId(1)},  // edge1 comes in
         .outEdges = {},
         .encodedData = std::nullopt,
     };
@@ -150,6 +150,12 @@ void SetupGraphState(GraphState& graph) {
         {edge2.id, edge2},
     };
 
+    graph.nodeStates = {
+        {NodeId(1), grph::NodeState{}},
+        {NodeId(2), grph::NodeState{}},
+        {NodeId(3), grph::NodeState{}},
+    };
+
     graph.topoSortState = {
         .sortOrder = {
             NodeId(1),
@@ -170,9 +176,8 @@ protected:
 
 TEST_F(PipelineRunnerTest, Basic) {
     PipelineRunner subject;
-    ABSL_ASSERT_OK(subject.RebuildFromState(graph_));
+    ABSL_EXPECT_OK(subject.RebuildFromState(graph_));
     ABSL_EXPECT_OK(subject.RunPipeline());
-    FAIL();
 }
 
 }  // namespace

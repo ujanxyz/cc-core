@@ -17,8 +17,6 @@ namespace ujcore {
 
 class PipelineRunner final {
 public:
-    using ExecutionStep = GraphPipeline::ExecutionStep;
-
     const BitmapPool* GetBitmapPool() const {
         return bitmapPool_.get();
     }

@@ -11,10 +11,7 @@
 namespace ujcore {
 namespace {
 
-using NodeRunStep = GraphPipeline::NodeRunStep;
 using NodeStage = GraphPipeline::NodeStage;
-using EdgePropagateStep = GraphPipeline::EdgePropagateStep;
-using GraphIOStep = GraphPipeline::GraphIOStep;
 
 // Iterate over the nodes in the pipeline, and assign the resource context.
 void InternalAssignResourceCtx(std::map<NodeId, NodeStage>& nodeStages, ResourceContext* resourceCtx) {
@@ -46,9 +43,10 @@ absl::StatusOr<std::vector<AssetInfo>> PipelineRunner::RebuildFromState(const Gr
 absl::StatusOr<std::vector<grph::GraphRunOutput>> PipelineRunner::RunPipeline() {
     std::vector<grph::GraphRunOutput> result;
 
-    for (auto& step : pipeline_.execSteps) {
-        if (std::holds_alternative<EdgePropagateStep>(step)) {
-            const auto& edgeStep = std::get<EdgePropagateStep>(step);
+    // Execute each node group in topological order.
+    for (const auto& group : pipeline_.nodeGroups) {
+        // Execute incoming edge propagation steps.
+        for (const auto& edgeStep : group.incomingTransfers) {
             edgeStep.dstAttr->dtype = edgeStep.srcAttr->dtype;
             edgeStep.dstAttr->data = edgeStep.srcAttr->data;
             if (edgeStep.dstAttr->data == nullptr) {
@@ -56,13 +54,14 @@ absl::StatusOr<std::vector<grph::GraphRunOutput>> PipelineRunner::RunPipeline() 
                     << AttributeDataTypeToStr(edgeStep.dstAttr->dtype);
             }
         }
-        else if (std::holds_alternative<NodeRunStep>(step)) {
-            const NodeRunStep& nodeStep = std::get<NodeRunStep>(step);
-            RETURN_IF_ERROR(nodeStep.fnNode->RunFunction());
+
+        // Execute the node step (either function node or IO node).
+        if (std::holds_alternative<std::reference_wrapper<PipelineFnNode>>(group.nodeStep)) {
+            PipelineFnNode& fnNode = std::get<std::reference_wrapper<PipelineFnNode>>(group.nodeStep).get();
+            RETURN_IF_ERROR(fnNode.RunFunction());
         }
-        else if (std::holds_alternative<GraphIOStep>(step)) {
-            const GraphIOStep& ioStep = std::get<GraphIOStep>(step);
-            PipelineIONode& ioNode = *ioStep.ioNode;
+        else if (std::holds_alternative<std::reference_wrapper<PipelineIONode>>(group.nodeStep)) {
+            PipelineIONode& ioNode = std::get<std::reference_wrapper<PipelineIONode>>(group.nodeStep).get();
             RETURN_IF_ERROR(ioNode.RunAsIO());
             if (ioNode.isOutputStage()) {
                 // Collect the output values from the graph output nodes.
@@ -71,9 +70,10 @@ absl::StatusOr<std::vector<grph::GraphRunOutput>> PipelineRunner::RunPipeline() 
             }
         }
         else {
-            LOG(FATAL) << "Invalid step";
+            LOG(FATAL) << "Invalid node step variant";
         }
     }
+
     return result;
 }
 

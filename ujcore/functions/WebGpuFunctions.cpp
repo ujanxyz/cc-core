@@ -6,7 +6,6 @@
 #include "ujcore/function/FunctionSpec.h"
 #include "ujcore/function/ParamAccessors.h"
 #include "ujcore/functions/attributes/BitmapAttr.h" // Assuming you have defined BitmapAttr in this header
-#include "ujcore/functions/attributes/ColorsAttr.h"
 #include "ujcore/base/Bitmap.h"
 #include <cstdint>
 

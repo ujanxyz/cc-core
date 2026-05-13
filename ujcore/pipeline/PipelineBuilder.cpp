@@ -13,6 +13,8 @@
 #include "ujcore/pipeline/PipelineFnNode.h"
 #include "ujcore/pipeline/PipelineSlot.h"
 #include "ujcore/utils/status_macros.h"
+
+#include <functional>
 #include <string>
 
 namespace ujcore {
@@ -21,8 +23,6 @@ namespace {
 using ::ujcore::grph::SlotInfo;
 using ::ujcore::grph::SlotState;
 
-using GraphIOStep = GraphPipeline::GraphIOStep;
-using NodeRunStep = GraphPipeline::NodeRunStep;
 using EdgePropagateStep = GraphPipeline::EdgePropagateStep;
 using NodeStage = GraphPipeline::NodeStage;
 
@@ -97,24 +97,9 @@ absl::StatusOr<NodeStage> InternalHandleFunctionNode(const GraphState& graph_, c
         .ntype = nodeInfo.ntype,
         .node = std::move(fnNode),
     };
-    // NodeStage nodeStage = NodeStage {
-    //     .ntype = nodeInfo.ntype,
-    //     .node = std::move(fnNode),
-    // };
-    // pipeline_.nodeStages[nodeId] = std::move(nodeStage);
-    // return absl::OkStatus();
 }
 
 absl::StatusOr<NodeStage> InternalHandleGraphIONode(const GraphState& graph_, const NodeId nodeId, const grph::NodeInfo& nodeInfo) {
-    // if (!nodeInfo.ioDtype.has_value()) {
-    //     return absl::InvalidArgumentError("Graph IO node must have ioDtype");
-    // }
-    // const AttributeDataType dtype = AttributeDataTypeFromStr(nodeInfo.ioDtype.value());
-    // if (dtype == AttributeDataType::kUnknown) {
-    //     return absl::InvalidArgumentError(
-    //         absl::StrCat("Unsupported data type for graph IO node: ", nodeInfo.ioDtype.value()));
-    // }
-
     const auto slotInfos = GraphUtils::CopyAllSlotInfos(graph_, nodeId);
     if (slotInfos.size() != 1) {
         return absl::InvalidArgumentError(
@@ -231,7 +216,7 @@ PipelineSlot* LookupPipelineSlot(GraphPipeline& pipeline_, NodeId nodeId, const 
 
 absl::Status PipelineBuilder::Rebuild(const GraphState& graph, GraphPipeline& pipeline) {
     pipeline.nodeStages.clear();
-    pipeline.execSteps.clear();
+    pipeline.nodeGroups.clear();
     LOG(INFO) << "Rebuilding pipeline from graph state, #nodes: " << graph.nodeInfos.size()
               << ", #edges: " << graph.edgeInfos.size();
 
@@ -282,36 +267,37 @@ absl::Status PipelineBuilder::Rebuild(const GraphState& graph, GraphPipeline& pi
             absl::StrCat("Node count mismatch: ", numSortedNodes, " vs ", numPipelineNodes));
     }
 
-    std::vector<GraphPipeline::ExecutionStep> executionSteps;
-    executionSteps.reserve(pipeline.nodeStages.size() + graph.edgeInfos.size());
-
-    // Append the node steps in topological order, preceeded by their incoming edge steps.
+    // Build node execution groups in topological order. Each group contains incoming edge
+    // transfers and the node execution step, organized for efficient topo-order execution.
     for (const NodeId nodeId : graph.topoSortState.sortOrder) {
-        // Extract (remove) the edge steps preceding this node.
-        std::vector<EdgePropagateStep> edgeSteps;
+        RETURN_IF_NOT_FOUND_IN_MAP(GraphPipeline::NodeStage& nodeStage, pipeline.nodeStages, nodeId);
+        
+        // Extract incoming edge steps for this node.
+        std::vector<EdgePropagateStep> incomingTransfers;
         auto iter = edgeStepsByNode.find(nodeId);
         if (iter != edgeStepsByNode.end()) {
-            edgeSteps = std::move(iter->second);
+            incomingTransfers = std::move(iter->second);
             edgeStepsByNode.erase(iter);
-        }
-        // Add the node step preceed by the edge steps (its incoming edges).
-        for (auto& entry : edgeSteps) {
-            executionSteps.push_back(std::move(entry));
-            ++numEdgeSteps;
+            numEdgeSteps += incomingTransfers.size();
         }
 
-        RETURN_IF_NOT_FOUND_IN_MAP(GraphPipeline::NodeStage& nodeStage, pipeline.nodeStages, nodeId);
         if (nodeStage.ntype == grph::NodeInfo::NodeType::FN) {
             std::unique_ptr<PipelineFnNode>& fnNode = std::get<std::unique_ptr<PipelineFnNode>>(nodeStage.node);
-            executionSteps.push_back(NodeRunStep {
-                .fnNode = fnNode.get(),
-            });
+            GraphPipeline::NodeExecGroup group {
+                .nodeId = nodeId,
+                .incomingTransfers = std::move(incomingTransfers),
+                .nodeStep = std::ref(*fnNode),
+            };
+            pipeline.nodeGroups.push_back(std::move(group));
             ++numFnStages;
         } else {
             std::unique_ptr<PipelineIONode>& ioNode = std::get<std::unique_ptr<PipelineIONode>>(nodeStage.node);
-            executionSteps.push_back(GraphIOStep {
-                .ioNode = ioNode.get(),
-            });
+            GraphPipeline::NodeExecGroup group {
+                .nodeId = nodeId,
+                .incomingTransfers = std::move(incomingTransfers),
+                .nodeStep = std::ref(*ioNode),
+            };
+            pipeline.nodeGroups.push_back(std::move(group));
             if (nodeStage.ntype == grph::NodeInfo::NodeType::IN) {
                 ++numInStages;
             } else {
@@ -324,7 +310,6 @@ absl::Status PipelineBuilder::Rebuild(const GraphState& graph, GraphPipeline& pi
         return absl::InternalError("Unprocessed node found");
     }
 
-    pipeline.execSteps.swap(executionSteps);
     LOG(INFO) << "Built pipeline, #edges: " << numEdgeSteps << ", #fn nodes: " << numFnStages
               << ", #graph inputs: " << numInStages << ", #graph outputs: " << numOutStages;
     return absl::OkStatus();
@@ -332,19 +317,15 @@ absl::Status PipelineBuilder::Rebuild(const GraphState& graph, GraphPipeline& pi
 
 absl::StatusOr<std::vector<AssetInfo>> PipelineBuilder::GetAssetInfos(const GraphState& graph, const GraphPipeline& pipeline) {
     std::vector<AssetInfo> assetInfos;
-    // Iterate over the steps and process based on step type.
-    for (const auto& step : pipeline.execSteps) {
-        if (std::holds_alternative<NodeRunStep>(step)) {
-            const NodeRunStep& nodeStep = std::get<NodeRunStep>(step);
-            const PipelineFnNode* const fnNode = nodeStep.fnNode;
-            if (fnNode == nullptr) {
-                continue;
-            }
-            const NodeId nodeId = fnNode->GetFunctionNodeId();
+    // Iterate over the node execution groups and process based on node type.
+    for (const auto& group : pipeline.nodeGroups) {
+        const NodeId nodeId = group.nodeId;
+        if (std::holds_alternative<std::reference_wrapper<PipelineFnNode>>(group.nodeStep)) {
+            const PipelineFnNode& fnNode = std::get<std::reference_wrapper<PipelineFnNode>>(group.nodeStep).get();
             // For function nodes, we look at:
             // (1) The input slots which have manually entered encoded data.
             // (2) The output slots which create new assets.
-            for (const auto& [slotName, slotEntry] : nodeStep.fnNode->slotEntries_) {
+            for (const auto& [slotName, slotEntry] : fnNode.slotEntries_) {
                 // We only support bitmaps as asset types.
                 if (slotEntry.dtype != AttributeDataType::kBitmap) {
                     continue;
@@ -380,24 +361,19 @@ absl::StatusOr<std::vector<AssetInfo>> PipelineBuilder::GetAssetInfos(const Grap
                 }
             } // end for slotEntries
         } // if NodeRunStep
-        else if (std::holds_alternative<GraphIOStep>(step)) {
-            const GraphIOStep& ioStep = std::get<GraphIOStep>(step);
-            const PipelineIONode* const ioNode = ioStep.ioNode;
-            if (ioNode == nullptr) {
-                continue;
-            }
-            if (ioNode->dtype_ != AttributeDataType::kBitmap) {
+        else if (std::holds_alternative<std::reference_wrapper<PipelineIONode>>(group.nodeStep)) {
+            const PipelineIONode& ioNode = std::get<std::reference_wrapper<PipelineIONode>>(group.nodeStep).get();
+            if (ioNode.dtype_ != AttributeDataType::kBitmap) {
                 // Only process asset IO nodes.
                 continue;
             }
-            const NodeId nodeId = ioNode->GetNodeId();
-            if (ioNode->isOutputStage()) {
+            if (ioNode.isOutputStage()) {
                 // A graph output node only has one input slot.
                 const SlotId slotId = SlotId { .parent = nodeId, .name = "$in" };
                 assetInfos.push_back(AssetInfo {
                     .slotId = slotId,
                     .assetType = AssetInfo::AssetType::GRAPHOUT,
-                    .dtype = AttributeDataTypeToStr(ioNode->dtype_),
+                    .dtype = AttributeDataTypeToStr(ioNode.dtype_),
                 });
             } else {
                 RETURN_IF_NOT_FOUND_IN_MAP(const grph::NodeState& nodeState, graph.nodeStates, nodeId);
@@ -415,7 +391,7 @@ absl::StatusOr<std::vector<AssetInfo>> PipelineBuilder::GetAssetInfos(const Grap
                 assetInfos.push_back(AssetInfo {
                     .slotId = slotId,
                     .assetType = AssetInfo::AssetType::GRAPHIN,
-                    .dtype = AttributeDataTypeToStr(ioNode->dtype_),
+                    .dtype = AttributeDataTypeToStr(ioNode.dtype_),
                     .assetUri = std::move(assetUriOpt),
                 });
             }
