@@ -73,12 +73,12 @@ public:
     // ---- AWAIT ----
     [[nodiscard]]
     ujfunc::FunctionReturn ReturnAwait(std::string channel,
-                                std::string token) const {
+                                std::string workuri) const {
         return ujfunc::FunctionReturn{
         .code = ujfunc::ReturnCode::AWAIT,
         .await = ujfunc::AwaitInfo{
             .channel = std::move(channel),
-            .token = std::move(token),
+            .workuri = std::move(workuri),
         }
         };
     }

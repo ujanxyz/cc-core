@@ -172,6 +172,7 @@ struct NodeState {
     DEFINE_STRUCT_VISITOR_FUNCTION(label, encodedData, connected, genId);
 };
 
+/// @deprecated: Use ujcore::flow::GraphOutputEntry in FlowTypes.h
 struct GraphRunOutput {
     NodeId nodeId;
     std::string dtype;

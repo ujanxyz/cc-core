@@ -21,13 +21,18 @@ struct GraphPipeline {
 
     // An edge propagate step represents the data propagation along an edge.
     struct EdgePropagateStep {
+        EdgeId edgeId;
         AttributeData* srcAttr = nullptr;
         AttributeData* dstAttr = nullptr;
+
+        // TODO: Add a per-edge dirty flag here for incremental stepping.
     };
 
     struct NodeStage {
         grph::NodeInfo::NodeType ntype = grph::NodeInfo::NodeType::FN;
         std::variant<std::unique_ptr<PipelineFnNode>, std::unique_ptr<PipelineIONode>> node;
+
+        // TODO: Add a per-node dirty flag here for incremental stepping.
     };
 
     // NodeExecGroup encapsulates a node and its incoming edge propagations into a single

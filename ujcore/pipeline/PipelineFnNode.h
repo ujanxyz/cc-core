@@ -12,6 +12,7 @@
 #include "ujcore/function/FuncParamAccess.h"
 #include "ujcore/function/FunctionBase.h"
 #include "ujcore/function/FunctionContext.h"
+#include "ujcore/function/FunctionReturn.h"
 #include "ujcore/function/FunctionSpec.h"
 #include "ujcore/function/ResourceContext.h"
 #include "ujcore/pipeline/PipelineSlot.h"
@@ -33,7 +34,8 @@ public:
   }
 
     // Execute the function stage in the pipeline.
-    absl::Status RunFunction();
+    // Returns a rich function status for step execution.
+    ujfunc::FunctionReturn RunFunction();
 
   // Methods implementing `FunctionContextParent`.
 

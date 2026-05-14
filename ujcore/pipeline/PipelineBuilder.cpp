@@ -250,6 +250,7 @@ absl::Status PipelineBuilder::Rebuild(const GraphState& graph, GraphPipeline& pi
             return absl::NotFoundError(absl::StrCat("Target slot not found for edge: ", edgeId.value));
         }
         edgeStepsByNode[edge.node1].push_back(EdgePropagateStep {
+            .edgeId = edgeId,
             .srcAttr = &srcSlot->attribute,
             .dstAttr = &dstSlot->attribute,
         });

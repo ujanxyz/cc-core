@@ -8,6 +8,7 @@ namespace {
 
 using GetFlowStatusResponse = FlowApi::GetFlowStatusResponse;
 using BuildPipelineResponse = FlowApi::BuildPipelineResponse;
+using StepPipelineResponse = FlowApi::StepPipelineResponse;
 
 } // namespace
 
@@ -32,6 +33,16 @@ class FlowApiBackend : public cppschema::ApiBackend<FlowApi> {
         };
     }
 
+    StepPipelineResponse stepPipelineImpl(const VoidType&) {
+        auto stepResultOr = store_.runner().StepPipeline();
+        if (!stepResultOr.ok()) {
+            LOG(FATAL) << "Step pipeline error: " << stepResultOr.status();
+        }
+        return StepPipelineResponse {
+            .stepResult = std::move(stepResultOr).value(),
+        };
+    }
+
  private:
     SharedStore& store_;
 };
@@ -41,6 +52,7 @@ static __attribute__((constructor)) void RegisterFlowApiBackend() {
     FlowApi::ImplPtrs<FlowApiBackend> ptrs = {
         .getFlowStatus = &FlowApiBackend::getFlowStatusImpl,
         .buildPipeline = &FlowApiBackend::buildPipelineImpl,
+        .stepPipeline = &FlowApiBackend::stepPipelineImpl,
     };
     cppschema::RegisterBackend<FlowApi, FlowApiBackend>(impl, ptrs);
 }

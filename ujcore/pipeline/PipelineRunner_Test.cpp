@@ -2,10 +2,17 @@
 
 #include "ujcore/pipeline/PipelineRunner.h"
 
+#include <memory>
 #include <optional>
 
 #include "ujcore/graph/IdTypes.h"
 #include "ujcore/graph/GraphTypes.h"
+#include "ujcore/function/FunctionContext.h"
+#include "ujcore/function/FunctionBase.h"
+#include "ujcore/function/FunctionRegistry.h"
+#include "ujcore/function/FunctionSpec.h"
+#include "ujcore/function/ParamAccessors.h"
+#include "ujcore/function/FunctionReturn.h"
 
 #include "absl/status/status_matchers.h"
 #include "gtest/gtest.h"
@@ -17,6 +24,35 @@ namespace {
 
 using ::ujcore::grph::EncodedData;
 using ::ujcore::grph::SlotState;
+
+class AwaitOnlyFn final : public FunctionBase {
+public:
+    static inline const char* uri = "/testing/await-only";
+
+    static std::unique_ptr<FunctionSpec> spec() {
+        return FunctionSpecBuilder(uri)
+            .WithLabel("Await only")
+            .WithDesc("Always returns AWAIT for testing stepPipeline.")
+            .Detach();
+    }
+
+    static FunctionBase* newInstance() {
+        return new AwaitOnlyFn();
+    }
+
+    bool OnInit(FunctionContext& ctx) override {
+        return true;
+    }
+
+    ujfunc::FunctionReturn OnRun(FunctionContext& ctx) override {
+        return ctx.ReturnAwait("webgpu", "test-001254");
+    }
+};
+
+__attribute__((constructor)) void RegisterAwaitOnlyFn() {
+    FunctionRegistry::GetInstance().RegisterFunction(
+        AwaitOnlyFn::uri, AwaitOnlyFn::spec, AwaitOnlyFn::newInstance, __FILE__);
+}
 
 void SetupGraphState(GraphState& graph) {
     grph::NodeInfo n1 = {
@@ -178,6 +214,44 @@ TEST_F(PipelineRunnerTest, Basic) {
     PipelineRunner subject;
     ABSL_EXPECT_OK(subject.RebuildFromState(graph_));
     ABSL_EXPECT_OK(subject.RunPipeline());
+}
+
+TEST_F(PipelineRunnerTest, StepPipelineSurfacesAwaitInfo) {
+    GraphState graph;
+    grph::NodeInfo awaitNode = {
+        .rawId = NodeId(10),
+        .alnumid = "AWAIT001",
+        .uri = AwaitOnlyFn::uri,
+        .ins = {},
+        .outs = {},
+        .inouts = {},
+    };
+    graph.nodeInfos = {{awaitNode.rawId, awaitNode}};
+    graph.nodeStates = {{awaitNode.rawId, grph::NodeState{}}};
+    graph.topoSortState = {.sortOrder = {awaitNode.rawId}};
+
+    PipelineRunner subject;
+    ABSL_EXPECT_OK(subject.RebuildFromState(graph));
+
+    auto stepResultOr = subject.StepPipeline();
+    ASSERT_TRUE(stepResultOr.ok());
+    const flow::FlowStepResult& stepResult = stepResultOr.value();
+
+    EXPECT_EQ(stepResult.status, flow::FlowStepResult::StatusEnum::PARTIAL);
+    ASSERT_EQ(stepResult.awaitInfos.size(), 1u);
+    EXPECT_EQ(stepResult.awaitInfos[0].nodeId, awaitNode.rawId);
+    EXPECT_EQ(stepResult.awaitInfos[0].channel, "webgpu");
+    EXPECT_EQ(stepResult.awaitInfos[0].workuri, "test-001254");
+    EXPECT_TRUE(stepResult.outputs.empty());
+
+    auto secondStepOr = subject.StepPipeline();
+    ASSERT_TRUE(secondStepOr.ok());
+    const flow::FlowStepResult& secondStep = secondStepOr.value();
+    EXPECT_EQ(secondStep.status, flow::FlowStepResult::StatusEnum::PARTIAL);
+    ASSERT_EQ(secondStep.awaitInfos.size(), 1u);
+    EXPECT_EQ(secondStep.awaitInfos[0].nodeId, awaitNode.rawId);
+    EXPECT_EQ(secondStep.awaitInfos[0].channel, "webgpu");
+    EXPECT_EQ(secondStep.awaitInfos[0].workuri, "test-001254");
 }
 
 }  // namespace

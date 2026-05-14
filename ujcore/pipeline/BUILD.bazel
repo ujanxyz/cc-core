@@ -5,6 +5,15 @@ package(
 )
 
 cc_library(
+    name = "FlowTypes",
+    hdrs = ["FlowTypes.h"],
+    deps = [
+        "@cppschema//:enum_registry",
+        "@cppschema//:visitor_macros",
+    ],
+)
+
+cc_library(
     name = "GraphPipeline",
     # srcs = ["GraphPipeline.cpp"],
     hdrs = ["GraphPipeline.h"],
@@ -98,12 +107,13 @@ cc_library(
         ":PipelineBuilder",
         ":PipelineIONode",
         "//ujcore/base:BitmapPool",
+        "//ujcore/function:ResourceContext",
         "//ujcore/graph:AssetInfo",
         "//ujcore/graph:GraphState",
         "//ujcore/graph:IdTypes",
         "//ujcore/graph:ResourceInfo",
         "//ujcore/graph:GraphTypes",
-        "//ujcore/function:ResourceContext",
+        "//ujcore/pipeline:FlowTypes",
         "//ujcore/utils:status_macros",
         "@abseil-cpp//absl/log",
         "@abseil-cpp//absl/log:check",

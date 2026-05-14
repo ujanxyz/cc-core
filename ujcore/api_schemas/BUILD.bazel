@@ -8,6 +8,7 @@ cc_library(
     name = "FlowApi",
     hdrs = ["FlowApi.h"],
     deps = [
+        "//ujcore/pipeline:FlowTypes",
         "//ujcore/graph:AssetInfo",
         "@cppschema//:apispec",
     ],

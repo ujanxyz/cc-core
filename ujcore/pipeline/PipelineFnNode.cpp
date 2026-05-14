@@ -25,14 +25,20 @@ PipelineSlot* PipelineFnNode::LookupSlot(const std::string& slotName) {
     return slotIter->second.plSlot.get();
 }
 
-absl::Status PipelineFnNode::RunFunction() {
+ujfunc::FunctionReturn PipelineFnNode::RunFunction() {
+    std::vector<std::string> missingSlots;
+
     // Prior to execution, for input slots with manually overridden data, decode the encoded data to internal attribute.
     for (auto& [slotName, slotEntry] : slotEntries_) {
         if (slotEntry.decodeFnPtr != nullptr && slotEntry.encodedInput->has_value()) {
             const grph::EncodedData& encodedData = slotEntry.encodedInput->value();
             std::shared_ptr<void> parsedData = (*slotEntry.decodeFnPtr)(encodedData.payload, resourceCtx_);
             if (parsedData == nullptr) {
-                return absl::InternalError(absl::StrCat("Failed to decode manual override data for node ", selfId_.value, ", slot ", slotName));
+                return ujfunc::FunctionReturn {
+                    .code = ujfunc::ReturnCode::ERROR,
+                    .error = absl::InternalError(
+                        absl::StrCat("Failed to decode manual override data for node ", selfId_.value, ", slot ", slotName)),
+                };
             }
             auto& plSlot = *slotEntry.plSlot;
             plSlot.attribute = AttributeData {
@@ -42,27 +48,33 @@ absl::Status PipelineFnNode::RunFunction() {
             };
             plSlot.overridden = true;
         }
+
+        // Handle NO_DATA in wrapper layer, before function execution.
+        auto& plSlot = *slotEntry.plSlot;
+        if ((plSlot.access == FuncParamAccess::kInput || plSlot.access == FuncParamAccess::kInOut) &&
+            plSlot.attribute.data == nullptr) {
+            missingSlots.push_back(slotName);
+        }
+    }
+
+    if (!missingSlots.empty()) {
+        return ujfunc::FunctionReturn {
+            .code = ujfunc::ReturnCode::NO_DATA,
+            .noData = ujfunc::NoDataInfo { .missingSlots = std::move(missingSlots) },
+        };
     }
 
     // resourceCtx_->SetSlotIdStr(absl::StrCat(selfId_.value, ":", "$out"));
 
     const ujfunc::FunctionReturn result = funcInstance_->OnRun(*functionCtx_);
-    if (result.IsDone() || result.IsAwait()) {
-        return absl::OkStatus();
+    if (result.IsError() && !result.error.has_value()) {
+        return ujfunc::FunctionReturn {
+            .code = ujfunc::ReturnCode::ERROR,
+            .error = absl::InternalError(
+                absl::StrCat("Function returned ERROR without status for node ", selfId_.value)),
+        };
     }
-    if (result.IsNoData()) {
-        return absl::FailedPreconditionError(
-            absl::StrCat("Function returned NO_DATA for node ", selfId_.value));
-    }
-    if (result.IsError()) {
-        if (result.error.has_value()) {
-            return *result.error;
-        }
-        return absl::InternalError(
-            absl::StrCat("Function returned ERROR without status for node ", selfId_.value));
-    }
-    return absl::InternalError(
-        absl::StrCat("Function returned unknown code for node ", selfId_.value));
+    return result;
 }
 
 NodeId PipelineFnNode::GetFunctionNodeId() const {

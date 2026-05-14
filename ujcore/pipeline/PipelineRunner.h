@@ -1,16 +1,19 @@
 #pragma once
 
+#include <cstddef>
+#include <map>
 #include <memory>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "ujcore/graph/AssetInfo.h"
+#include "ujcore/function/ResourceContext.h"
 #include "ujcore/base/BitmapPool.h"
+#include "ujcore/graph/AssetInfo.h"
 #include "ujcore/graph/GraphState.h"
 #include "ujcore/graph/ResourceInfo.h"
 #include "ujcore/graph/GraphTypes.h"
-#include "ujcore/function/ResourceContext.h"
+#include "ujcore/pipeline/FlowTypes.h"
 #include "ujcore/pipeline/GraphPipeline.h"
 
 namespace ujcore {
@@ -27,12 +30,22 @@ public:
     // Executes the pipeline and returns the graph outputs.
     absl::StatusOr<std::vector<grph::GraphRunOutput>> RunPipeline();
 
+    // Runs through the stages of the pipeline from the last stopping point, and returns
+    // the combined step status and all completed graph outputs (from this step and previous steps).
+    absl::StatusOr<flow::FlowStepResult> StepPipeline();
+
     absl::Status AddInputBitmap(const NodeId nodeId, const BitmapInfo& bitmapInfo, uint8_t* data);
 
     // Gets information about the resources created / used in the graph pipeline.
     absl::StatusOr<std::vector<ResourceInfo>> GetPipelineResources() const;
 
 private:
+    // Index of the next node group to execute in StepPipeline().
+    size_t nextStepGroupIndex_ = 0;
+
+    // Completed graph output entries accumulated across step calls.
+    std::map<NodeId, flow::GraphOutputEntry> completedOutputs_;
+
     GraphPipeline pipeline_;
     std::unique_ptr<BitmapPool> bitmapPool_;
     std::unique_ptr<ResourceContext> resourceContext_;

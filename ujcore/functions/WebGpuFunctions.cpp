@@ -40,17 +40,24 @@ public:
     }
 
     ujfunc::FunctionReturn OnRun(FunctionContext& ctx) override {
+        ++attemptNumber_;
+        LOG(INFO) << "WebGpuDemoFn attempt number: " << attemptNumber_;
+        if (attemptNumber_ < 3) {
+            LOG(INFO) << "Simulating long GPU operation by returning pending status on first attempt.";
+            return ctx.ReturnAwait("webgpu", "test-001254");
+        }
         auto vOut = GetOutParam<BitmapAttr>(ctx, "pic");
         vOut->setFromUri("/bmpuri-001");
         Bitmap* bmp = vOut->createBitmap();
         LOG(INFO) << "WebGpuDemoFn created bitmap with id: " << bmp->id() << ", width: " << bmp->width() << ", height: " << bmp->height();
         drawOnBitmap(bmp);
         vOut->Capture();
-        // ctx.ReturnDone();
-        return ctx.ReturnAwait("webgpu", "test");
+        return ctx.ReturnDone();
     }
 
 private:
+    int attemptNumber_ = 0;
+
     // Given a bitmap, draw an opaque cyan rectangle in it, modifying raw rgba pixels.
     void drawOnBitmap(Bitmap* bmp) {
             uint8_t* pixels = bmp->bytes();
