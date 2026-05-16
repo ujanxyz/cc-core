@@ -27,9 +27,9 @@ struct GraphOutputEntry {
 struct AwaitEntry {
     NodeId nodeId;
     std::string channel;
-    std::string workuri;
+    std::string workId;
 
-    DEFINE_STRUCT_VISITOR_FUNCTION(nodeId, channel, workuri);
+    DEFINE_STRUCT_VISITOR_FUNCTION(nodeId, channel, workId);
 };
 
 struct FlowStepResult {

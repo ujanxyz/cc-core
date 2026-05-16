@@ -41,6 +41,9 @@ cc_library(
     deps = [
         "//ujcore/function:AttributeDataType",
         "//ujcore/function:AttributeTypeRegistry",
+        "//ujcore/function:FunctionRegistry",
+        "//ujcore/function:FunctionSpec",
+        "//ujcore/function:ParamAccessors",
         "@abseil-cpp//absl/log:check",
         "@nlohmann_json//:json",
     ],

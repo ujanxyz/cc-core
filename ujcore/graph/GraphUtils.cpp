@@ -12,9 +12,58 @@ std::vector<T> InternalGetMapValues(const std::map<K, T>& infosMap) {
   std::vector<T> result;
   result.reserve(infosMap.size());
   for (const auto& [_, info] : infosMap) {
+
     result.push_back(info);
   }
   return result;
+}
+
+// Template function to handle both const and mutable I/O slot lookups.
+// When GraphStateType is 'const GraphState', returns const pointers.
+// When GraphStateType is 'GraphState', returns mutable pointers to SlotState.
+//
+// TODO: Split this into 2 apis: InternalLookupInputSlot and InternalLookupOutputSlot,
+// to avoid confusions on the slot name ("$in" vs "$out") and the node type (graph
+// input node vs graph output node).
+template<typename GraphStateType>
+auto InternalLookupIoSlot(GraphStateType& state, NodeId nodeId) 
+    -> absl::StatusOr<std::pair<const grph::SlotInfo*, 
+                                std::conditional_t<std::is_const_v<GraphStateType>, 
+                                                   const grph::SlotState*, 
+                                                   grph::SlotState*>>> {
+    // Find the node info
+    auto nodeInfoIt = state.nodeInfos.find(nodeId);
+    if (nodeInfoIt == state.nodeInfos.end()) {
+        return absl::NotFoundError("Node info not found for node id: " + std::to_string(nodeId.value));
+    }
+    const grph::NodeInfo& nodeInfo = nodeInfoIt->second;
+
+    // Determine slot name for I/O node
+    std::string slotName;
+    if (nodeInfo.ntype == grph::NodeInfo::NodeType::IN) {
+        if (nodeInfo.outs.size() != 1) {
+            return absl::InvalidArgumentError("Graph input node must have exactly one output slot");
+        }
+        slotName = nodeInfo.outs[0]; // Should be "$out"
+    } else if (nodeInfo.ntype == grph::NodeInfo::NodeType::OUT) {
+        if (nodeInfo.ins.size() != 1) {
+            return absl::InvalidArgumentError("Graph output node must have exactly one input slot");
+        }
+        slotName = nodeInfo.ins[0]; // Should be "$in"
+    } else {
+        return absl::InvalidArgumentError("LookupIoSlot only valid for graph input/output nodes");
+    }
+
+    SlotId slotId{nodeId, slotName};
+    auto slotInfoIt = state.slotInfos.find(slotId);
+    if (slotInfoIt == state.slotInfos.end()) {
+        return absl::NotFoundError("Slot info not found for slot id: " + slotName);
+    }
+    auto slotStateIt = state.slotStates.find(slotId);
+    if (slotStateIt == state.slotStates.end()) {
+        return absl::NotFoundError("Slot state not found for slot id: " + slotName);
+    }
+    return std::make_pair(&slotInfoIt->second, &slotStateIt->second);
 }
 
 }  // namespace
@@ -47,6 +96,7 @@ absl::StatusOr<std::map<SlotId, grph::SlotState>> GraphUtils::LookupSlotStates(c
     std::map<SlotId, grph::SlotState> result;
     for (const SlotId& slotId : slotIds) {
         auto iter = state.slotStates.find(slotId);
+
         if (iter == state.slotStates.end()) {
             return absl::NotFoundError("Slot state not found for slot id: " + std::to_string(slotId.parent.value) + ":" + slotId.name);
         }
@@ -55,14 +105,12 @@ absl::StatusOr<std::map<SlotId, grph::SlotState>> GraphUtils::LookupSlotStates(c
     return result;
 }
 
-std::optional<grph::EncodedData> GraphUtils::GetNodeIoData(const GraphState& state, NodeId nodeId) {
-    auto iter = state.nodeStates.find(nodeId);
-    if (iter == state.nodeStates.end()) {
-        LOG(ERROR) << "Node state not found for node id: " << nodeId.value;
-        return std::nullopt;
-    }
-    const grph::NodeState& nodeState = iter->second;
-    return nodeState.encodedData;    
+absl::StatusOr<std::pair<const grph::SlotInfo*, const grph::SlotState*>> GraphUtils::LookupIoSlot(const GraphState& state, NodeId nodeId) {
+    return InternalLookupIoSlot(state, nodeId);
+}
+
+absl::StatusOr<std::pair<const grph::SlotInfo*, grph::SlotState*>> GraphUtils::LookupMutableIoSlot(GraphState& state, NodeId nodeId) {
+    return InternalLookupIoSlot(state, nodeId);
 }
 
 std::optional<grph::NodeState> GraphUtils::CopyNodeState(const GraphState& state, NodeId nodeId) {

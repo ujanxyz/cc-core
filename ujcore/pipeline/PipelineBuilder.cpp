@@ -117,7 +117,6 @@ absl::StatusOr<NodeStage> InternalHandleGraphIONode(const GraphState& graph_, co
     const bool isOutput = (nodeInfo.ntype == grph::NodeInfo::NodeType::OUT);
     const SlotId slotId = {.parent = nodeId, .name = slotInfo.name};
 
-    // TODO: Use nodeinfo's ioDtype directly after we ensure the graph state is correctly populated with it, instead of looking up from slot info.
     const AttributeDataType dtype = AttributeDataTypeFromStr(slotInfo.dtype);
     if (dtype == AttributeDataType::kUnknown) {
         return absl::InvalidArgumentError(
@@ -125,7 +124,6 @@ absl::StatusOr<NodeStage> InternalHandleGraphIONode(const GraphState& graph_, co
     }
 
     RETURN_IF_NOT_FOUND_IN_MAP(const grph::SlotState& slotState, graph_.slotStates, slotId);
-    RETURN_IF_NOT_FOUND_IN_MAP(const grph::NodeState& nodeState, graph_.nodeStates, nodeId);
 
     if (!isOutput) {
         // It's a graph input. Its slot should not have incoming edges.
@@ -133,7 +131,7 @@ absl::StatusOr<NodeStage> InternalHandleGraphIONode(const GraphState& graph_, co
             return absl::InvalidArgumentError(
                 absl::StrCat("Graph input node slot should not have incoming edges"));
         }        
-        if (!nodeState.encodedData.has_value()) {
+            if (!slotState.encodedData.has_value()) {
             return absl::InvalidArgumentError(
                 absl::StrCat("Graph input node should have input data"));
         }
@@ -148,7 +146,7 @@ absl::StatusOr<NodeStage> InternalHandleGraphIONode(const GraphState& graph_, co
             return absl::InvalidArgumentError(
                 absl::StrCat("Graph output node slot should not have outgoing edges"));
         }
-        if (nodeState.encodedData.has_value()) {
+            if (slotState.encodedData.has_value()) {
             return absl::InvalidArgumentError(
                 absl::StrCat("Graph output node should not have input data"));
         }
@@ -163,7 +161,7 @@ absl::StatusOr<NodeStage> InternalHandleGraphIONode(const GraphState& graph_, co
     std::unique_ptr<PipelineIONode> ioNode = std::make_unique<PipelineIONode>(nodeId, isOutput);
     ioNode->dtype_ = dtype;
     if (!isOutput) {
-        ioNode->encodedInput_ = &nodeState.encodedData;
+            ioNode->encodedInput_ = &slotState.encodedData;
     }
     ioNode->slot_ = PipelineSlot {
         .access = isOutput ? FuncParamAccess::kInput : FuncParamAccess::kOutput,
@@ -377,18 +375,18 @@ absl::StatusOr<std::vector<AssetInfo>> PipelineBuilder::GetAssetInfos(const Grap
                     .dtype = AttributeDataTypeToStr(ioNode.dtype_),
                 });
             } else {
-                RETURN_IF_NOT_FOUND_IN_MAP(const grph::NodeState& nodeState, graph.nodeStates, nodeId);
+                const SlotId slotId = SlotId { .parent = nodeId, .name = "$out" };
+                RETURN_IF_NOT_FOUND_IN_MAP(const grph::SlotState& slotState, graph.slotStates, slotId);
                 std::optional<std::string> assetUriOpt;
-                if (nodeState.encodedData.has_value()) {
-                    const std::optional<grph::EncodedData>& encodedDataOpt = *nodeState.encodedData;
+                if (slotState.encodedData.has_value()) {
+                    const std::optional<grph::EncodedData>& encodedDataOpt = slotState.encodedData;
                     ASSIGN_OR_RETURN(const std::string assetUri, GetBitmapAssetUriFromEncoded(encodedDataOpt->payload));
                     assetUriOpt = assetUri;
                 } else {
                     return absl::InvalidArgumentError(
                         absl::StrCat("Graph input node (bitmap) should have encoded input data"));
                 }
-                // A graph input node only has one output slot.                
-                const SlotId slotId = SlotId { .parent = nodeId, .name = "$out" };
+                // A graph input node only has one output slot.
                 assetInfos.push_back(AssetInfo {
                     .slotId = slotId,
                     .assetType = AssetInfo::AssetType::GRAPHIN,

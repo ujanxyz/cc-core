@@ -102,16 +102,6 @@ void PipelineFnNode::LogFromFunc(std::string_view message) {
     LOG(INFO) << "[Node-" << selfId_.value << "]: " << message;
 }
 
-void PipelineFnNode::DumpDebugInfoFromFunc() {
-    for (auto& [slotName, slotEntry] : slotEntries_) {
-        auto& slot = *slotEntry.plSlot;
-        LOG(INFO) << "    slot = " << slotName << " : "
-            << static_cast<int>(slot.access) << ", dtype: "
-            << AttributeDataTypeToStr(slot.attribute.dtype)
-            << ", hasManual: " << slotEntry.encodedInput->has_value();
-    }
-}
-
 ResourceContext* PipelineFnNode::GetResourceContext() {
     return resourceCtx_;
 }

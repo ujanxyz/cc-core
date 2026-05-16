@@ -5,24 +5,8 @@ package(
 )
 
 cc_library(
-    name = "BasicFunctions",
-    srcs = ["BasicFunctions.cpp"],
-    deps = [
-        "//ujcore/function:FunctionRegistry",
-        "//ujcore/function:FunctionSpec",
-        "//ujcore/function:ParamAccessors",
-        "//ujcore/functions/attributes:FloatListAttr",
-        "//ujcore/functions/attributes:Points2DAttr",
-        "@abseil-cpp//absl/log",
-        "@abseil-cpp//absl/log:check",
-        "@abseil-cpp//absl/status:statusor",
-    ],
-    alwayslink = 1,
-)
-
-cc_library(
-    name = "BitmapFunctions",
-    srcs = ["BitmapFunctions.cpp"],
+    name = "WebGpuFunctions",
+    srcs = ["WebGpuFunctions.cpp"],
     deps = [
         "//ujcore/base:Bitmap",
         "//ujcore/function:FunctionRegistry",
@@ -43,7 +27,6 @@ cc_library(
 cc_library(
     name = "all_functions",
     deps = [
-        ":BasicFunctions",
-        ":BitmapFunctions",
+        ":WebGpuFunctions",
     ],
 )

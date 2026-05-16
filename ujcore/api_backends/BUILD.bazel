@@ -43,7 +43,6 @@ cc_library(
         ":SharedStore",
         "//ujcore/api_schemas:GraphApi",
         "//ujcore/graph:GraphState",
-        "//ujcore/graph:GraphStateJson",
         "//ujcore/function:AttributeDataType",
         "//ujcore/function:FunctionLookup",
         "//ujcore/function:FunctionSpec",

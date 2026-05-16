@@ -68,31 +68,6 @@ cc_library(
 )
 
 cc_library(
-    name = "GraphStateJson",
-    srcs = ["GraphStateJson.cpp"],
-    hdrs = ["GraphStateJson.h"],
-    deps = [
-        ":GraphState",
-        ":TopoSortState",
-        "@abseil-cpp//absl/log:check",
-        "@abseil-cpp//absl/status",
-        "@abseil-cpp//absl/status:statusor",
-        "@abseil-cpp//absl/strings",
-        "//ujcore/utils:status_macros",
-        "@nlohmann_json//:json",
-    ],
-)
-
-cc_test(
-    name = "GraphStateJson_Test",
-    srcs = ["GraphStateJson_Test.cpp"],
-    deps = [
-        ":GraphStateJson",
-        "@googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "GraphTypes",
     hdrs = ["GraphTypes.h"],
     deps = [
@@ -112,6 +87,21 @@ cc_library(
         ":IdTypes",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "GraphUtils_Test",
+    srcs = ["GraphUtils_Test.cpp"],
+    deps = [
+        ":GraphBuilder",
+        ":GraphState",
+        ":GraphTypes",
+        ":GraphUtils",
+        ":IdTypes",
+        ":TopoSorter",
+        "@abseil-cpp//absl/status",
+        "@googletest//:gtest_main",
     ],
 )
 

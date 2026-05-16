@@ -197,10 +197,12 @@ struct GraphApi {
     // API: setEncodedData
     struct SetEncodedDataRequest {
         // If set the data is for a input node, else it is for a slot.
+        /// @deprecated: This field is no longer needed
         bool isNode = false;
 
-        // Either node id or slot id should be set, depending on the value of `isNode`.
+        /// @deprecated: This field is no longer needed
         std::optional<NodeId> nodeId;
+
         std::optional<SlotId> slotId;
 
         // If this is not set, the existing manual data will be cleared.
@@ -215,13 +217,6 @@ struct GraphApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(assetInfos);
     };
 
-    // API: runPipeline
-    struct RunPipelineResponse {
-        std::vector<grph::GraphRunOutput> outputs;
-
-        DEFINE_STRUCT_VISITOR_FUNCTION(outputs);
-    };
-
     // API: getResources
     struct GetResourcesResponse {
         std::vector<ResourceInfo> resources;
@@ -233,8 +228,6 @@ struct GraphApi {
     cppschema::ApiStub<VoidType, GetGraphMetaResponse> getGraphMeta;
     cppschema::ApiStub<SetGraphMetaRequest, VoidType> setGraphMeta;
     cppschema::ApiStub<VoidType, GetGraphResponse> getGraph;
-    cppschema::ApiStub<VoidType, std::string> encodeGraph;
-    cppschema::ApiStub<std::string, VoidType> decodeGraph;
     cppschema::ApiStub<CreateNodeRequest, CreateNodeResponse> createNode;
     cppschema::ApiStub<CreateIONodeRequest, CreateIONodeResponse> createIONode;
     cppschema::ApiStub<AddEdgesRequest, AddEdgesResponse> addEdges;
@@ -246,15 +239,12 @@ struct GraphApi {
     cppschema::ApiStub<GetAvailableFuncsRequest, GetAvailableFuncsResponse> getAvailableFuncs;
     cppschema::ApiStub<SetEncodedDataRequest, VoidType> setEncodedData;
     cppschema::ApiStub<VoidType, BuildPipelineResponse> buildPipeline;
-    cppschema::ApiStub<VoidType, RunPipelineResponse> runPipeline;
     cppschema::ApiStub<VoidType, GetResourcesResponse> getResources;
 
     DEFINE_API_VISITOR_FUNCTION(
         getGraphMeta,
         setGraphMeta,
         getGraph,
-        encodeGraph,
-        decodeGraph,
         createNode,
         createIONode,
         addEdges,
@@ -266,7 +256,6 @@ struct GraphApi {
         getAvailableFuncs,
         setEncodedData,
         buildPipeline,
-        runPipeline,
         getResources);
 };
 

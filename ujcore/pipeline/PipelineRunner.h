@@ -27,9 +27,6 @@ public:
     // Invokes PipelineBuilder to build the pipeline from the graph state.
     absl::StatusOr<std::vector<AssetInfo>> RebuildFromState(const GraphState& state);
 
-    // Executes the pipeline and returns the graph outputs.
-    absl::StatusOr<std::vector<grph::GraphRunOutput>> RunPipeline();
-
     // Runs through the stages of the pipeline from the last stopping point, and returns
     // the combined step status and all completed graph outputs (from this step and previous steps).
     absl::StatusOr<flow::FlowStepResult> StepPipeline();

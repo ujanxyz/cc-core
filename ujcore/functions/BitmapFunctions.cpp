@@ -42,8 +42,9 @@ public:
     ujfunc::FunctionReturn OnRun(FunctionContext& ctx) override {
         auto vOut = GetOutParam<BitmapAttr>(ctx, "pic");
         vOut->setFromUri("/bmpuri-001");
-        Bitmap* bmp = vOut->createBitmap();
-        LOG(INFO) << "EmitBitmapFn created bitmap with id: " << bmp->id() << ", width: " << bmp->width() << ", height: " << bmp->height();
+        Bitmap* bmp = vOut->createBitmap(IDimension::MakeWH(1024, 1024));
+        const IDimension dim = bmp->dimension();
+        LOG(INFO) << "EmitBitmapFn created bitmap with id: " << bmp->id() << ", width: " << dim.width << ", height: " << dim.height;
         drawOnBitmap(bmp);
         vOut->Capture();
         return ctx.ReturnDone();
@@ -53,8 +54,9 @@ private:
     // Given a bitmap, draw an opaque cyan rectangle in it, modifying raw rgba pixels.
     void drawOnBitmap(Bitmap* bmp) {
             uint8_t* pixels = bmp->bytes();
-            int32_t width = bmp->width();
-            int32_t height = bmp->height();
+            const IDimension dim = bmp->dimension();
+            int32_t width = dim.width;
+            int32_t height = dim.height;
             int32_t bytesPerPixel = bmp->bytesPerPixel();
     
             // Draw a cyan rectangle in the center of the bitmap.
@@ -105,8 +107,9 @@ public:
         auto vColors = GetInParam<ColorsAttr>(ctx, "palette");
         auto vOut = GetOutParam<BitmapAttr>(ctx, "pic");
         vOut->setFromUri("/bmpuri-002");
-        Bitmap* bmp = vOut->createBitmap();
-        LOG(INFO) << "DrawColorBandsFn created bitmap with id: " << bmp->id() << ", width: " << bmp->width() << ", height: " << bmp->height();
+        Bitmap* bmp = vOut->createBitmap(IDimension::MakeWH(1024, 1024));
+        const IDimension dim = bmp->dimension();
+        LOG(INFO) << "DrawColorBandsFn created bitmap with id: " << bmp->id() << ", width: " << dim.width << ", height: " << dim.height;
         drawColorBands(bmp, vColors->asColorsSpan());
         vOut->Capture();
         return ctx.ReturnDone();
@@ -114,8 +117,9 @@ public:
 
 private:
     void drawColorBands(Bitmap* bmp, const std::span<const ColorsAttr::PackedRGBA>& colors) {
-        int32_t width = bmp->width();
-        int32_t height = bmp->height();
+        const IDimension dim = bmp->dimension();
+        int32_t width = dim.width;
+        int32_t height = dim.height;
         int32_t bytesPerPixel = bmp->bytesPerPixel();
         uint8_t* pixels = bmp->bytes();
 
@@ -174,15 +178,17 @@ public:
             return ctx.ReturnStatus(std::move(bmpInPtrOr).status());
         }
         const Bitmap* bmpInPtr = std::move(bmpInPtrOr).value();
-        Bitmap* bmpOutPtr = bmpOut->createBitmap();
+        Bitmap* bmpOutPtr = bmpOut->createBitmap(bmpInPtr->dimension());
 
         const uint8_t* inPixels = bmpInPtr->bytes();
         uint8_t* outPixels = bmpOutPtr->bytes();
 
-        const int32_t width0 = bmpInPtr->width();
-        const int32_t height0 = bmpInPtr->height();
-        const int32_t width1 = bmpOutPtr->width();
-        const int32_t height1 = bmpOutPtr->height();
+        const IDimension inDim = bmpInPtr->dimension();
+        const IDimension outDim = bmpOutPtr->dimension();
+        const int32_t width0 = inDim.width;
+        const int32_t height0 = inDim.height;
+        const int32_t width1 = outDim.width;
+        const int32_t height1 = outDim.height;
 
         const int32_t minWidth = std::min(width0, width1);
         const int32_t minHeight = std::min(height0, height1);
