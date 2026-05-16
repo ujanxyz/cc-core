@@ -1,5 +1,3 @@
-#include "absl/log/check.h"
-#include "absl/log/log.h"
 #include "ujcore/function/AttributeDataType.h"
 #include "ujcore/function/FunctionBase.h"
 #include "ujcore/function/FunctionRegistry.h"
@@ -63,7 +61,6 @@ public:
     }
 
     ujfunc::FunctionReturn OnRun(FunctionContext& ctx) override {
-        ctx.DumpDebugInfo();
         auto pOut = GetOutParam<Points2DAttr>(ctx, "p");
         pOut->appendPoint(150.5f, 250.5f);
         return ctx.ReturnDone();
@@ -99,9 +96,6 @@ public:
 
         float dxVal = dx->peekOrDefault(0.f);
         const Points2DAttr::Point2D p = pIn->peekOrOrigin();
-        LOG(INFO) << "@ Value of dx = " << dxVal;
-        LOG(INFO) << "@ Value of p.x = " << p.x;
-        LOG(INFO) << "@ Value of p.y = " << p.y;
 
         auto fpOut = GetOutParam<Points2DAttr>(ctx, "fp");
         fpOut->appendPoint(p.x + dxVal, p.y);

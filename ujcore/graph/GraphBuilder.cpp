@@ -373,14 +373,21 @@ absl::Status GraphBuilder::SetGraphInputs(const std::vector<std::tuple<NodeId, s
   for (const auto& [nodeId, encodedData] : graphInputs) {
     LOG(INFO) << "Setting graph input for node " << nodeId << " with data: " << encodedData;
     RETURN_IF_NOT_FOUND_IN_MAP(const grph::NodeInfo& nodeInfo, state_.nodeInfos, nodeId);
-    RETURN_IF_NOT_FOUND_IN_MAP(grph::NodeState& nodeState, state_.nodeStates, nodeId);
     
     if (nodeInfo.ntype != grph::NodeInfo::NodeType::IN) {
       return absl::InvalidArgumentError(
           absl::StrCat("Graph input data can only be set for input nodes. Invalid node id: ", nodeId));
     }
 
-    nodeState.encodedData = grph::EncodedData {
+    // Use LookupMutableIoSlot to get the "$out" slot of the input node
+    auto ioSlotResult = GraphUtils::LookupMutableIoSlot(state_, nodeId);
+    if (!ioSlotResult.ok()) {
+      return ioSlotResult.status();
+    }
+    auto [slotInfo, slotState] = ioSlotResult.value();
+    
+    // Set the encoded data on the slot state instead of the node state
+    slotState->encodedData = grph::EncodedData {
       .payload = encodedData,
     };
   }
@@ -389,8 +396,22 @@ absl::Status GraphBuilder::SetGraphInputs(const std::vector<std::tuple<NodeId, s
 
 absl::Status GraphBuilder::ClearGraphInputs(const std::vector<NodeId>& nodeIds) {
   for (const NodeId& nodeId : nodeIds) {
-    RETURN_IF_NOT_FOUND_IN_MAP(grph::NodeState& nodeState, state_.nodeStates, nodeId);
-    nodeState.encodedData.reset();
+    RETURN_IF_NOT_FOUND_IN_MAP(const grph::NodeInfo& nodeInfo, state_.nodeInfos, nodeId);
+    
+    if (nodeInfo.ntype != grph::NodeInfo::NodeType::IN) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Graph input can only be cleared for input nodes. Invalid node id: ", nodeId));
+    }
+
+    // Use LookupMutableIoSlot to get the "$out" slot of the input node
+    auto ioSlotResult = GraphUtils::LookupMutableIoSlot(state_, nodeId);
+    if (!ioSlotResult.ok()) {
+      return ioSlotResult.status();
+    }
+    auto [slotInfo, slotState] = ioSlotResult.value();
+    
+    // Clear the encoded data on the slot state
+    slotState->encodedData.reset();
   }
   return absl::OkStatus();
 }

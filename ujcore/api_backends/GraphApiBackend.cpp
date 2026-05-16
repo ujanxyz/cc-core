@@ -6,7 +6,6 @@
 #include "ujcore/api_backends/SharedStore.h"
 #include "ujcore/graph/IdTypes.h"
 #include "ujcore/graph/GraphTypes.h"
-#include "ujcore/graph/GraphStateJson.h"
 #include "ujcore/function/AttributeDataType.h"
 #include "ujcore/function/FunctionLookup.h"
 #include "ujcore/function/FunctionSpec.h"
@@ -37,7 +36,6 @@ using GetAvailableFuncsRequest = GraphApi::GetAvailableFuncsRequest;
 using GetAvailableFuncsResponse = GraphApi::GetAvailableFuncsResponse;
 using SetEncodedDataRequest = GraphApi::SetEncodedDataRequest;
 using BuildPipelineResponse = GraphApi::BuildPipelineResponse;
-using RunPipelineResponse = GraphApi::RunPipelineResponse;
 using GetResourcesResponse = GraphApi::GetResourcesResponse;
 
 FunctionInfo ToFunctionInfo(const FunctionSpec& spec) {
@@ -104,23 +102,6 @@ class GraphApiBackend : public cppschema::ApiBackend<GraphApi> {
             .edgeInfos = GraphUtils::GetAllEdgeInfos(store_.state()),
             .slotInfos = GraphUtils::GetAllSlotInfos(store_.state()),
         };
-    }
-
-    std::string encodeGraphImpl(const VoidType& kvoid) {
-        auto encodedOr = EncodeGraphState(store_.state());
-        if (!encodedOr.ok()) {
-            LOG(FATAL) << "Encode graph state error: " << encodedOr.status();
-        }
-        return std::move(encodedOr).value();
-    }
-
-    VoidType decodeGraphImpl(const std::string& encoded) {
-        auto decodedOr = DecodeGraphState(encoded);
-        if (!decodedOr.ok()) {
-            LOG(FATAL) << "Decode graph state error: " << decodedOr.status();
-        }
-        store_.state() = std::move(decodedOr).value();
-        return VoidType{};
     }
 
     CreateNodeResponse createNodeImpl(const CreateNodeRequest& request) {
@@ -341,10 +322,17 @@ class GraphApiBackend : public cppschema::ApiBackend<GraphApi> {
                 LOG(FATAL) << "Node id must be set for node encoded data.";
             }
             const NodeId nodeId = request.nodeId.value();
-            auto status = store_.builder().SetNodeEncodedData(nodeId, request.encodedData);
+            // auto status = store_.builder().SetNodeEncodedData(nodeId, request.encodedData);
+            // if (!status.ok()) {
+            //     LOG(FATAL) << "Set node encoded data error: " << status;
+            // }
+
+            const SlotId slotId = {.parent = nodeId, .name = "$out"};
+            auto status = store_.builder().SetSlotEncodedData(slotId, request.encodedData);
             if (!status.ok()) {
-                LOG(FATAL) << "Set node encoded data error: " << status;
+                LOG(FATAL) << "Set slot encoded data error: " << status;
             }
+
         } else {
             if (request.slotId.has_value() == false) {
                 LOG(FATAL) << "Slot id must be set for slot encoded data.";
@@ -368,16 +356,6 @@ class GraphApiBackend : public cppschema::ApiBackend<GraphApi> {
         };
     }
 
-    RunPipelineResponse runPipelineImpl(const VoidType& request) {
-        RunPipelineResponse response;
-        auto runResult = store_.runner().RunPipeline();
-        if (!runResult.ok()) {
-            LOG(FATAL) << "Run pipeline error: " << runResult.status();
-        }
-        response.outputs = std::move(runResult).value();
-        return response;
-    }
-
     GetResourcesResponse getResourcesImpl(const VoidType&) {
         auto resourcesOr = store_.runner().GetPipelineResources();
         if (!resourcesOr.ok()) {
@@ -398,8 +376,6 @@ static __attribute__((constructor)) void RegisterPipelineApiBackend() {
         .getGraphMeta = &GraphApiBackend::getGraphMetaImpl,
         .setGraphMeta = &GraphApiBackend::setGraphMetaImpl,
         .getGraph = &GraphApiBackend::getGraphImpl,
-        .encodeGraph = &GraphApiBackend::encodeGraphImpl,
-        .decodeGraph = &GraphApiBackend::decodeGraphImpl,
         .createNode = &GraphApiBackend::createNodeImpl,
         .createIONode = &GraphApiBackend::createIONodeImpl,
         .addEdges = &GraphApiBackend::addEdgesImpl,
@@ -411,7 +387,6 @@ static __attribute__((constructor)) void RegisterPipelineApiBackend() {
         .getAvailableFuncs = &GraphApiBackend::getAvailableFuncsImpl,
         .setEncodedData = &GraphApiBackend::setEncodedDataImpl,
         .buildPipeline = &GraphApiBackend::buildPipelineImpl,
-        .runPipeline = &GraphApiBackend::runPipelineImpl,
         .getResources = &GraphApiBackend::getResourcesImpl,
     };
     cppschema::RegisterBackend<GraphApi, GraphApiBackend>(impl, ptrs);

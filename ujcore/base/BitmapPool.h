@@ -12,7 +12,8 @@ public:
 
     virtual std::shared_ptr<Bitmap> CreateNewBitmap(
         const std::string& resourceId,
-        int32_t width, int32_t height, int32_t bytesPerPixel) = 0;
+        IDimension dimension,
+        int32_t bytesPerPixel) = 0;
 
     // Extract the staged bitmap for the given asset URI and return it,
     // and also remove it from the pool's staging area.

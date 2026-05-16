@@ -15,7 +15,8 @@ public:
 
     std::shared_ptr<Bitmap> CreateNewBitmap(
         const std::string& resourceId,
-        int32_t width, int32_t height, int32_t bytesPerPixel) override;
+        IDimension dimension,
+        int32_t bytesPerPixel) override;
 
     std::shared_ptr<Bitmap> ReleaseStagedBitmap(
         const std::string& reqSlotIdStr,

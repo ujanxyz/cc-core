@@ -56,12 +56,12 @@ public:
             storage->assetUri = uri;
         }
 
-        Bitmap* createBitmap() {
+        Bitmap* createBitmap(IDimension dimension) {
             CHECK(storage != nullptr);
             CHECK(resourceCtx != nullptr);
             CHECK(storage->bitmap == nullptr) << "Bitmap already set for this attribute.";
             BitmapPool* bitmapPool = resourceCtx->GetBitmapPool();
-            storage->bitmap = bitmapPool->CreateNewBitmap(encodedSlotId, 1024 /* width */, 1024 /* height */, 4 /* bytesPerPixel */);
+            storage->bitmap = bitmapPool->CreateNewBitmap(encodedSlotId, dimension, 4 /* bytesPerPixel */);
             CHECK(storage->bitmap != nullptr);
             return storage->bitmap.get();
         }

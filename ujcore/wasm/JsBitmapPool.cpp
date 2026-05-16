@@ -72,7 +72,14 @@ EM_JS(void, JsOnCaptureBitmap, (const char* slotIdStr, const char* modeStr, emsc
     const jSlotIdStr = UTF8ToString(slotIdStr);
     const jModeStr = UTF8ToString(modeStr);
     const jImageData = Emval.toValue(imageData);
-    globalThis.pipelineEvents.dispatchEvent(new CustomEvent("BITMAP_CAPTURED", { detail: { assetKey: jSlotIdStr, mode: jModeStr, imageData: jImageData } }));
+
+    // TODO: Don't clone here, rather pass to module subsystem.
+    const clone = new ImageData(
+      new Uint8ClampedArray(jImageData.data),
+      jImageData.width,
+      jImageData.height
+    );
+    globalThis.pipelineEvents.dispatchEvent(new CustomEvent("BITMAP_CAPTURED", { detail: { assetKey: jSlotIdStr, mode: jModeStr, imageData: clone } }));
 });
 
 EM_JS(void, JsOnDestroyBitmap, (uint8_t* pixelData), {
@@ -83,13 +90,12 @@ class JsHeapBackedBitmap final : public Bitmap {
 public:
   JsHeapBackedBitmap(
     const std::string& id,
-    int32_t width,
-    int32_t height,
+    IDimension dimension,
     int32_t bytesPerPixel,
     std::unique_ptr<uint8_t[]>&& pixelBytes,
     JsBitmapPool* const parent,
     emscripten::val&& jsImageData)
-    : id_(id), width_(width), height_(height), bytesPerPixel_(bytesPerPixel), wrappedBytes_(std::move(pixelBytes)), parent_(parent), jsImageData_(std::move(jsImageData)) {
+    : id_(id), dimension_(dimension), bytesPerPixel_(bytesPerPixel), wrappedBytes_(std::move(pixelBytes)), parent_(parent), jsImageData_(std::move(jsImageData)) {
       CHECK(wrappedBytes_ != nullptr) << "Failed to allocate bytes for JsHeapBackedBitmap";
   }
 
@@ -104,12 +110,8 @@ public:
     return id_;
   }
 
-  int32_t width() const override {
-    return width_;
-  }
-
-  int32_t height() const override {
-    return height_;
+  IDimension dimension() const override {
+    return dimension_;
   }
 
   int32_t bytesPerPixel() const override {
@@ -130,8 +132,7 @@ public:
 
 private:
   const std::string id_;
-  const int32_t width_;
-  const int32_t height_;
+  const IDimension dimension_;
   const int32_t bytesPerPixel_;
   std::unique_ptr<uint8_t[]> wrappedBytes_;
 
@@ -155,12 +156,13 @@ JsBitmapPool::JsBitmapPool() {
 
 std::shared_ptr<Bitmap> JsBitmapPool::CreateNewBitmap(
       const std::string& resourceId,
-      int32_t width, int32_t height, int32_t bytesPerPixel) {
+      IDimension dimension,
+      int32_t bytesPerPixel) {
     std::cout << "[JsBitmapPool] Creating new bitmap with id: " << resourceId << std::endl;
-    const int32_t numBytes = width * height * bytesPerPixel;
+    const int32_t numBytes = dimension.area() * bytesPerPixel;
     emscripten::val target = emscripten::val::object();
-    target.set("width", width);
-    target.set("height", height);
+    target.set("width", dimension.width);
+    target.set("height", dimension.height);
     target.set("numBytes", numBytes);
 
     emscripten::val jsObject = emscripten::val::take_ownership(JsOnCreateBitmap(target.as_handle()));
@@ -172,7 +174,7 @@ std::shared_ptr<Bitmap> JsBitmapPool::CreateNewBitmap(
   const intptr_t dataPtr = jsObject["dataPtr"].as<intptr_t>();
   emscripten::val imageData = jsObject["imageData"];
 
-  std::cout << "[JsBitmapPool] Released staged bitmap info - width: " << width << ", height: " << height << ", bpp: " << bytesPerPixel << ", dataPtr: " << dataPtr << std::endl;
+  std::cout << "[JsBitmapPool] Released staged bitmap info - width: " << dimension.width << ", height: " << dimension.height << ", bpp: " << bytesPerPixel << ", dataPtr: " << dataPtr << std::endl;
 
   uint8_t* const rawBytes = reinterpret_cast<uint8_t*>(dataPtr);
   std::unique_ptr<uint8_t[]> pixelData = std::unique_ptr<uint8_t[]>(rawBytes);
@@ -180,8 +182,8 @@ std::shared_ptr<Bitmap> JsBitmapPool::CreateNewBitmap(
 
 
   auto bitmap = std::make_shared<JsHeapBackedBitmap>(
-      resourceId, width, height, bytesPerPixel, std::move(pixelData), this, std::move(imageData));
-  activeBitmaps_[std::string(bitmap->id())] = bitmap.get();
+      resourceId, dimension, bytesPerPixel, std::move(pixelData), this, std::move(imageData));
+  //activeBitmaps_[std::string(bitmap->id())] = bitmap.get();
   std::cout << "[JsBitmapPool] returning bitmap (1) with id: " << bitmap->id() << std::endl;
   return bitmap;
 }
@@ -203,8 +205,8 @@ std::shared_ptr<Bitmap> JsBitmapPool::ReleaseStagedBitmap(
   uint8_t* const rawBytes = reinterpret_cast<uint8_t*>(dataPtr);
   std::unique_ptr<uint8_t[]> pixelData = std::unique_ptr<uint8_t[]>(rawBytes);
   auto bitmap = std::make_shared<JsHeapBackedBitmap>(
-      reqSlotIdStr, width, height, 4 /* bytesPerPixel */, std::move(pixelData), this, std::move(imageData));
-  activeBitmaps_[std::string(bitmap->id())] = bitmap.get();
+      reqSlotIdStr, IDimension::MakeWH(width, height), 4 /* bytesPerPixel */, std::move(pixelData), this, std::move(imageData));
+  //activeBitmaps_[std::string(bitmap->id())] = bitmap.get();
   return bitmap;
 }
 

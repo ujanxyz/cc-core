@@ -23,10 +23,13 @@ public:
     // Looks up the current states of the slots. Returns a map from slot id to slot state.
     static absl::StatusOr<std::map<SlotId, grph::SlotState>> LookupSlotStates(const GraphState& state, const std::vector<SlotId>& slotIds);
 
-
-    // Get the encoded data for the given graph input node.
-    // Returns nullopt if not found or not an input node.
-    static std::optional<grph::EncodedData> GetNodeIoData(const GraphState& state, NodeId nodeId);
+    // Looks up the info and state of the only slot for an I/O node (graph input or output node).
+    // Such I/O nodes always have a single slot.
+    // In case of graph input node, the slot is an output slot named "$out", and in case of graph
+    // output node, the slot is an input slot named "$in".
+    // TODO: Implement this.
+    static absl::StatusOr<std::pair<const grph::SlotInfo*, const grph::SlotState*>> LookupIoSlot(const GraphState& state, NodeId nodeId);
+    static absl::StatusOr<std::pair<const grph::SlotInfo*, grph::SlotState*>> LookupMutableIoSlot(GraphState& state, NodeId nodeId);
 
     // Get a copy of the current state state of a node, given the graph state and the node id.
     static std::optional<grph::NodeState> CopyNodeState(const GraphState& state, NodeId nodeId);

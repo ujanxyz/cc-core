@@ -45,6 +45,7 @@ cc_binary(
          # This pulls all the actual function definitions.
          "//ujcore/functions:all_functions",
          "//ujcore/functions/attributes:all_attributes",
+         "//ujcore/wasm/wgpu:all_functions",
          "@abseil-cpp//absl/log:flags", # Keep: For controlling Abseil logging related flags.
          "@abseil-cpp//absl/flags:parse",
          "@cppschema//:js_api_bridge",

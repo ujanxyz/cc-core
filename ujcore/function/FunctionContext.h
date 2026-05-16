@@ -15,7 +15,6 @@ public:
     virtual ujcore::NodeId GetFunctionNodeId() const = 0;
     virtual AttributeData* OnGetParam(FuncParamAccess access, const std::string& name) = 0;
     virtual void LogFromFunc(std::string_view message) = 0;
-    virtual void DumpDebugInfoFromFunc() = 0;
     virtual ResourceContext* GetResourceContext() = 0;
 };
 
@@ -41,10 +40,6 @@ public:
 
     void LogInfo(std::string_view message) {
         parent_->LogFromFunc(message);
-    }
-
-    void DumpDebugInfo() {
-        parent_->DumpDebugInfoFromFunc();
     }
 
     ResourceContext* GetResourceContext() {
@@ -73,12 +68,12 @@ public:
     // ---- AWAIT ----
     [[nodiscard]]
     ujfunc::FunctionReturn ReturnAwait(std::string channel,
-                                std::string workuri) const {
+                                std::string workId) const {
         return ujfunc::FunctionReturn{
         .code = ujfunc::ReturnCode::AWAIT,
         .await = ujfunc::AwaitInfo{
             .channel = std::move(channel),
-            .workuri = std::move(workuri),
+            .workId = std::move(workId),
         }
         };
     }

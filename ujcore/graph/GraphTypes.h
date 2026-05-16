@@ -72,19 +72,21 @@ struct NodeInfo {
     // Identifies the node function used, e.g. "/fn/points-on-curve"
     // The uri of graph inputs functions are named as: "/$IN/<dtype-as-str>"
     // The uri of graph outputs functions are named as: "/$OUT/<dtype-as-str>"
-    /// @json: Encode as string, like `"/fn/points-on-curve"`
     std::string uri;
 
     // Only for graph IO nodes, the data type of the graph input or output.
-    /// @json: Encode as string (if exists), like `"float"` or missing for non-IO nodes.
     std::optional<std::string> ioDtype;
 
-    // names of the slots contained in this node.
-    /// @json: Encode as list of strings, like `["x", "y", "fx"]`
+    // An input slot corresponds to an input param in the function.
+    // If this is a graph output node, it will have a single input slot named "$in".
     std::vector<std::string> ins;
-    /// @json: Encode as list of strings, like `["out"]`
+
+    // An output slot corresponds to an output param in the function.
+    // If this is a graph input node, it will have a single output slot named "$out".
     std::vector<std::string> outs;
-    /// @json: Encode as list of strings, like `["inout1", "inout2"]`
+
+    // An inout slot corresponds to an inout param in the function.
+    // A graph input or output slot must not have inout slots.
     std::vector<std::string> inouts;
 
     DEFINE_ENUM_CONVERSION_FUNCTION(NodeType, FN, IN, OUT);
@@ -161,6 +163,13 @@ struct NodeState {
     std::string label;
 
     // Only for graph IO nodes, this holds the data for the graph inputs and outputs.
+    //
+    /// @deprecated: Do not use node level encoded data (for graph input node), instead use
+    // the encoded data at the only slot ("$out") of the graph input node.
+    //
+    // This is to unify the data handling for graph input and output nodes with regular
+    // function nodes, and avoid confusions on when to use node level encoded data vs
+    // slot level encoded data.
     std::optional<EncodedData> encodedData;
 
     ConnectedState connected = ConnectedState::WAIT;

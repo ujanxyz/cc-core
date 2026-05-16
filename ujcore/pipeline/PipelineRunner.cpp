@@ -31,7 +31,7 @@ absl::StatusOr<flow::AwaitEntry> ToFlowAwaitEntry(const NodeId nodeId, const ujf
     return flow::AwaitEntry {
         .nodeId = nodeId,
         .channel = fnResult.await->channel,
-        .workuri = fnResult.await->workuri,
+        .workId = fnResult.await->workId,
     };
 }
 
@@ -70,55 +70,6 @@ absl::StatusOr<std::vector<AssetInfo>> PipelineRunner::RebuildFromState(const Gr
     nextStepGroupIndex_ = 0;
     completedOutputs_.clear();
     return PipelineBuilder::GetAssetInfos(state, pipeline_);
-}
-
-absl::StatusOr<std::vector<grph::GraphRunOutput>> PipelineRunner::RunPipeline() {
-    std::vector<grph::GraphRunOutput> result;
-
-    // Execute each node group in topological order.
-    for (const auto& group : pipeline_.nodeGroups) {
-        // Execute incoming edge propagation steps.
-        for (const auto& edgeStep : group.incomingTransfers) {
-            edgeStep.dstAttr->dtype = edgeStep.srcAttr->dtype;
-            edgeStep.dstAttr->data = edgeStep.srcAttr->data;
-            if (edgeStep.dstAttr->data == nullptr) {
-                LOG(WARNING) << "Propagating null data for dtype: "
-                    << AttributeDataTypeToStr(edgeStep.dstAttr->dtype);
-            }
-        }
-
-        // Execute the node step (either function node or IO node).
-        if (std::holds_alternative<std::reference_wrapper<PipelineFnNode>>(group.nodeStep)) {
-            PipelineFnNode& fnNode = std::get<std::reference_wrapper<PipelineFnNode>>(group.nodeStep).get();
-            const ujfunc::FunctionReturn fnResult = fnNode.RunFunction();
-            if (fnResult.IsDone() || fnResult.IsAwait()) {
-                // Continue execution for full RunPipeline mode.
-            } else if (fnResult.IsNoData()) {
-                return absl::FailedPreconditionError("Function returned NO_DATA during full pipeline run");
-            } else if (fnResult.IsError()) {
-                if (fnResult.error.has_value()) {
-                    return *fnResult.error;
-                }
-                return absl::InternalError("Function returned ERROR without status");
-            } else {
-                return absl::InternalError("Function returned unknown code");
-            }
-        }
-        else if (std::holds_alternative<std::reference_wrapper<PipelineIONode>>(group.nodeStep)) {
-            PipelineIONode& ioNode = std::get<std::reference_wrapper<PipelineIONode>>(group.nodeStep).get();
-            RETURN_IF_ERROR(ioNode.RunAsIO());
-            if (ioNode.isOutputStage()) {
-                // Collect the output values from the graph output nodes.
-                ASSIGN_OR_RETURN(auto runEntry, ioNode.GetRunResult());
-                result.push_back(std::move(runEntry));
-            }
-        }
-        else {
-            LOG(FATAL) << "Invalid node step variant";
-        }
-    }
-
-    return result;
 }
 
 absl::StatusOr<flow::FlowStepResult> PipelineRunner::StepPipeline() {
@@ -233,11 +184,12 @@ absl::StatusOr<std::vector<ResourceInfo>> PipelineRunner::GetPipelineResources()
     }
     const std::vector<const Bitmap*> activeBitmaps = bitmapPool_->GetActiveBitmaps();
     for (const Bitmap* bitmap : activeBitmaps) {
+        const IDimension dim = bitmap->dimension();
         BitmapInfo bitmapInfo = {
             .id = std::string(bitmap->id()),
             .backend = "wasm_heap",
-            .width = bitmap->width(),
-            .height = bitmap->height(),
+            .width = dim.width,
+            .height = dim.height,
             .bytesPerPixel = bitmap->bytesPerPixel(),
         };
         ResourceInfo info;

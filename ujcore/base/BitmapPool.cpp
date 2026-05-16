@@ -8,8 +8,8 @@ namespace {
 
 class DummyBitmap final : public Bitmap {
 public:
-  DummyBitmap(int32_t width, int32_t height, int32_t bytesPerPixel)
-    : width_(width), height_(height), bytesPerPixel_(bytesPerPixel) {
+  DummyBitmap(IDimension dimension, int32_t bytesPerPixel)
+    : dimension_(dimension), bytesPerPixel_(bytesPerPixel) {
         const int32_t totalBytes = byteSize();
         ownedBytes_ = std::unique_ptr<uint8_t[]>(new uint8_t[totalBytes]);
   }
@@ -22,12 +22,8 @@ public:
     return "n/a";
   }
 
-  int32_t width() const override {
-    return width_;
-  }
-
-  int32_t height() const override {
-    return height_;
+  IDimension dimension() const override {
+    return dimension_;
   }
 
   int32_t bytesPerPixel() const override {
@@ -47,8 +43,7 @@ public:
   }
 
 private:
-  const int32_t width_;
-  const int32_t height_;
+  const IDimension dimension_;
   const int32_t bytesPerPixel_;
 
   std::unique_ptr<uint8_t[]> ownedBytes_;
@@ -59,15 +54,16 @@ class FallbackBitmapPool final : public BitmapPool {
 public:
   std::shared_ptr<Bitmap> CreateNewBitmap(
       const std::string& resourceId,
-      int32_t width, int32_t height, int32_t bytesPerPixel) override {
-    auto bitmap = std::make_unique<DummyBitmap>(width, height, bytesPerPixel);
+      IDimension dimension,
+      int32_t bytesPerPixel) override {
+    auto bitmap = std::make_unique<DummyBitmap>(dimension, bytesPerPixel);
     return bitmap;
   }
 
   std::shared_ptr<Bitmap> ReleaseStagedBitmap(
         const std::string& reqSlotIdStr,
         const std::string& assetUri) override {
-    auto bitmap = std::make_unique<DummyBitmap>(1, 1, 4);
+    auto bitmap = std::make_unique<DummyBitmap>(IDimension::MakeWH(1, 1), 4);
     return bitmap;
   }
 

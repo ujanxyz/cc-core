@@ -59,6 +59,9 @@ class GraphBuilder {
   DeleteElements(const std::vector<NodeId>& nodeIds, const std::vector<EdgeId>& edgeIds);
 
   absl::Status SetNodeEncodedData(const NodeId nodeId, const std::optional<grph::EncodedData>& encodedData);
+  /// @deprecated Use SetGraphInputs instead, which now operates at the slot level.
+  /// This method is deprecated because graph input nodes should have their encoded data
+  /// stored at the slot level (the "$out" slot) instead of the node level.
   absl::Status SetSlotEncodedData(const SlotId slotId, const std::optional<grph::EncodedData>& encodedData);
 
   // Sets the graph input data for the given input nodes. The input data should be encoded as strings.
