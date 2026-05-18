@@ -56,6 +56,7 @@ public: // TODO: change to private after pipeline builder is implemented.
 
         // Directly references to the entry in graph's slot state. This allows the function
         // node to read the latest manually overridden data for this slot.
+        /// @deprecated Use decode functions.
         const std::optional<grph::EncodedData>* encodedInput = nullptr;
 
         // Only used for input slots, to convert manually overridden encoded data (if exists)

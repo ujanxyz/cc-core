@@ -22,6 +22,11 @@ public:
     virtual std::shared_ptr<Bitmap> ReleaseStagedBitmap(
         const std::string& reqSlotIdStr,
         const std::string& assetUri) = 0;
+
+    virtual std::shared_ptr<Bitmap> CreateAllocated(
+        const std::string& resourceId,
+        const IDimension& dimension,
+        std::unique_ptr<uint8_t[]>&& pixelData) = 0;
     
     virtual std::vector<const Bitmap*> GetActiveBitmaps() const = 0;
 };

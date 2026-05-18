@@ -3,6 +3,21 @@ load("@aspect_rules_js//js:defs.bzl", "js_binary")
 
 load("@emsdk//emscripten_toolchain:wasm_rules.bzl", "wasm_cc_binary")
 
+
+cc_library(
+    name = "BitmapEncoding",
+    srcs = ["BitmapEncoding.cpp"],
+    deps = [
+        ":JsBitmapPool",
+        "//ujcore/base:BackendRegistry",
+        "//ujcore/base:BitmapPool",
+        "//ujcore/functions/attributes:BitmapAttr",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:check",
+    ],
+    alwayslink = 1,
+)
+
 cc_library(
     name = "JsBitmapPool",
     srcs = ["JsBitmapPool.cpp"],
@@ -36,6 +51,7 @@ cc_binary(
         "entrypoint.cpp",
     ],
     deps = [
+        ":BitmapEncoding",
         ":JsBitmapPool",
          "//ujcore/api_schemas:FlowApi",
          "//ujcore/api_schemas:GraphApi",

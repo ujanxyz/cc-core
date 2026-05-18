@@ -1,6 +1,7 @@
 #pragma once
 
 #include "absl/log/log.h"
+#include "absl/log/check.h"
 #include "absl/strings/str_cat.h"
 #include "ujcore/function/AttributeData.h"
 #include "ujcore/function/AttributeDataType.h"
@@ -38,6 +39,10 @@ auto GetInParam(FunctionContext& ctx, const std::string& name) -> std::unique_pt
     bool accept = std::find(
         acceptTypes.begin(), acceptTypes.end(), attr->dtype) != acceptTypes.end();
     if (!accept) {
+        LOG(ERROR) << "Candidate dtypes:";
+        for (const auto attrType : acceptTypes) {
+            LOG(ERROR) << "Accepted dtype: " << AttributeDataTypeToStr(attrType);
+        }
         LOG(FATAL) << "Attr dtype rejected: " << name << ", dtype: "
             << AttributeDataTypeToStr(attr->dtype);
         return nullptr;
@@ -65,9 +70,9 @@ auto GetOutParam(FunctionContext& ctx, const std::string& name) -> std::unique_p
         return nullptr;
     }
     const AttributeDataType yieldsType = T::yieldsType();
-    std::shared_ptr<StorageType> storage = std::make_shared<StorageType>();
+    CHECK(yieldsType != AttributeDataType::kUnknown) << "yieldsType must be specified for output params";
     attr->dtype = yieldsType;
-    attr->data = storage;
+    attr->data = std::make_shared<StorageType>();
 
     auto param = std::make_unique<OutParamType>();
     param->storage = std::static_pointer_cast<StorageType>(attr->data);

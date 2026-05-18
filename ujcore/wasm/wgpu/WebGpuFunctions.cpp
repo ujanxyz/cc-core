@@ -71,26 +71,28 @@ public:
     }
 
     ujfunc::FunctionReturn OnRun(FunctionContext& ctx) override {
-        if (bmp_ == nullptr) {
+        if (bmpOut_ == nullptr) {
+            bmpOut_ = GetOutParam<BitmapAttr>(ctx, "pic");
             LOG(INFO) << "Creating bitmap for the first time.";
             // vOut->setFromUri("/bmpuri-001");
-            bmp_ = bmpOut_->createBitmap(IDimension::MakeWH(1024, 1024));
-            const IDimension dim = bmp_->dimension();
-            LOG(INFO) << "WebGpuDemoFn created bitmap with id: " << bmp_->id() << ", width: " << dim.width << ", height: " << dim.height;
+            Bitmap* bmp = bmpOut_->createBitmap(IDimension::MakeWH(1024, 1024));
+            const IDimension dim = bmp->dimension();
+            LOG(INFO) << "WebGpuDemoFn created bitmap with id: " << bmp->id() << ", width: " << dim.width << ", height: " << dim.height;
             LOG(INFO) << "Simulating long GPU operation by returning pending status on first attempt.";
-            std::string workuri = registerAwait(bmp_);
+            std::string workuri = registerAwait(bmp);
             return ctx.ReturnAwait("webgpu", workuri);
         }
 
-        const IDimension dim = bmp_->dimension();
-        LOG(INFO) << "Reusing existing bitmap with id: " << bmp_->id() << ", width: " << dim.width << ", height: " << dim.height;
-        drawOnBitmap(bmp_);
+        CHECK(bmpOut_->hasBitmap());
+        Bitmap* bmp = bmpOut_->getBitmap();
+        const IDimension dim = bmp->dimension();
+        LOG(INFO) << "Reusing existing bitmap with id: " << bmp->id() << ", width: " << dim.width << ", height: " << dim.height;
+        drawOnBitmap(bmp);
         bmpOut_->Capture();
         return ctx.ReturnDone();
     }
 
 private:
-     Bitmap* bmp_ = nullptr;
      std::unique_ptr<OutType> bmpOut_;
 
     std::string registerAwait(Bitmap* bmp) {

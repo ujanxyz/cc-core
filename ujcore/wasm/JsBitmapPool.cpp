@@ -7,6 +7,7 @@
 #include <iostream>
 
 #include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "ujcore/base/BackendRegistry.h"
 
 namespace {
@@ -159,6 +160,7 @@ std::shared_ptr<Bitmap> JsBitmapPool::CreateNewBitmap(
       IDimension dimension,
       int32_t bytesPerPixel) {
     std::cout << "[JsBitmapPool] Creating new bitmap with id: " << resourceId << std::endl;
+    LOG(INFO) << "Creating new bitmap with id: " << resourceId << ", dimension: " << dimension.width << "x" << dimension.height;
     const int32_t numBytes = dimension.area() * bytesPerPixel;
     emscripten::val target = emscripten::val::object();
     target.set("width", dimension.width);
@@ -183,7 +185,6 @@ std::shared_ptr<Bitmap> JsBitmapPool::CreateNewBitmap(
 
   auto bitmap = std::make_shared<JsHeapBackedBitmap>(
       resourceId, dimension, bytesPerPixel, std::move(pixelData), this, std::move(imageData));
-  //activeBitmaps_[std::string(bitmap->id())] = bitmap.get();
   std::cout << "[JsBitmapPool] returning bitmap (1) with id: " << bitmap->id() << std::endl;
   return bitmap;
 }
@@ -206,15 +207,23 @@ std::shared_ptr<Bitmap> JsBitmapPool::ReleaseStagedBitmap(
   std::unique_ptr<uint8_t[]> pixelData = std::unique_ptr<uint8_t[]>(rawBytes);
   auto bitmap = std::make_shared<JsHeapBackedBitmap>(
       reqSlotIdStr, IDimension::MakeWH(width, height), 4 /* bytesPerPixel */, std::move(pixelData), this, std::move(imageData));
-  //activeBitmaps_[std::string(bitmap->id())] = bitmap.get();
   return bitmap;
 }
 
+std::shared_ptr<Bitmap> JsBitmapPool::CreateAllocated(
+        const std::string& resourceId,
+        const IDimension& dimension,
+        std::unique_ptr<uint8_t[]>&& pixelData) {
+  emscripten::val jsImageData = emscripten::val::null();
+  const int32_t bytesPerPixel = 4;
+  auto bitmap = std::make_shared<JsHeapBackedBitmap>(
+      resourceId, dimension, bytesPerPixel, std::move(pixelData), this, std::move(jsImageData));
+  return bitmap;
+}
+
+/// @deprecated - Not used.
 std::vector<const Bitmap*> JsBitmapPool::GetActiveBitmaps() const {
     std::vector<const Bitmap*> activeBitmaps;
-    for (const auto& [_, bitmap] : activeBitmaps_) {
-        activeBitmaps.push_back(bitmap);
-    }
     return activeBitmaps;
 }
 

@@ -42,6 +42,15 @@ cc_test(
 )
 
 cc_library(
+    name = "EncodedAttr",
+    hdrs = ["EncodedAttr.h"],
+    deps = [
+        ":AttributeDataType",
+        "@abseil-cpp//absl/log:check",
+    ],
+)
+
+cc_library(
     name = "FuncParamAccess",
     hdrs = ["FuncParamAccess.h"],
 )

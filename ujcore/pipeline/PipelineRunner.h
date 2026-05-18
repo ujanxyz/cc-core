@@ -31,6 +31,8 @@ public:
     // the combined step status and all completed graph outputs (from this step and previous steps).
     absl::StatusOr<flow::FlowStepResult> StepPipeline();
 
+    absl::StatusOr<flow::FlowStepResult> StepPipelineV2();
+
     absl::Status AddInputBitmap(const NodeId nodeId, const BitmapInfo& bitmapInfo, uint8_t* data);
 
     // Gets information about the resources created / used in the graph pipeline.
@@ -40,12 +42,20 @@ private:
     // Index of the next node group to execute in StepPipeline().
     size_t nextStepGroupIndex_ = 0;
 
+    // Index of the next node group to execute in StepPipeline().
+    std::pair<size_t /* stage index */, size_t /* executor index */> nextStageExecutorIndex_{0, 0};
+
+
     // Completed graph output entries accumulated across step calls.
     std::map<NodeId, flow::GraphOutputEntry> completedOutputs_;
 
     GraphPipeline pipeline_;
     std::unique_ptr<BitmapPool> bitmapPool_;
     std::unique_ptr<ResourceContext> resourceContext_;
+
+    // V2 executor helpers
+    absl::Status DoAttrTransfers(GraphPipeline::NodeOpsStage* stage);
+    absl::Status HandleEncodeOutput(GraphPipeline::NodeOpsStage* stage);
 };
 
 }  // namespace ujcore

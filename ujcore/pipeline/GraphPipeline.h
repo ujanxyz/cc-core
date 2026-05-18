@@ -9,6 +9,7 @@
 #include "ujcore/graph/IdTypes.h"
 #include "ujcore/graph/GraphTypes.h"
 #include "ujcore/function/AttributeData.h"
+#include "ujcore/pipeline/FuncExecutor.h"
 #include "ujcore/pipeline/PipelineFnNode.h"
 #include "ujcore/pipeline/PipelineIONode.h"
 
@@ -24,6 +25,8 @@ struct GraphPipeline {
         EdgeId edgeId;
         AttributeData* srcAttr = nullptr;
         AttributeData* dstAttr = nullptr;
+
+        std::string debugName;
 
         // TODO: Add a per-edge dirty flag here for incremental stepping.
     };
@@ -48,12 +51,28 @@ struct GraphPipeline {
 
     // This structure own the stages, namely PipelineFnNode and PipelineIONode,
     // for all nodes in the graph, keyed by node id.
+    [[deprecated("V2 logic uses nodeOpsStages")]]
     std::map<NodeId, NodeStage> nodeStages;
 
     // Execution groups ordered by topological sort. Each group contains incoming edge
     // transfers + node execution step. Groups are iterated in this order for deterministic
     // execution that respects graph dependencies.
+    [[deprecated("V2 logic uses stageSequence")]]
     std::vector<NodeExecGroup> nodeGroups;
+
+    //------------------------------------------------------
+    // V2 fields.
+    struct NodeOpsStage {
+        NodeId nodeId;
+        // All attribute propagation steps that deliver data to this node's input slots.
+        std::vector<EdgePropagateStep> attrTransfers;
+        // The atomic execution units.
+        // FN nodes have the main function as the last executor.
+        std::vector<std::unique_ptr<FuncExecutor>> executors;
+    };
+
+    std::map<NodeId, NodeOpsStage> nodeOpsStages;
+    std::vector<NodeOpsStage*> stageSequence;
 };
 
 }  // namespace ujcore

@@ -14,10 +14,27 @@ cc_library(
 )
 
 cc_library(
+    name = "FuncExecutor",
+    srcs = ["FuncExecutor.cpp"],
+    hdrs = ["FuncExecutor.h"],
+    deps = [
+        "//ujcore/function:AttributeData",
+        "//ujcore/function:AttributeTypeRegistry",
+        "//ujcore/function:FuncParamAccess",
+        "//ujcore/function:FunctionBase",
+        "//ujcore/function:FunctionContext",
+        "//ujcore/function:ResourceContext",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:check",
+    ],
+)
+
+cc_library(
     name = "GraphPipeline",
     # srcs = ["GraphPipeline.cpp"],
     hdrs = ["GraphPipeline.h"],
     deps = [
+        ":FuncExecutor",
         ":PipelineFnNode",
         ":PipelineIONode",
         "//ujcore/graph:IdTypes",
@@ -34,6 +51,8 @@ cc_library(
         ":GraphPipeline",
         ":PipelineFnNode",
         ":PipelineSlot",
+        "//ujcore/function:EncodedAttr",
+        "//ujcore/graph:AbslStringifies",
         "//ujcore/graph:AssetInfo",
         "//ujcore/graph:GraphState",
         "//ujcore/graph:IdTypes",

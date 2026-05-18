@@ -5,7 +5,9 @@
 #include <string>
 #include <vector>
 
+#include "emscripten/val.h"
 #include "ujcore/base/BitmapPool.h"
+#include "ujcore/base/IDimension.h"
 
 // This is the BitmapPool implementation for the WASM environment.
 
@@ -22,6 +24,11 @@ public:
         const std::string& reqSlotIdStr,
         const std::string& assetUri) override;
 
+    std::shared_ptr<Bitmap> CreateAllocated(
+        const std::string& resourceId,
+        const IDimension& dimension,
+        std::unique_ptr<uint8_t[]>&& pixelData) override;
+
     // Returns a list of active bitmaps that are currently in use.
     std::vector<const Bitmap*> GetActiveBitmaps() const override;
 
@@ -33,6 +40,8 @@ private:
     // Tracks the bitmaps created but not deleted. Not owned.
     std::map<std::string, const Bitmap*> activeBitmaps_;
 };
+
+std::shared_ptr<Bitmap> CreateBitmapPreAllocated(emscripten::val jsImageData);
 
 // Register the JsBitmapPool implementation so that it can be created by CreateNewBitmapPool().
 void RegisterJsBitmapPool();

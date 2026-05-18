@@ -34,7 +34,7 @@ class FlowApiBackend : public cppschema::ApiBackend<FlowApi> {
     }
 
     StepPipelineResponse stepPipelineImpl(const VoidType&) {
-        auto stepResultOr = store_.runner().StepPipeline();
+        auto stepResultOr = store_.runner().StepPipelineV2();
         if (!stepResultOr.ok()) {
             LOG(FATAL) << "Step pipeline error: " << stepResultOr.status();
         }

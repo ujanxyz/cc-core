@@ -4,6 +4,12 @@
 
 std::string AttributeDataTypeToStr(AttributeDataType enumVal) {
     switch (enumVal) {
+        // "$encoded" is a special dtype used for manually entered data or uploaded files,
+        // the type itself is opaque to UI and is only used for storing the raw encoded
+        // string in the slot state.
+        // The "$" prefix is chosen to indicate that and filter out in UI.
+        case AttributeDataType::kEncoded:
+            return "$encoded";
         case AttributeDataType::kColors:
             return "colors";
         case AttributeDataType::kFloatList:
@@ -21,6 +27,7 @@ std::string AttributeDataTypeToStr(AttributeDataType enumVal) {
 
 AttributeDataType AttributeDataTypeFromStr(const std::string& name) {
     static const auto* const lookupTable = new std::unordered_map<std::string, AttributeDataType>({
+        {"$encoded", AttributeDataType::kEncoded},
         {"colors", AttributeDataType::kColors},
         {"floats", AttributeDataType::kFloatList},
         {"points2d", AttributeDataType::kPoints2D},

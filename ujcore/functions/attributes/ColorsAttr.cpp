@@ -3,15 +3,20 @@
 #include <string>
 #include <charconv>
 #include <cstdint>
-#include <string>
-#include <iostream>
 
+#include "ujcore/function/EncodedAttr.h"
+#include "ujcore/function/FunctionBase.h"
+#include "ujcore/function/FunctionRegistry.h"
+#include "ujcore/function/ParamAccessors.h"
 #include "absl/log/log.h"
 #include "nlohmann/json.hpp"
 #include "ujcore/function/AttributeTypeRegistry.h"
 
 namespace {
 
+using ujcore::FunctionRegistry;
+using ujcore::FunctionSpec;
+using ujcore::FunctionSpecBuilder;
 using json = ::nlohmann::json;
 using PackedRGBA = ColorsAttr::PackedRGBA;
 
@@ -35,6 +40,9 @@ std::string PackedRGBAToHexString(PackedRGBA color) {
 }
 
 std::optional<PackedRGBA> HexStringToPackedRGBA(const std::string& hexStr) {
+    if (hexStr.empty()) {
+        return std::nullopt;
+    }
     if (hexStr[0] != '#') {
         return std::nullopt;  // Invalid format
     }
@@ -64,7 +72,90 @@ std::optional<PackedRGBA> HexStringToPackedRGBA(const std::string& hexStr) {
     }
 }
 
+
+class ColorsDecodeFn final : public FunctionBase {
+public:
+    static inline const char* uri = "/$IN/colors";
+
+    static std::unique_ptr<FunctionSpec> spec() {
+        return FunctionSpecBuilder(uri)
+            .WithLabel("Input colors")
+            .WithDesc("Decodes a list of colors")
+            .WithInputParam("$in", AttributeDataType::kEncoded)
+            .WithOutParam("$out", AttributeDataType::kColors)
+            .Detach();
+    }
+
+    static FunctionBase* newInstance() {
+        return new ColorsDecodeFn();
+    }
+
+    bool OnInit(FunctionContext& ctx) override { return true; }
+
+    ujfunc::FunctionReturn OnRun(FunctionContext& ctx) override {
+        auto vIn = GetInParam<EncodedAttr>(ctx, "$in");
+        auto vOut = GetOutParam<ColorsAttr>(ctx, "$out");
+        const std::string* encodedStr = vIn->GetEncodedString();
+        CHECK(encodedStr != nullptr) << "Encoded input is null";
+
+        json jsonArray = json::parse(*encodedStr);
+        CHECK(jsonArray.is_array()) << "Invalid encoded colors: expected JSON array";
+
+        std::vector<PackedRGBA> colors;
+        colors.reserve(jsonArray.size());
+        for (const auto& item : jsonArray) {
+            CHECK(item.is_string()) << "Invalid encoded colors: expected hex color string entries";
+            const std::string hexStr = item.get<std::string>();
+            const auto colorOpt = HexStringToPackedRGBA(hexStr);
+            CHECK(colorOpt.has_value()) << "Invalid color string: " << hexStr;
+            colors.push_back(*colorOpt);
+        }
+
+        vOut->setFromPackedRGBASpan(colors);
+        return ctx.ReturnDone();
+    }
+};
+
+
+class ColorsEncodeFn final : public FunctionBase {
+public:
+    static inline const char* uri = "/$OUT/colors";
+
+    static std::unique_ptr<FunctionSpec> spec() {
+        return FunctionSpecBuilder(uri)
+            .WithLabel("Output colors")
+            .WithDesc("Encodes a list of colors")
+            .WithInputParam("$in", AttributeDataType::kColors)
+            .WithOutParam("$out", AttributeDataType::kEncoded)
+            .Detach();
+    }
+
+    static FunctionBase* newInstance() {
+        return new ColorsEncodeFn();
+    }
+
+    bool OnInit(FunctionContext& ctx) override { return true; }
+
+    ujfunc::FunctionReturn OnRun(FunctionContext& ctx) override {
+        auto vIn = GetInParam<ColorsAttr>(ctx, "$in");
+        auto vOut = GetOutParam<EncodedAttr>(ctx, "$out");
+
+        json jsonArray = json::array();
+        for (const PackedRGBA& color : vIn->asColorsSpan()) {
+            jsonArray.push_back(PackedRGBAToHexString(color));
+        }
+        vOut->setEncodedString(jsonArray.dump());
+        return ctx.ReturnDone();
+    }
+};
+
 __attribute__((constructor)) void RegisterColorsAttr() {
+    FunctionRegistry::GetInstance().RegisterFunction(
+        ColorsDecodeFn::uri, ColorsDecodeFn::spec, ColorsDecodeFn::newInstance, __FILE__);
+    FunctionRegistry::GetInstance().RegisterFunction(
+        ColorsEncodeFn::uri, ColorsEncodeFn::spec, ColorsEncodeFn::newInstance, __FILE__);
+
+    /// @deprecated: Remove after migrating to the above functions.
     // The JSON representation is an array of strings, like: ["#E0F08880", "#FF0000FF"]
 
     auto enode = [](std::shared_ptr<void> data, ResourceContext* resourceCtx) -> std::string {
