@@ -211,20 +211,6 @@ struct GraphApi {
         DEFINE_STRUCT_VISITOR_FUNCTION(isNode, nodeId, slotId, encodedData);
     };
 
-    // API: buildPipeline
-    struct BuildPipelineResponse {
-        std::vector<AssetInfo> assetInfos;
-        DEFINE_STRUCT_VISITOR_FUNCTION(assetInfos);
-    };
-
-    // API: getResources
-    struct GetResourcesResponse {
-        std::vector<ResourceInfo> resources;
-
-        DEFINE_STRUCT_VISITOR_FUNCTION(resources);
-    };
-
-
     cppschema::ApiStub<VoidType, GetGraphMetaResponse> getGraphMeta;
     cppschema::ApiStub<SetGraphMetaRequest, VoidType> setGraphMeta;
     cppschema::ApiStub<VoidType, GetGraphResponse> getGraph;
@@ -238,8 +224,6 @@ struct GraphApi {
     cppschema::ApiStub<VoidType, VoidType> clearGraph;
     cppschema::ApiStub<GetAvailableFuncsRequest, GetAvailableFuncsResponse> getAvailableFuncs;
     cppschema::ApiStub<SetEncodedDataRequest, VoidType> setEncodedData;
-    cppschema::ApiStub<VoidType, BuildPipelineResponse> buildPipeline;
-    cppschema::ApiStub<VoidType, GetResourcesResponse> getResources;
 
     DEFINE_API_VISITOR_FUNCTION(
         getGraphMeta,
@@ -254,9 +238,7 @@ struct GraphApi {
         getSlotStates,
         clearGraph,
         getAvailableFuncs,
-        setEncodedData,
-        buildPipeline,
-        getResources);
+        setEncodedData);
 };
 
 }  // namespace ujcore

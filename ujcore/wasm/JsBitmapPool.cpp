@@ -28,47 +28,6 @@ EM_JS(emscripten::EM_VAL, JsOnCreateBitmap, (emscripten::EM_VAL handle), {
     return Emval.toHandle(retValue);
 });
 
-EM_JS(emscripten::EM_VAL, JsReleaseStagedBitmap, (const char* slotIdStr, const char* assetUri), {
-  const jSlotIdStr = UTF8ToString(slotIdStr);
-  const jAssetUri = UTF8ToString(assetUri);
-  const imageData = Module.assetStaging.releaseImageData(jSlotIdStr, jAssetUri);
-  if (!imageData) {
-    console.warn("[JsBitmapPool] No staged bitmap found for slot: ", jSlotIdStr, " with asset URI: ", jAssetUri);
-    return null;
-  }
-
-  const { width, height, data, colorSpace, pixelFormat } = imageData;
-  if (colorSpace !== "srgb" || pixelFormat !== "rgba-unorm8") {
-    console.error("[JsBitmapPool] Unsupported image data format: ", colorSpace, pixelFormat);
-    return null;
-  }
-  const { byteLength, byteOffset } = data;
-
-  const numBytes = width * height * 4; // Assuming RGBA8 format
-  if (byteLength !== numBytes) {
-    console.error("[JsBitmapPool] Mismatch in expected byte length: ", byteLength, " vs calculated: ", numBytes);
-    return null;
-  }
-
-  // Allocate new memory on WASM heap. Wasm C++ cannot directly work on the underlying
-  // ArrayBuffer of the ImageData, so we need to copy on to WASM-managed heap, and make
-  // a new ImageBuffer out of it.
-  const ptr = Module._malloc(numBytes);
-  const uint8arr = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, numBytes);
-  uint8arr.set(imageData.data);
-  const newImgData = new ImageData(uint8arr, width, height, { colorSpace, pixelFormat });
-
-  const retValue = {
-    width,
-    height,
-    dataPtr: ptr,
-    imageData: newImgData,
-  };
-
-  console.log("[JsBitmapPool] returning : ", retValue);
-  return Emval.toHandle(retValue);
-});
-
 EM_JS(void, JsOnCaptureBitmap, (const char* slotIdStr, const char* modeStr, emscripten::EM_VAL imageData), {
     const jSlotIdStr = UTF8ToString(slotIdStr);
     const jModeStr = UTF8ToString(modeStr);
@@ -189,27 +148,6 @@ std::shared_ptr<Bitmap> JsBitmapPool::CreateNewBitmap(
   return bitmap;
 }
 
-std::shared_ptr<Bitmap> JsBitmapPool::ReleaseStagedBitmap(
-        const std::string& reqSlotIdStr,
-        const std::string& assetUri) {
-  std::cout << "[JsBitmapPool] Releasing staged bitmap with URI: " << assetUri << " for slot: " << reqSlotIdStr << std::endl;
-  emscripten::val jsObject = emscripten::val::take_ownership(JsReleaseStagedBitmap(reqSlotIdStr.c_str(), assetUri.c_str()));
-  if (jsObject.isNull()) {
-    std::cout << "[JsBitmapPool] No staged bitmap found for slot: " << reqSlotIdStr << " with asset URI: " << assetUri << std::endl;
-    return nullptr;
-  }
-  const int32_t width = jsObject["width"].as<int32_t>();
-  const int32_t height = jsObject["height"].as<int32_t>();
-  const intptr_t dataPtr = jsObject["dataPtr"].as<intptr_t>();
-  emscripten::val imageData = jsObject["imageData"];
-
-  uint8_t* const rawBytes = reinterpret_cast<uint8_t*>(dataPtr);
-  std::unique_ptr<uint8_t[]> pixelData = std::unique_ptr<uint8_t[]>(rawBytes);
-  auto bitmap = std::make_shared<JsHeapBackedBitmap>(
-      reqSlotIdStr, IDimension::MakeWH(width, height), 4 /* bytesPerPixel */, std::move(pixelData), this, std::move(imageData));
-  return bitmap;
-}
-
 std::shared_ptr<Bitmap> JsBitmapPool::CreateAllocated(
         const std::string& resourceId,
         const IDimension& dimension,
@@ -219,12 +157,6 @@ std::shared_ptr<Bitmap> JsBitmapPool::CreateAllocated(
   auto bitmap = std::make_shared<JsHeapBackedBitmap>(
       resourceId, dimension, bytesPerPixel, std::move(pixelData), this, std::move(jsImageData));
   return bitmap;
-}
-
-/// @deprecated - Not used.
-std::vector<const Bitmap*> JsBitmapPool::GetActiveBitmaps() const {
-    std::vector<const Bitmap*> activeBitmaps;
-    return activeBitmaps;
 }
 
 void RegisterJsBitmapPool() {

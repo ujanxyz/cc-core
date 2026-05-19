@@ -35,8 +35,6 @@ using GetSlotStatesResponse = GraphApi::GetSlotStatesResponse;
 using GetAvailableFuncsRequest = GraphApi::GetAvailableFuncsRequest;
 using GetAvailableFuncsResponse = GraphApi::GetAvailableFuncsResponse;
 using SetEncodedDataRequest = GraphApi::SetEncodedDataRequest;
-using BuildPipelineResponse = GraphApi::BuildPipelineResponse;
-using GetResourcesResponse = GraphApi::GetResourcesResponse;
 
 FunctionInfo ToFunctionInfo(const FunctionSpec& spec) {
     std::vector<FunctionInfo::Param> params;
@@ -346,26 +344,6 @@ class GraphApiBackend : public cppschema::ApiBackend<GraphApi> {
         return {};
     }
 
-    BuildPipelineResponse buildPipelineImpl(const VoidType&) {
-        auto assetInfosOr = store_.runner().RebuildFromState(store_.state());
-        if (!assetInfosOr.ok()) {
-            LOG(FATAL) << "Build pipeline error: " << assetInfosOr.status();
-        }
-        return BuildPipelineResponse {
-            .assetInfos = std::move(assetInfosOr).value(),
-        };
-    }
-
-    GetResourcesResponse getResourcesImpl(const VoidType&) {
-        auto resourcesOr = store_.runner().GetPipelineResources();
-        if (!resourcesOr.ok()) {
-            LOG(FATAL) << "Get pipeline resources error: " << resourcesOr.status();
-        }
-        return GetResourcesResponse {
-            .resources = std::move(resourcesOr).value(),
-        };
-    }
-
  private:
    SharedStore& store_;
 };
@@ -386,8 +364,6 @@ static __attribute__((constructor)) void RegisterPipelineApiBackend() {
         .clearGraph = &GraphApiBackend::clearGraphImpl,
         .getAvailableFuncs = &GraphApiBackend::getAvailableFuncsImpl,
         .setEncodedData = &GraphApiBackend::setEncodedDataImpl,
-        .buildPipeline = &GraphApiBackend::buildPipelineImpl,
-        .getResources = &GraphApiBackend::getResourcesImpl,
     };
     cppschema::RegisterBackend<GraphApi, GraphApiBackend>(impl, ptrs);
 }

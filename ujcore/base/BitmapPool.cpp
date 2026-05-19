@@ -60,24 +60,12 @@ public:
     return bitmap;
   }
 
-  std::shared_ptr<Bitmap> ReleaseStagedBitmap(
-        const std::string& reqSlotIdStr,
-        const std::string& assetUri) override {
-    auto bitmap = std::make_unique<DummyBitmap>(IDimension::MakeWH(1, 1), 4);
-    return bitmap;
-  }
-
   std::shared_ptr<Bitmap> CreateAllocated(
         const std::string& resourceId,
         const IDimension& dimension,
         std::unique_ptr<uint8_t[]>&& pixelData) override {
     auto bitmap = std::make_unique<DummyBitmap>(IDimension::MakeWH(1, 1), 4);
     return bitmap;
-  }
-
-  std::vector<const Bitmap*> GetActiveBitmaps() const override {
-    // The fallback version does not implement this logic.
-    return {};
   }
 };
 

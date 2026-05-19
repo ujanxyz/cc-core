@@ -15,20 +15,10 @@ public:
         IDimension dimension,
         int32_t bytesPerPixel) = 0;
 
-    // Extract the staged bitmap for the given asset URI and return it,
-    // and also remove it from the pool's staging area.
-    // `reqSlotIdStr`: The requesting slot's spec, for tracking who used it.
-    // `assetUri`: The URI of the asset to release.
-    virtual std::shared_ptr<Bitmap> ReleaseStagedBitmap(
-        const std::string& reqSlotIdStr,
-        const std::string& assetUri) = 0;
-
     virtual std::shared_ptr<Bitmap> CreateAllocated(
         const std::string& resourceId,
         const IDimension& dimension,
         std::unique_ptr<uint8_t[]>&& pixelData) = 0;
-    
-    virtual std::vector<const Bitmap*> GetActiveBitmaps() const = 0;
 };
 
 // Create a new pool using the registered implementation.

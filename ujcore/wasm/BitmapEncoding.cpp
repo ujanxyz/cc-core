@@ -157,30 +157,6 @@ public:
             vOut->storage->bitmap = std::move(bitmap);
             return ctx.ReturnDone();
         }
-
-        // auto vIn = GetInParam<EncodedAttr>(ctx, "$in");
-        // auto vOut = GetOutParam<BitmapAttr>(ctx, "$out");
-        // const std::string* encodedStr = vIn->GetEncodedString();
-        // CHECK(encodedStr != nullptr) << "Encoded input is null";
-
-        // json jsonObj = json::parse(*encodedStr);
-        // CHECK(jsonObj.is_object() && jsonObj.contains(kAssetUriFieldName)) << "Missing assetUri field";
-        // const auto& ref = jsonObj[kAssetUriFieldName];
-        // CHECK(ref.is_string()) << "assetUri field is not a string";
-        // const std::string assetUri = ref.get<std::string>();
-
-        // vOut->storage->assetUri = assetUri;
-        // ResourceContext* resourceCtx = ctx.GetResourceContext();
-        // const std::string slotIdStr = resourceCtx->GetSlotIdStr();
-        // BitmapPool* bitmapPool = resourceCtx->GetBitmapPool();
-        // vOut->storage->bitmap = bitmapPool->ReleaseStagedBitmap(slotIdStr, assetUri);
-        // if (vOut->storage->bitmap != nullptr) {
-        //     vOut->storage->bitmap->onCapture(Bitmap::CaptureInfo {
-        //         .slotIdStr = slotIdStr,
-        //         .modeStr = "decode",
-        //     });
-        // }
-        // return ctx.ReturnDone();
     }
 
 private:

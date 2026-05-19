@@ -1,6 +1,5 @@
 #pragma once
 
-#include "ujcore/graph/AssetInfo.h"
 #include "ujcore/graph/GraphState.h"
 #include "ujcore/pipeline/GraphPipeline.h"
 
@@ -16,15 +15,8 @@ class PipelineBuilder final {
 public:
     // Clear any previously built state, and build the entire pipeline from the
     // current state of the graph (`graph_`).
-    static absl::Status Rebuild(const GraphState& graph, GraphPipeline& pipeline);
-
-    // V2 rebuild entrypoint.
     // TODO: Parallelize node-stage and edge-step construction.
     static absl::Status RebuildV2(const GraphState& graph, GraphPipeline& pipeline);
-
-    // Assets are the associated externally communicated data consumed or produced by the
-    // pipeline, e.g. media files.
-    static absl::StatusOr<std::vector<AssetInfo>> GetAssetInfos(const GraphState& graph, const GraphPipeline& pipeline);
 
 private:
     PipelineBuilder() = delete;

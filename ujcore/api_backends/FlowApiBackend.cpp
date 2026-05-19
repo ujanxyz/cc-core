@@ -7,7 +7,6 @@ namespace ujcore {
 namespace {
 
 using GetFlowStatusResponse = FlowApi::GetFlowStatusResponse;
-using BuildPipelineResponse = FlowApi::BuildPipelineResponse;
 using StepPipelineResponse = FlowApi::StepPipelineResponse;
 
 } // namespace
@@ -23,14 +22,12 @@ class FlowApiBackend : public cppschema::ApiBackend<FlowApi> {
         };
     }
 
-    BuildPipelineResponse buildPipelineImpl(const VoidType&) {
-        auto assetInfosOr = store_.runner().RebuildFromState(store_.state());
-        if (!assetInfosOr.ok()) {
-            LOG(FATAL) << "Build pipeline error: " << assetInfosOr.status();
+    VoidType buildPipelineImpl(const VoidType&) {
+        auto buildResultOr = store_.runner().RebuildFromState(store_.state());
+        if (!buildResultOr.ok()) {
+            LOG(FATAL) << "Build pipeline error: " << buildResultOr.status();
         }
-        return BuildPipelineResponse {
-            .assetInfos = std::move(assetInfosOr).value(),
-        };
+        return VoidType {};
     }
 
     StepPipelineResponse stepPipelineImpl(const VoidType&) {

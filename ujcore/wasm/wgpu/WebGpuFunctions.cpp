@@ -34,13 +34,9 @@ EM_JS(emscripten::EM_VAL, JsOnAwaitWGpuWork, (emscripten::EM_VAL handle), {
         taskData.srcHeight = srcHeight;
         taskData.srcPixels = new Uint8Array(Module.HEAPU8.buffer, srcPtrPixels, srcWidth * srcHeight * 4);
     }
-
-    console.log("[WebGpuDemoFn] Received task:", taskData, Module.wgpuTaskPool);
-    const workId = Module.wgpuTaskPool.registerTask(taskData);
-    const retValue = {
-        workId,
-    };
-    return Emval.toHandle(retValue);
+    const taskId = Module.awaitPool.addTask("wgpu", taskData);
+    console.log("[WebGpuDemoFn] Received task:", taskId, taskData);
+    return Emval.toHandle({ taskId });
 });
 
 //------------------------------------------------------------------------------
@@ -79,9 +75,10 @@ public:
             const IDimension dim = bmp->dimension();
             LOG(INFO) << "WebGpuDemoFn created bitmap with id: " << bmp->id() << ", width: " << dim.width << ", height: " << dim.height;
             LOG(INFO) << "Simulating long GPU operation by returning pending status on first attempt.";
-            std::string workuri = registerAwait(bmp);
-            return ctx.ReturnAwait("webgpu", workuri);
+            std::string taskId = registerAwait(bmp);
+            return ctx.ReturnAwait("webgpu", taskId);
         }
+        // TODO: Remove the task lying there, even if it's not used.
 
         CHECK(bmpOut_->hasBitmap());
         Bitmap* bmp = bmpOut_->getBitmap();
@@ -106,12 +103,8 @@ private:
         target.set("ptrPixels", reinterpret_cast<uintptr_t>(bmp->bytes()));
 
         emscripten::val retObj = emscripten::val::take_ownership(JsOnAwaitWGpuWork(target.as_handle()));
-        emscripten::val workIdVal = retObj["workId"];
-        if (workIdVal.isUndefined() || workIdVal.isNull()) {
-            LOG(WARNING) << "JsOnAwaitWGpuWork result missing workId, using fallback";
-            return "wgpu-fallback-workId";
-        }
-        return workIdVal.as<std::string>();
+        const std::string taskId = retObj["taskId"].as<std::string>();
+        return taskId;
     }
 
     // Given a bitmap, draw an opaque cyan rectangle in it, modifying raw rgba pixels.
@@ -180,10 +173,11 @@ public:
 
             bmpOut_ = GetOutParam<BitmapAttr>(ctx, "dst");
             dstBmp_ = bmpOut_->createBitmap(srcBmp_->dimension());
-            const IDimension dstDim = dstBmp_->dimension();
-            std::string workuri = registerAwait(srcBmp_, dstBmp_);
-            return ctx.ReturnAwait("webgpu", workuri);
+            std::string taskId = registerAwait(srcBmp_, dstBmp_);
+            return ctx.ReturnAwait("webgpu", taskId);
         } else {
+            // TODO: Remove the task lying there, even if it's not used.
+
             // CPU fallback/demo completion path after await is resolved.
             // invertToOutput(srcBmp_, dstBmp_);
             bmpOut_->Capture();
@@ -215,12 +209,8 @@ private:
         target.set("srcPtrPixels", reinterpret_cast<uintptr_t>(srcBmp->bytes()));
 
         emscripten::val retObj = emscripten::val::take_ownership(JsOnAwaitWGpuWork(target.as_handle()));
-        emscripten::val workIdVal = retObj["workId"];
-        if (workIdVal.isUndefined() || workIdVal.isNull()) {
-            LOG(WARNING) << "JsOnAwaitWGpuWork result missing workId, using fallback";
-            return "wgpu-fallback-workId";
-        }
-        return workIdVal.as<std::string>();
+        const std::string taskId = retObj["taskId"].as<std::string>();
+        return taskId;
     }
 
     void invertToOutput(const Bitmap* srcBmp, Bitmap* dstBmp) {

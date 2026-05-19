@@ -21,11 +21,7 @@ struct FlowApi {
     };
 
     // API: buildPipeline
-    struct BuildPipelineResponse {
-        std::vector<AssetInfo> assetInfos;
-
-        DEFINE_STRUCT_VISITOR_FUNCTION(assetInfos);
-    };
+    // Nothing.
 
     // API: stepPipeline
     struct StepPipelineResponse {
@@ -35,7 +31,7 @@ struct FlowApi {
     };
 
     cppschema::ApiStub<VoidType, GetFlowStatusResponse> getFlowStatus;
-    cppschema::ApiStub<VoidType, BuildPipelineResponse> buildPipeline;
+    cppschema::ApiStub<VoidType, VoidType> buildPipeline;
     cppschema::ApiStub<VoidType, StepPipelineResponse> stepPipeline;
     
     DEFINE_API_VISITOR_FUNCTION(getFlowStatus, buildPipeline, stepPipeline);

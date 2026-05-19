@@ -25,26 +25,15 @@ public:
     }
 
     // Invokes PipelineBuilder to build the pipeline from the graph state.
-    absl::StatusOr<std::vector<AssetInfo>> RebuildFromState(const GraphState& state);
+    absl::StatusOr<int /* dummy return value */> RebuildFromState(const GraphState& state);
 
     // Runs through the stages of the pipeline from the last stopping point, and returns
     // the combined step status and all completed graph outputs (from this step and previous steps).
-    absl::StatusOr<flow::FlowStepResult> StepPipeline();
-
     absl::StatusOr<flow::FlowStepResult> StepPipelineV2();
 
-    absl::Status AddInputBitmap(const NodeId nodeId, const BitmapInfo& bitmapInfo, uint8_t* data);
-
-    // Gets information about the resources created / used in the graph pipeline.
-    absl::StatusOr<std::vector<ResourceInfo>> GetPipelineResources() const;
-
 private:
-    // Index of the next node group to execute in StepPipeline().
-    size_t nextStepGroupIndex_ = 0;
-
-    // Index of the next node group to execute in StepPipeline().
+    // Index of the next node group to execute while stepping through the pipeline.
     std::pair<size_t /* stage index */, size_t /* executor index */> nextStageExecutorIndex_{0, 0};
-
 
     // Completed graph output entries accumulated across step calls.
     std::map<NodeId, flow::GraphOutputEntry> completedOutputs_;
